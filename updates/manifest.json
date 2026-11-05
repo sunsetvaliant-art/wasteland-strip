@@ -1,5 +1,13 @@
 {
- "patches": [],
+ "patches": [
+  {
+   "file": "patch_0.2.0_0001.pck",
+   "version": "0.2.1",
+   "date": "2026-11-05",
+   "notes": "First patch through the launcher: proves the auto-updater works. Patches download by themselves from here on.",
+   "size": 6516
+  }
+ ],
  "full": {
   "version": "0.2.0",
   "date": "2026-11-05",

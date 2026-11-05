@@ -100,6 +100,7 @@ func _version() -> String:
 	return Boot.version
 
 func _ready_to_play(msg: String) -> void:
+	print("LAUNCHER ", msg, " | version ", Boot.version, " | ", Boot.patches_loaded)
 	current = {}
 	status.text = msg
 	bar.value = 100
