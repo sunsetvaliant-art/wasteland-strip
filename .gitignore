@@ -7,3 +7,8 @@
 /build/
 # Converter inputs from the browser build
 /ws_models/
+
+# Rebuilt by tools (see README): road tiles and masks from tools/bake_roads.py, Poly Haven models from tools/ph_fetch.py
+/assets/roads/*.glb
+/assets/roadmask.png
+/assets/ph/

@@ -14,6 +14,7 @@ var sun: DirectionalLight3D
 var water_mat: ShaderMaterial
 var hud: Label
 var veg: Vegetation
+var roads: Roads
 var show_debug := false
 var env: Environment
 var pause_menu: PauseMenu
@@ -23,6 +24,10 @@ func _ready() -> void:
 	_build_environment()
 	_build_terrain()
 	_build_water()
+	roads = Roads.new()
+	roads.name = "Roads"
+	add_child(roads)
+	roads.setup(self)
 	veg = Vegetation.new()
 	veg.name = "Vegetation"
 	add_child(veg)
@@ -64,6 +69,27 @@ func spawn_vehicle(kind: String, pos: Vector3, yaw := 0.0) -> Car:
 func reset_world() -> void:
 	get_tree().paused = false
 	get_tree().reload_current_scene()
+
+## Ground collision only exists near whoever the terrain is following, so anything physical left far away is put to
+## sleep (frozen) until someone comes back, instead of falling through the world.
+var _sleep_t := 0.0
+var collision_centre := Vector3.ZERO
+func _physics_process(dt: float) -> void:
+	_sleep_t -= dt
+	if _sleep_t > 0.0:
+		return
+	_sleep_t = 0.25
+	for b in get_tree().get_nodes_in_group("physgun"):
+		if not (b is RigidBody3D) or b == forge.held:
+			continue
+		var rb := b as RigidBody3D
+		var near := Vector2(rb.global_position.x - collision_centre.x, rb.global_position.z - collision_centre.z).length() < 350.0
+		if not near and not rb.freeze:
+			rb.freeze = true
+			rb.set_meta("auto_frozen", true)
+		elif near and rb.get_meta("auto_frozen", false):
+			rb.set_meta("auto_frozen", false)
+			rb.freeze = false
 
 func height_at(x: float, z: float) -> float:
 	var h := terrain.data.get_height(Vector3(x, 0, z))
@@ -228,7 +254,9 @@ func _process(_dt: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam:
 		veg.update(cam.global_position)
-	var s := "WASTELAND  v%s" % Boot.version
+		var tgt: Node3D = forge.cam if forge.active else (player.vehicle if player.vehicle else player)
+		collision_centre = tgt.global_position
+	var s := "WASTELAND  v%s  ·  %s" % [Boot.version, "creative" if Settings.creative() else "survival"]
 	if Boot.patches_loaded.size():
 		s += "  ·  patches: " + ", ".join(Boot.patches_loaded)
 	if player.vehicle:

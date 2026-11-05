@@ -53,14 +53,15 @@ func _on_list(result: int, code: int, _h: PackedStringArray, body: PackedByteArr
 	if typeof(man) != TYPE_DICTIONARY:
 		_ready_to_play("Update list unreadable, playing what you have")
 		return
-	var have := Array(DirAccess.get_files_at(dir))
+	var have := Array(DirAccess.get_files_at(dir)).filter(func(f): return f.ends_with(".pck"))
 	var news := ""
 	var list: Array = man.get("patches", [])
 	for i in range(list.size() - 1, -1, -1):
 		var r: Dictionary = list[i]
 		var n: String = r.get("file", "")
 		if n.begins_with("patch_") and n.ends_with(".pck") and not have.has(n):
-			queue.append({"name": n, "url": BASE + n, "size": int(r.get("size", 0))})
+			# big patches come in pieces (GitHub's 100 MB file limit): fetch each, then join them
+			queue.append({"name": n, "size": int(r.get("size", 0)), "parts": r.get("parts", [n]), "i": 0})
 		news += "[b]v%s[/b]  [color=#999]%s[/color]\n%s\n\n" % [r.get("version", "?"), r.get("date", ""), r.get("notes", "")]
 	if man.has("full"):
 		news = "[b]Latest full download: v%s[/b]\n%s\n\n" % [man.full.get("version", "?"), man.full.get("notes", "")] + news
@@ -73,19 +74,49 @@ func _next() -> void:
 		_ready_to_play("Up to date  ·  v%s" % _version())
 		return
 	current = queue.pop_front()
-	status.text = "Downloading %s (%.1f MB)…" % [current.name, current.size / 1048576.0]
-	http.download_file = dir.path_join(current.name + ".part")
+	_fetch_part()
+
+func _fetch_part() -> void:
+	var parts: Array = current.parts
+	var pn: String = parts[current.i]
+	var tmp := dir.path_join(pn + ".dl")
+	# a piece already fully downloaded on an earlier try is kept
+	if parts.size() > 1 and FileAccess.file_exists(dir.path_join(pn)):
+		_part_done()
+		return
+	status.text = "Downloading %s  (%.0f MB)%s" % [current.name, current.size / 1048576.0, ("  ·  piece %d of %d" % [current.i + 1, parts.size()]) if parts.size() > 1 else ""]
+	http.download_file = tmp
 	http.request_completed.connect(_on_file, CONNECT_ONE_SHOT)
-	http.request(current.url, ["User-Agent: WastelandLauncher"])
+	http.request(BASE + pn, ["User-Agent: WastelandLauncher"])
 
 func _on_file(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray) -> void:
 	http.download_file = ""
-	var part: String = dir.path_join(current.name + ".part")
+	var pn: String = current.parts[current.i]
+	var tmp := dir.path_join(pn + ".dl")
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
-		DirAccess.remove_absolute(part)
-		_ready_to_play("Download of %s failed (code %d), try again later" % [current.name, code])
+		DirAccess.remove_absolute(tmp)
+		_ready_to_play("Download of %s failed (code %d), try again later" % [pn, code])
 		return
-	DirAccess.rename_absolute(part, dir.path_join(current.name))
+	DirAccess.rename_absolute(tmp, dir.path_join(pn))
+	_part_done()
+
+func _part_done() -> void:
+	current.i += 1
+	if current.i < current.parts.size():
+		_fetch_part()
+		return
+	if current.parts.size() > 1:
+		status.text = "Unpacking %s…" % current.name
+		var out := FileAccess.open(dir.path_join(current.name + ".join"), FileAccess.WRITE)
+		for pn in current.parts:
+			var f := FileAccess.open(dir.path_join(pn), FileAccess.READ)
+			while f.get_position() < f.get_length():
+				out.store_buffer(f.get_buffer(8 * 1048576))
+			f.close()
+		out.close()
+		for pn in current.parts:
+			DirAccess.remove_absolute(dir.path_join(pn))
+		DirAccess.rename_absolute(dir.path_join(current.name + ".join"), dir.path_join(current.name))
 	if ProjectSettings.load_resource_pack(dir.path_join(current.name), true):
 		Boot.patches_loaded.append(current.name)
 		if FileAccess.file_exists("res://version.txt"):

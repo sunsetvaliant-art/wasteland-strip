@@ -22,6 +22,8 @@ var v := {
 	"invert_y": false,
 	"master_volume": 0.8,
 	"show_fps": false,
+	"game_mode": "creative",   # creative: Forge (O) and god mode allowed; survival: the real thing
+	"god_mode": false,
 }
 
 func _init() -> void:
@@ -50,6 +52,9 @@ func apply_preset(name: String) -> void:
 	v.preset = name
 	save()
 	changed.emit()
+
+func creative() -> bool:
+	return v.get("game_mode", "creative") == "creative"
 
 func get_v(k: String):
 	return v.get(k)

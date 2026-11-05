@@ -9,6 +9,8 @@ var settings_panel: Control
 var open := false
 var _building := false
 var widgets := {}
+var mode_btn: Button
+var forge_btn: Button
 
 const ACCENT := Color(0.94, 0.65, 0.23)
 
@@ -43,7 +45,8 @@ func setup(m) -> void:
 	home.add_child(_spacer(24))
 	_btn(home, "Resume", close)
 	_btn(home, "Settings", func(): settings_panel.visible = not settings_panel.visible)
-	_btn(home, "Forge mode  (O)", func(): close(); main.forge.toggle())
+	mode_btn = _btn(home, "", _toggle_mode)
+	forge_btn = _btn(home, "Forge mode  (O)", func(): close(); main.forge.toggle())
 	_btn(home, "Reset world", func(): main.reset_world())
 	var mp := _btn(home, "Multiplayer  (coming)", func(): pass)
 	mp.disabled = true
@@ -59,7 +62,20 @@ func _unhandled_input(e: InputEvent) -> void:
 		else: show_menu()
 		get_viewport().set_input_as_handled()
 
+func _toggle_mode() -> void:
+	Settings.set_value("game_mode", "survival" if Settings.creative() else "creative")
+	if not Settings.creative():
+		Settings.set_value("god_mode", false)
+		if main.forge.active:
+			main.forge.toggle()
+	_refresh_mode()
+
+func _refresh_mode() -> void:
+	mode_btn.text = "Mode:  " + ("CREATIVE  (Forge on)" if Settings.creative() else "SURVIVAL  (no Forge)")
+	forge_btn.disabled = not Settings.creative()
+
 func show_menu() -> void:
+	_refresh_mode()
 	open = true
 	root.visible = true
 	settings_panel.visible = false

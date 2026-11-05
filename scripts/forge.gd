@@ -106,6 +106,9 @@ func toggle() -> void:
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("forge") and not get_tree().paused:
+		if not Settings.creative() and not active:
+			_toast_world("Forge is off in survival mode  ·  Esc  ->  Mode to switch to creative")
+			return
 		toggle()
 		get_viewport().set_input_as_handled()
 		return
@@ -295,11 +298,11 @@ func spawn(entry: Dictionary, xf: Transform3D, frozen := false) -> Node3D:
 			rb.add_child(vis)
 			var aabb := _aabb(vis)
 			var cs := CollisionShape3D.new()
-			var mi := vis.find_children("*", "MeshInstance3D", true, false)
-			if mi.size():
-				cs.shape = (mi[0] as MeshInstance3D).mesh.create_convex_shape(true, true)
+			var hull := _convex(vis)
+			if hull:
+				cs.shape = hull
 			else:
-				var b := BoxShape3D.new(); b.size = aabb.size; cs.shape = b
+				var b := BoxShape3D.new(); b.size = aabb.size; cs.shape = b; cs.position = aabb.get_center()
 			rb.add_child(cs)
 			var vol: float = max(0.001, aabb.size.x * aabb.size.y * aabb.size.z)
 			rb.mass = clamp(vol * 180.0, 2.0, 8000.0)
@@ -345,7 +348,8 @@ func _make_visual(entry: Dictionary) -> Node3D:
 			holder.add_child(b)
 			return holder
 		"prop":
-			return load("res://assets/props/%s.glb" % entry.key).instantiate()
+			var path: String = entry.get("path", "res://assets/props/%s.glb" % entry.key)
+			return load(path).instantiate()
 		"plant":
 			var mi := MeshInstance3D.new()
 			mi.mesh = main.veg.meshes[entry.key]
@@ -387,6 +391,49 @@ func _make_marker(kind: String) -> Node3D:
 	cs.position.y = 0.9
 	a.add_child(cs)
 	return a
+
+## one convex hull around every mesh in a model (thinned to ~1500 points), in the model's own space
+func _convex(vis: Node3D) -> ConvexPolygonShape3D:
+	var pts := PackedVector3Array()
+	var inv := vis.global_transform.affine_inverse() if vis.is_inside_tree() else Transform3D()
+	for mi: MeshInstance3D in vis.find_children("*", "MeshInstance3D", true, false):
+		var xf := Transform3D()
+		var n: Node = mi
+		while n and n != vis:        # the mesh's transform relative to the model root
+			if n is Node3D: xf = (n as Node3D).transform * xf
+			n = n.get_parent()
+		for sidx in mi.mesh.get_surface_count():
+			var a: PackedVector3Array = mi.mesh.surface_get_arrays(sidx)[Mesh.ARRAY_VERTEX]
+			var stp := maxi(1, a.size() / 1500)
+			for i in range(0, a.size(), stp):
+				pts.append(xf * a[i])
+	if pts.size() < 4:
+		return null
+	var sh := ConvexPolygonShape3D.new()
+	sh.points = pts
+	return sh
+
+func _old_prop_group(k: String) -> String:
+	if k in ["hpistol", "hmachete", "hcrowbar", "hhatchet", "hsledge", "ammo"]: return "Weapons"
+	if k in ["axle", "alt", "carb", "inj", "blower", "airf", "tbar", "droptank", "rim", "globe", "tyre", "jerry"]: return "Car parts"
+	if k in ["toolbox", "htoolbox", "bench"]: return "Tools"
+	if k in ["pack", "goggA", "goggW", "propane", "stove"]: return "Survival"
+	if k.begins_with("bould") or k.begins_with("cliff") or k.begins_with("rface") or k in ["rocks1", "stones", "trunk2", "dbranch", "shrub3", "shrub2", "cactus"]: return "Nature"
+	return "World"
+
+func _pretty(id: String) -> String:
+	var fixed := {"bolt_action_rifle_7_62": "Bolt-action rifle .303 (7.62)", "service_pistol": "Service pistol", "stick_grenade": "Stick grenade",
+		"picke_dirty_01": "Pick", "old_military_crate": "Military crate", "wooden_military_crate": "Military crate (wood)",
+		"engine_holden_202": "Engine: Holden 202 red six", "engine_toyota_22r": "Engine: Toyota 22R", "engine_ford_351": "Engine: Ford 351 Cleveland V8",
+		"engine_jeep_40": "Engine: Jeep 4.0 six", "alternator_202": "Alternator (Holden)", "alternator_22r": "Alternator (Toyota)",
+		"alternator_351": "Alternator (Ford)", "alternator_40": "Alternator (Jeep)", "aircleaner_202": "Air cleaner (Holden)",
+		"old_tyre": "Old tyre", "covered_car": "Car under a tarp", "Lantern_01": "Lantern", "Barrel_01": "Barrel", "Barrel_02": "Barrel (rusty)",
+		"Sofa_01": "Sofa", "Television_01": "Old telly", "overhead_crane": "Engine crane", "tire_pump": "Tyre pump"}
+	if fixed.has(id): return fixed[id]
+	var s := id.replace("_", " ")
+	for d in [" 01", " 02", " 03", " 04"]:
+		s = s.trim_suffix(d)
+	return s.capitalize()
 
 func _ghostify(n: Node) -> void:
 	for mi in n.find_children("*", "GeometryInstance3D", true, false):
@@ -437,6 +484,7 @@ func _freeze_held() -> void:
 		rb.linear_velocity = Vector3.ZERO
 		rb.angular_velocity = Vector3.ZERO
 		rb.freeze = true
+		rb.set_meta("auto_frozen", false)
 	_release()
 
 func _unfreeze_aimed() -> void:
@@ -670,6 +718,13 @@ func _set_palette(on: bool) -> void:
 	palette.visible = on
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
 
+## a message even when the Forge UI isn't up
+func _toast_world(t: String) -> void:
+	ui.visible = true
+	hud.text = ""
+	_toast(t)
+	get_tree().create_timer(3.5).timeout.connect(func(): if not active: ui.visible = false)
+
 func _toast(t: String) -> void:
 	var l := Label.new()
 	l.text = t
@@ -710,7 +765,7 @@ func _build_ui() -> void:
 	palette = PanelContainer.new()
 	palette.theme = theme
 	palette.position = Vector2(20, 110)
-	palette.custom_minimum_size = Vector2(420, 860)
+	palette.custom_minimum_size = Vector2(560, 860)
 	palette.visible = false
 	ui.add_child(palette)
 	var tabs := TabContainer.new()
@@ -719,16 +774,32 @@ func _build_ui() -> void:
 	var veh := []
 	for k in cat: veh.append({"type": "vehicle", "key": k, "name": cat[k].name})
 	_palette_page(tabs, "Vehicles", veh)
-	var props := []
+	# every placeable model, sorted into tabs: the browser build's scans, Poly Haven (CC0) and the engines
+	var groups := {"Weapons": [], "Car parts": [], "Tools": [], "Survival": [], "World": [], "Nature": []}
 	for f in DirAccess.get_files_at("res://assets/props"):
-		var fn := f.trim_suffix(".import")
-		if fn.ends_with(".glb") and not props.any(func(x): return x.key == fn.get_basename()):
-			props.append({"type": "prop", "key": fn.get_basename(), "name": _prop_name(fn.get_basename())})
-	props.sort_custom(func(a, b): return a.name < b.name)
-	_palette_page(tabs, "Props", props)
-	var plants := []
-	for k in Vegetation.DEF: plants.append({"type": "plant", "key": k, "name": k.capitalize()})
-	_palette_page(tabs, "Plants", plants)
+		var fn := f.trim_suffix(".import").trim_suffix(".remap")
+		if not fn.ends_with(".glb"): continue
+		var k := fn.get_basename()
+		var g := _old_prop_group(k)
+		if not groups[g].any(func(x): return x.key == k):
+			groups[g].append({"type": "prop", "key": k, "name": _prop_name(k) + " (old scan)", "path": "res://assets/props/%s.glb" % k})
+	for f in DirAccess.get_files_at("res://assets/engines"):
+		var fn := f.trim_suffix(".import").trim_suffix(".remap")
+		if fn.ends_with(".glb") and not groups["Car parts"].any(func(x): return x.key == fn.get_basename()):
+			groups["Car parts"].append({"type": "prop", "key": fn.get_basename(), "name": _pretty(fn.get_basename()), "path": "res://assets/engines/" + fn})
+	var ph_tab := {"weapons": "Weapons", "carparts": "Car parts", "tools": "Tools", "survival": "Survival", "world": "World", "nature": "Nature"}
+	for d in ph_tab:
+		var base: String = "res://assets/ph/" + d
+		if not DirAccess.dir_exists_absolute(base): continue
+		for id in DirAccess.get_directories_at(base):
+			groups[ph_tab[d]].append({"type": "prop", "key": id, "name": _pretty(id), "path": "%s/%s/%s.gltf" % [base, id, id]})
+	for g in groups:
+		groups[g].sort_custom(func(a, b): return a.name < b.name)
+	for g in ["Weapons", "Car parts", "Tools", "Survival", "World", "Nature"]:
+		var items: Array = groups[g]
+		if g == "Nature":
+			for k in Vegetation.DEF: items.append({"type": "plant", "key": k, "name": k.capitalize() + " (plant)"})
+		_palette_page(tabs, g, items)
 	var mk := []
 	for k in MARKERS: mk.append({"type": "marker", "key": k, "name": k.replace("_", " ").capitalize() + (" spawn" if not k.ends_with("spawn") else "")})
 	_palette_page(tabs, "NPCs & spawns", mk)
@@ -750,7 +821,7 @@ func _palette_page(tabs: TabContainer, title: String, items: Array) -> void:
 	for it in items:
 		var b := Button.new()
 		b.text = it.name
-		b.custom_minimum_size = Vector2(190, 40)
+		b.custom_minimum_size = Vector2(260, 40)
 		b.clip_text = true
 		b.pressed.connect(func():
 			selected = it

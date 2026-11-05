@@ -26,6 +26,7 @@ const SMALL := ["fern", "fern2", "monstera", "elephant", "bush1", "shrub1", "shr
 var terrain: Terrain3D
 var mask: Image
 var mask2: Image
+var roadmask: Image       # 5 m clearance from the nearest road edge: (m + 10) x 10
 var meshes := {}
 var groups := {}        # group -> [[key, weight], ...]
 var grass_mesh: ArrayMesh
@@ -55,6 +56,8 @@ func setup(t: Terrain3D) -> void:
 	terrain = t
 	mask = load("res://assets/vegmask.png")
 	mask2 = load("res://assets/vegmask2.png")
+	if ResourceLoader.exists("res://assets/roadmask.png"):
+		roadmask = load("res://assets/roadmask.png")
 	for k in DEF:
 		meshes[k] = load("res://assets/veg/%s.res" % k)
 		for g in DEF[k]:
@@ -77,6 +80,20 @@ func sample2(x: float, z: float) -> Color:
 	var px := clampi(int((x - X0) / MPX), 0, mask2.get_width() - 1)
 	var pz := clampi(int((z - Z0) / MPX), 0, mask2.get_height() - 1)
 	return mask2.get_pixel(px, pz)
+
+## metres from the nearest road's outer edge (negative = on the road); 15 when there's no road about
+func road_clearance(x: float, z: float) -> float:
+	if roadmask == null:
+		return 15.0
+	var fx := (x - X0) / 5.0
+	var fz := (z - Z0) / 5.0
+	var ix := clampi(int(fx), 0, roadmask.get_width() - 2)
+	var iz := clampi(int(fz), 0, roadmask.get_height() - 2)
+	var tx := clampf(fx - ix, 0, 1)
+	var tz := clampf(fz - iz, 0, 1)
+	var a := lerpf(roadmask.get_pixel(ix, iz).r, roadmask.get_pixel(ix + 1, iz).r, tx)
+	var b := lerpf(roadmask.get_pixel(ix, iz + 1).r, roadmask.get_pixel(ix + 1, iz + 1).r, tx)
+	return lerpf(a, b, tz) * 25.5 - 10.0
 
 func _pick(rng: RandomNumberGenerator, g: String) -> String:
 	var L: Array = groups.get(g, [])
@@ -171,6 +188,9 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 					kind = "_grass"
 					sc = rng.randf_range(0.7, 1.3) * (1.0 + m2.g * 1.2 + (1.0 - m2.r) * 0.4)   # long and rank where nobody mows
 			if kind == "":
+				continue
+			var clear := road_clearance(x, z)
+			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2}[layer]:
 				continue
 			var h := _height(x, z)
 			if is_nan(h):

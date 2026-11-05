@@ -16,7 +16,7 @@ func _init() -> void:
 	print("region size ", t.region_size)
 	var imgs: Array[Image] = []
 	imgs.resize(Terrain3DRegion.TYPE_MAX)
-	var h := Terrain3DUtil.load_image("res://data/height.r16", ResourceLoader.CACHE_MODE_IGNORE, Vector2(-60.0, 840.0), Vector2i(6401, 6401))
+	var h := Terrain3DUtil.load_image("res://data/height_roads.r16" if FileAccess.file_exists("res://data/height_roads.r16") else "res://data/height.r16", ResourceLoader.CACHE_MODE_IGNORE, Vector2(-60.0, 840.0), Vector2i(6401, 6401))
 	print("height ", h.get_size(), " ", Terrain3DUtil.get_min_max(h))
 	imgs[Terrain3DRegion.TYPE_HEIGHT] = h
 	var c := Image.load_from_file(ProjectSettings.globalize_path("res://data/tint.png"))

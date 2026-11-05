@@ -52,8 +52,34 @@ func _ready():
 				f.spawn(ents[i], Transform3D(Basis(Vector3.UP, i * 0.7), sp))
 			for _i in 120: await get_tree().physics_frame
 			f.selected = {"type":"prop","key":"tyre","name":"Tyre"}
+		elif mode == "fcam":
+			# Forge camera at x z, looking yaw / pitch, a[6] m above the ground
+			if not main.forge.active: main.forge.toggle()
+			main.forge._set_palette(false)
+			var f = main.forge
+			var x := float(a[2]); var z := float(a[3])
+			f.cam.global_position = Vector3(x, main.height_at(x, z) + float(a[6]), z)
+			f.yaw = float(a[4]); f.pitch = float(a[5])
+			f.ui.visible = false
+			for _i in 8: await get_tree().physics_frame
+		elif mode == "showcase":
+			# a row of the new models on the ground in front of the Forge camera
+			var f = main.forge
+			f.ui.visible = false
+			var keys := OS.get_environment("SHOWCASE").split(",")
+			var fwd: Vector3 = -f.cam.global_transform.basis.z; fwd.y = 0; fwd = fwd.normalized()
+			var right: Vector3 = f.cam.global_transform.basis.x; right.y = 0; right = right.normalized()
+			for i in keys.size():
+				var path: String = keys[i]
+				var pos: Vector3 = f.cam.global_position + fwd * 4.5 + right * ((i - (keys.size() - 1) * 0.5) * 1.15)
+				pos.y = main.height_at(pos.x, pos.z) + 0.6
+				var n = f.spawn({"type": "prop", "key": path.get_file().get_basename(), "name": path, "path": path}, Transform3D(Basis(Vector3.UP, f.yaw + PI * 0.5), pos))
+			for _i in 150: await get_tree().physics_frame
 		elif mode == "palette":
+			main.forge.ui.visible = true
 			main.forge._set_palette(true)
+			var tabs: TabContainer = main.forge.palette.get_child(0)
+			tabs.current_tab = int(a[2]) if a.size() > 2 else 0
 		elif mode == "physgun":
 			var f = main.forge
 			f._set_palette(false)
