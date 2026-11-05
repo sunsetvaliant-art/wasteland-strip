@@ -6,6 +6,13 @@
    "date": "2026-11-05",
    "notes": "First patch through the launcher: proves the auto-updater works. Patches download by themselves from here on.",
    "size": 6516
+  },
+  {
+   "file": "patch_0.2.0_0002.pck",
+   "version": "0.2.2",
+   "date": "2026-11-06",
+   "notes": "Updater upgrade: lets the launcher download big updates in pieces. If the next update shows a download error, close the game and open it again.",
+   "size": 167792
   }
  ],
  "full": {
