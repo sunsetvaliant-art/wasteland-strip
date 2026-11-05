@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://4t0lircbx57a"
-path="res://.godot/imported/falcon_0.jpg-c57ea41954ef3378bd3529210aead22f.ctex"
+path.s3tc="res://.godot/imported/falcon_0.jpg-c57ea41954ef3378bd3529210aead22f.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "af3ecfdd508d96b165c23e05c0f4c9e9"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/vehicles/falcon_0.jpg"
-dest_files=["res://.godot/imported/falcon_0.jpg-c57ea41954ef3378bd3529210aead22f.ctex"]
+dest_files=["res://.godot/imported/falcon_0.jpg-c57ea41954ef3378bd3529210aead22f.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

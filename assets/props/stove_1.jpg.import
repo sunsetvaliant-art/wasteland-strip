@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://lstyxh0qp0mn"
-path="res://.godot/imported/stove_1.jpg-28b7bc6f51bf151294fd6620f9a3be17.ctex"
+path.s3tc="res://.godot/imported/stove_1.jpg-28b7bc6f51bf151294fd6620f9a3be17.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "534ba6097f5dfe55d4e49d7ac52dd33e"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/stove_1.jpg"
-dest_files=["res://.godot/imported/stove_1.jpg-28b7bc6f51bf151294fd6620f9a3be17.ctex"]
+dest_files=["res://.godot/imported/stove_1.jpg-28b7bc6f51bf151294fd6620f9a3be17.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

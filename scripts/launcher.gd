@@ -1,9 +1,10 @@
 extends Control
 ## The first screen: checks GitHub Releases for patches you don't have, downloads them into the "patches"
 ## folder beside the game (with progress), loads them straight in, then Play. Offline? It just lets you play.
-## A release counts as a patch when it carries a file named patch_####.pck. Its release notes show as "What's new".
+## Patches live in the repo's updates/ folder, listed in updates/manifest.json:
+##   {"patches": [{"file": "patch_0001.pck", "version": "0.2.1", "date": "2026-11-06", "notes": "..."}]}
 
-const API := "https://api.github.com/repos/sunsetvaliant-art/wasteland-strip/releases?per_page=50"
+const BASE := "https://raw.githubusercontent.com/sunsetvaliant-art/wasteland-strip/main/updates/"
 const ACCENT := Color(0.94, 0.65, 0.23)
 
 var status: Label
@@ -18,7 +19,7 @@ var current := {}
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	dir = OS.get_executable_path().get_base_dir().path_join("patches")
-	if OS.has_feature("editor") or not _writable(dir):
+	if (OS.has_feature("editor") and OS.get_environment("WASTELAND_FORCE_UPDATE") == "") or not _writable(dir):
 		dir = ProjectSettings.globalize_path("user://patches")
 	DirAccess.make_dir_recursive_absolute(dir)
 	_build_ui()
@@ -26,12 +27,12 @@ func _ready() -> void:
 	http.timeout = 12.0
 	http.max_redirects = 10
 	add_child(http)
-	if OS.get_environment("WASTELAND_NO_UPDATE") != "" or OS.has_feature("editor"):
+	if OS.get_environment("WASTELAND_NO_UPDATE") != "" or (OS.has_feature("editor") and OS.get_environment("WASTELAND_FORCE_UPDATE") == ""):
 		_ready_to_play("Updates skipped")
 		return
 	status.text = "Checking for updates…"
 	http.request_completed.connect(_on_list, CONNECT_ONE_SHOT)
-	var err := http.request(API, ["User-Agent: WastelandLauncher", "Accept: application/vnd.github+json"])
+	var err := http.request(BASE + "manifest.json?t=%d" % Time.get_unix_time_from_system(), ["User-Agent: WastelandLauncher", "Cache-Control: no-cache"])
 	if err != OK:
 		_ready_to_play("Couldn't check for updates (offline?)")
 
@@ -48,21 +49,21 @@ func _on_list(result: int, code: int, _h: PackedStringArray, body: PackedByteArr
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 		_ready_to_play("Couldn't reach the update server (code %d), playing what you have" % code)
 		return
-	var rel = JSON.parse_string(body.get_string_from_utf8())
-	if typeof(rel) != TYPE_ARRAY:
+	var man = JSON.parse_string(body.get_string_from_utf8())
+	if typeof(man) != TYPE_DICTIONARY:
 		_ready_to_play("Update list unreadable, playing what you have")
 		return
 	var have := Array(DirAccess.get_files_at(dir))
 	var news := ""
-	for r in rel:
-		if r.get("draft", false):
-			continue
-		for a in r.get("assets", []):
-			var n: String = a.get("name", "")
-			if n.begins_with("patch_") and n.ends_with(".pck"):
-				if not have.has(n):
-					queue.append({"name": n, "url": a.browser_download_url, "size": int(a.get("size", 0))})
-				news += "[b]%s[/b]  [color=#999]%s[/color]\n%s\n\n" % [r.get("name", n), str(r.get("published_at", "")).left(10), str(r.get("body", ""))]
+	var list: Array = man.get("patches", [])
+	for i in range(list.size() - 1, -1, -1):
+		var r: Dictionary = list[i]
+		var n: String = r.get("file", "")
+		if n.begins_with("patch_") and n.ends_with(".pck") and not have.has(n):
+			queue.append({"name": n, "url": BASE + n, "size": int(r.get("size", 0))})
+		news += "[b]v%s[/b]  [color=#999]%s[/color]\n%s\n\n" % [r.get("version", "?"), r.get("date", ""), r.get("notes", "")]
+	if man.has("full"):
+		news = "[b]Latest full download: v%s[/b]\n%s\n\n" % [man.full.get("version", "?"), man.full.get("notes", "")] + news
 	notes.text = news if news != "" else "No patch notes yet."
 	queue.sort_custom(func(a, b): return a.name < b.name)
 	_next()

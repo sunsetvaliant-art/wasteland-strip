@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d0tw10ql5vmym"
-path="res://.godot/imported/hmachete_1.jpg-4c97a21d096d4ee3fd53b5a52e716fc9.ctex"
+path.s3tc="res://.godot/imported/hmachete_1.jpg-4c97a21d096d4ee3fd53b5a52e716fc9.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "cfa5f15fd3818167c999fa7fc08e3137"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/hmachete_1.jpg"
-dest_files=["res://.godot/imported/hmachete_1.jpg-4c97a21d096d4ee3fd53b5a52e716fc9.ctex"]
+dest_files=["res://.godot/imported/hmachete_1.jpg-4c97a21d096d4ee3fd53b5a52e716fc9.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

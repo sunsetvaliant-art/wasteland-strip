@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cqaliomm0w36b"
-path="res://.godot/imported/goggw_0.jpg-d8cf32383bb3e8c0ff64fab4188ef4ab.ctex"
+path.s3tc="res://.godot/imported/goggw_0.jpg-d8cf32383bb3e8c0ff64fab4188ef4ab.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "faec181fbc4b885a494724f269531a13"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/goggw_0.jpg"
-dest_files=["res://.godot/imported/goggw_0.jpg-d8cf32383bb3e8c0ff64fab4188ef4ab.ctex"]
+dest_files=["res://.godot/imported/goggw_0.jpg-d8cf32383bb3e8c0ff64fab4188ef4ab.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

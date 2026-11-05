@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://blnexvvmu5kyu"
-path="res://.godot/imported/palms_3.png-89b31a2186ae713a7e85e9941d3adbb4.ctex"
+path.s3tc="res://.godot/imported/palms_3.png-89b31a2186ae713a7e85e9941d3adbb4.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "df0f64d9a50cd86ed12f93af8bf34d68"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/veg/palms_3.png"
-dest_files=["res://.godot/imported/palms_3.png-89b31a2186ae713a7e85e9941d3adbb4.ctex"]
+dest_files=["res://.godot/imported/palms_3.png-89b31a2186ae713a7e85e9941d3adbb4.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=1024
+detect_3d/compress_to=0

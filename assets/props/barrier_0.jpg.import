@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dei7knmrbi2cr"
-path="res://.godot/imported/barrier_0.jpg-5f1afb4575003b272998c55bf05e4e33.ctex"
+path.s3tc="res://.godot/imported/barrier_0.jpg-5f1afb4575003b272998c55bf05e4e33.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "247919236b2da674cf92cd4bb16b55fc"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/barrier_0.jpg"
-dest_files=["res://.godot/imported/barrier_0.jpg-5f1afb4575003b272998c55bf05e4e33.ctex"]
+dest_files=["res://.godot/imported/barrier_0.jpg-5f1afb4575003b272998c55bf05e4e33.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

@@ -1,0 +1,8 @@
+{
+ "patches": [],
+ "full": {
+  "version": "0.2.0",
+  "date": "2026-11-05",
+  "notes": "First Godot build with the launcher built in. Pause menu with graphics settings, Forge mode with phys gun and terrain sculpting, 27 drivable bodies, 52 props, your survivor as a full body, cab view and hop-out fixes."
+ }
+}

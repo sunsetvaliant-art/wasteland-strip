@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cji5repjgp3oh"
-path="res://.godot/imported/tyre_2.jpg-9e1023a8414332e862f7b1c2965965e7.ctex"
+path.s3tc="res://.godot/imported/tyre_2.jpg-9e1023a8414332e862f7b1c2965965e7.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2a228859dc6c787bff7c31c84ad5b853"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/tyre_2.jpg"
-dest_files=["res://.godot/imported/tyre_2.jpg-9e1023a8414332e862f7b1c2965965e7.ctex"]
+dest_files=["res://.godot/imported/tyre_2.jpg-9e1023a8414332e862f7b1c2965965e7.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

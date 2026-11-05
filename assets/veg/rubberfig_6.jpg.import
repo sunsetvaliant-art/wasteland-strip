@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://fbkq2mq2pcpo"
-path="res://.godot/imported/rubberfig_6.jpg-0eee451470cf9925b3dcb4d3c48a0b27.ctex"
+path.s3tc="res://.godot/imported/rubberfig_6.jpg-0eee451470cf9925b3dcb4d3c48a0b27.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "6affd230c0a2c8e4ceec5380f93e20d6"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/veg/rubberfig_6.jpg"
-dest_files=["res://.godot/imported/rubberfig_6.jpg-0eee451470cf9925b3dcb4d3c48a0b27.ctex"]
+dest_files=["res://.godot/imported/rubberfig_6.jpg-0eee451470cf9925b3dcb4d3c48a0b27.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=1024
+detect_3d/compress_to=0

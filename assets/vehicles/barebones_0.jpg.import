@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bvlehgp1wmn8y"
-path="res://.godot/imported/barebones_0.jpg-1a62848c62ee1bc2c482cce0dc3caa0e.ctex"
+path.s3tc="res://.godot/imported/barebones_0.jpg-1a62848c62ee1bc2c482cce0dc3caa0e.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "8b30d0ca9126bdc6709fd3555d8f3945"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/vehicles/barebones_0.jpg"
-dest_files=["res://.godot/imported/barebones_0.jpg-1a62848c62ee1bc2c482cce0dc3caa0e.ctex"]
+dest_files=["res://.godot/imported/barebones_0.jpg-1a62848c62ee1bc2c482cce0dc3caa0e.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0

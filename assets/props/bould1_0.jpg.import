@@ -3,9 +3,10 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c7fkf4d0jhdsc"
-path="res://.godot/imported/bould1_0.jpg-ea06a91d382dd4ee929f9d593cd6693a.ctex"
+path.s3tc="res://.godot/imported/bould1_0.jpg-ea06a91d382dd4ee929f9d593cd6693a.s3tc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc"],
+"vram_texture": true
 }
 generator_parameters={
 "md5": "2dc6a44c72d570d707c388c85d00e656"
@@ -14,11 +15,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/props/bould1_0.jpg"
-dest_files=["res://.godot/imported/bould1_0.jpg-ea06a91d382dd4ee929f9d593cd6693a.ctex"]
+dest_files=["res://.godot/imported/bould1_0.jpg-ea06a91d382dd4ee929f9d593cd6693a.s3tc.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -39,5 +40,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
-detect_3d/compress_to=1
+process/size_limit=2048
+detect_3d/compress_to=0
