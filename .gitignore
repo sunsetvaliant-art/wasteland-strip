@@ -1,0 +1,9 @@
+# Godot
+.godot/
+*.tmp
+# Generated / too big for git: published as release assets (see README)
+/terrain/
+/data/
+/build/
+# Converter inputs from the browser build
+/ws_models/
