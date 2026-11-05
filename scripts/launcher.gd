@@ -86,6 +86,7 @@ func _fetch_part() -> void:
 		return
 	status.text = "Downloading %s  (%.0f MB)%s" % [current.name, current.size / 1048576.0, ("  ·  piece %d of %d" % [current.i + 1, parts.size()]) if parts.size() > 1 else ""]
 	http.download_file = tmp
+	http.timeout = 0.0          # big pieces take as long as they take; only the update list has a time limit
 	http.request_completed.connect(_on_file, CONNECT_ONE_SHOT)
 	http.request(BASE + pn, ["User-Agent: WastelandLauncher"])
 
@@ -95,7 +96,7 @@ func _on_file(result: int, code: int, _h: PackedStringArray, _b: PackedByteArray
 	var tmp := dir.path_join(pn + ".dl")
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 		DirAccess.remove_absolute(tmp)
-		_ready_to_play("Download of %s failed (code %d), try again later" % [pn, code])
+		_ready_to_play("Download of %s stopped (%s). Open the game again to carry on from where it got to." % [pn, ("code %d" % code) if code else "connection dropped"])
 		return
 	DirAccess.rename_absolute(tmp, dir.path_join(pn))
 	_part_done()
