@@ -13,6 +13,26 @@
    "date": "2026-11-06",
    "notes": "Updater upgrade: lets the launcher download big updates in pieces. If the next update shows a download error, close the game and open it again.",
    "size": 167792
+  },
+  {
+   "file": "patch_0.2.0_0003.pck",
+   "version": "0.2.3",
+   "date": "2026-11-06",
+   "notes": "Roads: all 1,370 km of the Tweed's real roads (OpenStreetMap), cut and filled into the terrain. Cracked old bitumen, faded line markings, gravel shoulders, kerbs and footpaths in town, dirt farm tracks, bridges with barriers and piers, grass and moss creeping back in. Creative / survival mode (Esc menu): Forge only in creative. Forge gets Weapons, Car parts, Tools, Survival, World and Nature tabs with ~100 new Poly Haven scans (bolt-action rifle, service pistol, grenade, machete, axes, spanners, bench vice, engine crane, welder, jerry cans, tyres, rims...) plus four engines (Holden 202, Toyota 22R, Ford 351 Cleveland, Jeep 4.0) with bolt-on alternators. Cars and props left far away no longer fall through the world.",
+   "size": 946172604,
+   "parts": [
+    "patch_0.2.0_0003.pck.p00",
+    "patch_0.2.0_0003.pck.p01",
+    "patch_0.2.0_0003.pck.p02",
+    "patch_0.2.0_0003.pck.p03",
+    "patch_0.2.0_0003.pck.p04",
+    "patch_0.2.0_0003.pck.p05",
+    "patch_0.2.0_0003.pck.p06",
+    "patch_0.2.0_0003.pck.p07",
+    "patch_0.2.0_0003.pck.p08",
+    "patch_0.2.0_0003.pck.p09",
+    "patch_0.2.0_0003.pck.p10"
+   ]
   }
  ],
  "full": {
