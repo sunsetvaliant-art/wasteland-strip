@@ -235,10 +235,11 @@ func _build_credits() -> void:
 	root.add_child(credits_panel)
 	var t := RichTextLabel.new()
 	t.bbcode_enabled = true
-	t.fit_content = true
+	t.fit_content = false
+	t.scroll_active = true
 	t.custom_minimum_size = Vector2(740, 480)
-	var s := "[b]Credits[/b]\n\nGuns from Sketchfab (CC BY 4.0):\n"
-	var c = JSON.parse_string(FileAccess.get_file_as_string("res://assets/guns/credits.json"))
+	var s := "[b]Credits[/b]\n\nGuns, zombies and animations from Sketchfab (CC BY 4.0):\n"
+	var c = JSON.parse_string(FileAccess.get_file_as_string("res://assets/credits.json"))
 	if c is Dictionary:
 		for k in c:
 			s += "  • %s by %s\n" % [c[k].title, c[k].author]

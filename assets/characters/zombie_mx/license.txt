@@ -1,0 +1,11 @@
+Model Information:
+* title:	Walking zombie
+* source:	https://sketchfab.com/3d-models/walking-zombie-d276d9dfa25644beabfe2efcc4e9eb06
+* author:	Mixamo animations (https://sketchfab.com/mixamoanimations)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Walking zombie" (https://sketchfab.com/3d-models/walking-zombie-d276d9dfa25644beabfe2efcc4e9eb06) by Mixamo animations (https://sketchfab.com/mixamoanimations) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

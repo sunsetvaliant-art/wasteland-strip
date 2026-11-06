@@ -1,0 +1,11 @@
+Model Information:
+* title:	Futuristic soldier (lowpoly)
+* source:	https://sketchfab.com/3d-models/futuristic-soldier-lowpoly-5ebade1ccbff4adb91ddd3a4d1fcd541
+* author:	SlagPerch 3D (https://sketchfab.com/slagperch3d)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Futuristic soldier (lowpoly)" (https://sketchfab.com/3d-models/futuristic-soldier-lowpoly-5ebade1ccbff4adb91ddd3a4d1fcd541) by SlagPerch 3D (https://sketchfab.com/slagperch3d) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -6,22 +6,22 @@ extends Node3D
 ## that zombies and scavs can hear.
 
 const DEFS := {
-	"enfield": {"sight": 0.05, "name": "Lee-Enfield No.1 Mk III (.303)", "len": 1.45, "flip": true, "action": "bolt", "dmg": 110.0, "pellets": 1, "spread": 0.0012,
+	"enfield": {"scope": 3.5, "grip_y": -0.03, "fore_y": -0.03, "sight": 0.085, "name": "Lee-Enfield No.1 Mk III (.303)", "len": 1.45, "flip": true, "action": "bolt", "dmg": 110.0, "pellets": 1, "spread": 0.0012,
 		"interval": 1.25, "mag": 10, "reload": 3.4, "recoil": 0.075, "vel": 740.0, "range": 900.0, "loud": 330.0, "sound": "shot_303",
 		"grip": 0.24, "fore": 0.5, "drop_y": -0.035, "kick": 0.09, "force": 9.0},
-	"slr": {"sight": 0.085, "name": "L1A1 SLR (7.62 NATO)", "len": 1.14, "flip": false, "action": "semi", "dmg": 85.0, "pellets": 1, "spread": 0.0018,
+	"slr": {"scope": 4.0, "grip_y": -0.075, "fore_y": -0.03, "sight": 0.085, "name": "L1A1 SLR (7.62 NATO)", "len": 1.14, "flip": false, "action": "semi", "dmg": 85.0, "pellets": 1, "spread": 0.0018,
 		"interval": 0.13, "mag": 20, "reload": 2.7, "recoil": 0.05, "vel": 820.0, "range": 800.0, "loud": 320.0, "sound": "shot_slr",
 		"grip": 0.33, "fore": 0.62, "drop_y": -0.03, "kick": 0.06, "force": 8.0},
-	"python": {"sight": 0.055, "name": "Colt Python (.357 Magnum)", "len": 0.3, "flip": false, "action": "revolver", "dmg": 62.0, "pellets": 1, "spread": 0.004,
+	"python": {"grip_y": -0.06, "fore_y": -0.06, "sight": 0.055, "name": "Colt Python (.357 Magnum)", "len": 0.3, "flip": false, "action": "revolver", "dmg": 62.0, "pellets": 1, "spread": 0.004,
 		"interval": 0.28, "mag": 6, "reload": 3.2, "recoil": 0.09, "vel": 440.0, "range": 250.0, "loud": 220.0, "sound": "shot_357",
 		"grip": 0.12, "fore": 0.1, "drop_y": -0.06, "kick": 0.05, "force": 5.0, "pistol": true},
-	"dbshotgun": {"sight": 0.035, "name": "Side-by-side 12 gauge", "len": 1.12, "flip": false, "action": "break", "dmg": 15.0, "pellets": 9, "spread": 0.038,
+	"dbshotgun": {"grip_y": -0.03, "fore_y": -0.035, "sight": 0.035, "name": "Side-by-side 12 gauge", "len": 1.12, "flip": false, "action": "break", "dmg": 15.0, "pellets": 9, "spread": 0.038,
 		"interval": 0.22, "mag": 2, "reload": 2.6, "recoil": 0.13, "vel": 400.0, "range": 90.0, "loud": 280.0, "sound": "shot_12g",
 		"grip": 0.28, "fore": 0.56, "drop_y": -0.03, "kick": 0.1, "force": 4.0},
-	"sawnoff": {"sight": 0.04, "name": "Sawn-off 12 gauge", "len": 0.6, "flip": false, "action": "break", "dmg": 14.0, "pellets": 10, "spread": 0.085,
+	"sawnoff": {"grip_y": -0.04, "fore_y": -0.035, "sight": 0.04, "name": "Sawn-off 12 gauge", "len": 0.6, "flip": false, "action": "break", "dmg": 14.0, "pellets": 10, "spread": 0.085,
 		"interval": 0.2, "mag": 2, "reload": 2.3, "recoil": 0.17, "vel": 380.0, "range": 45.0, "loud": 300.0, "sound": "shot_sawn",
 		"grip": 0.14, "fore": 0.55, "drop_y": -0.04, "kick": 0.12, "force": 4.5, "pistol": true},
-	"rem870": {"sight": 0.035, "name": "Remington 870 pump (12 gauge)", "len": 1.0, "flip": false, "action": "pump", "dmg": 14.0, "pellets": 8, "spread": 0.045,
+	"rem870": {"grip_y": -0.035, "fore_y": -0.04, "sight": 0.035, "name": "Remington 870 pump (12 gauge)", "len": 1.0, "flip": false, "action": "pump", "dmg": 14.0, "pellets": 8, "spread": 0.045,
 		"interval": 0.85, "mag": 5, "reload": 0.55, "recoil": 0.12, "vel": 400.0, "range": 80.0, "loud": 280.0, "sound": "shot_12g",
 		"grip": 0.27, "fore": 0.63, "drop_y": -0.025, "kick": 0.1, "force": 4.0},
 }
@@ -38,6 +38,7 @@ var grip_r: Node3D                  # right hand target (wrist of the stock / pi
 var grip_l: Node3D                  # left hand target (fore-end / pump)
 var butt: Node3D
 var ammo := 0
+var sight_h := 0.05                 # height of the line you aim along (iron sights, or the scope's axis)
 var reserve := 60
 var cool := 0.0                     # time until it can fire again
 var reloading := 0.0
@@ -84,11 +85,16 @@ func setup(k: String, who: Node) -> void:
 	model = holder
 	for mi in raw.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		(mi as MeshInstance3D).layers = 2          # guns on their own layer: the scope camera looks past them
 	var half: float = float(def.len) * 0.5
 	muzzle = _marker(Vector3(0, 0.02, -half))
 	butt = _marker(Vector3(0, -0.02, half))
-	grip_r = _marker(Vector3(0.02, float(def.drop_y) - 0.075, half - float(def.grip) * float(def.len) + 0.05))
-	grip_l = _marker(Vector3(-0.035, float(def.drop_y) * 0.5 - 0.085, half - float(def.fore) * float(def.len) + 0.03))
+	# the grips themselves (the hands work out their wrists from these)
+	grip_r = _marker(Vector3(0.0, float(def.get("grip_y", -0.035)), half - float(def.grip) * float(def.len)))
+	grip_l = _marker(Vector3(0.0, float(def.get("fore_y", -0.035)), half - float(def.fore) * float(def.len)))
+	sight_h = float(def.get("sight", 0.05))
+	if float(def.get("scope", 0.0)) > 0.0:
+		_build_scope(half)
 	flash = OmniLight3D.new()
 	flash.light_color = Color(1.0, 0.72, 0.38)
 	flash.omni_range = 7.0
@@ -119,6 +125,72 @@ func setup(k: String, who: Node) -> void:
 	mech_audio = AudioStreamPlayer3D.new()
 	mech_audio.unit_size = 4.0
 	add_child(mech_audio)
+
+## A period telescopic sight on low rings over the receiver: tube, objective bell, eyepiece, turrets
+func _build_scope(half: float) -> void:
+	var axis_y := float(def.get("sight", 0.05)) + 0.03
+	sight_h = axis_y
+	var zc: float = grip_r.position.z - 0.12 if grip_r else half - float(def.grip) * float(def.len) - 0.12
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.06, 0.06, 0.065)
+	m.metallic = 0.6
+	m.roughness = 0.45
+	var holder := Node3D.new()
+	holder.name = "Scope"
+	holder.position = Vector3(0, axis_y, zc)
+	add_child(holder)
+	var parts := [[0.0165, 0.0165, 0.24, 0.0], [0.0165, 0.025, 0.05, -0.145], [0.025, 0.025, 0.04, -0.19], [0.02, 0.0165, 0.04, 0.14], [0.021, 0.021, 0.05, 0.18]]
+	for pt in parts:
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = pt[0]
+		cm.bottom_radius = pt[1]
+		cm.height = pt[2]
+		cm.radial_segments = 20
+		mi.mesh = cm
+		mi.material_override = m
+		mi.rotation.x = -PI * 0.5
+		mi.position.z = pt[3]
+		mi.layers = 2
+		holder.add_child(mi)
+	for tz in [0.0]:
+		for dir in [Vector3(0, 1, 0), Vector3(1, 0, 0)]:
+			var t := MeshInstance3D.new()
+			var tc := CylinderMesh.new()
+			tc.top_radius = 0.011
+			tc.bottom_radius = 0.011
+			tc.height = 0.03
+			t.mesh = tc
+			t.material_override = m
+			t.position = dir * 0.02 + Vector3(0, 0, tz)
+			if dir.x > 0: t.rotation.z = PI * 0.5
+			holder.add_child(t)
+	for rz in [-0.07, 0.07]:
+		var ring := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.022, 0.032, 0.018)
+		ring.mesh = bm
+		ring.material_override = m
+		ring.position = Vector3(0, -0.026, rz)
+		holder.add_child(ring)
+	# lens glints
+	var lens := StandardMaterial3D.new()
+	lens.albedo_color = Color(0.15, 0.22, 0.3)
+	lens.metallic = 1.0
+	lens.roughness = 0.05
+	for lz in [-0.21, 0.205]:
+		var l := MeshInstance3D.new()
+		var lc := CylinderMesh.new()
+		lc.top_radius = 0.022
+		lc.bottom_radius = 0.022
+		lc.height = 0.002
+		l.mesh = lc
+		l.material_override = lens
+		l.rotation.x = -PI * 0.5
+		l.position.z = lz
+		holder.add_child(l)
+	for mi in holder.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).layers = 2
 
 func _marker(p: Vector3) -> Node3D:
 	var n := Node3D.new()

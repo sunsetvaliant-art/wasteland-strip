@@ -21,6 +21,8 @@ var pause_menu: PauseMenu
 var forge: Forge
 var combat_hud: CombatHUD
 var garage: Garage
+var camps: ScavCamps
+var zombies: ZombieDirector
 
 func _ready() -> void:
 	_build_environment()
@@ -66,7 +68,14 @@ func _ready() -> void:
 		for k in Gun.ORDER: player.give_gun(k)
 	else:
 		player.give_gun("python", 18)
-	_default_spawns()
+	camps = ScavCamps.new()
+	camps.name = "ScavCamps"
+	add_child(camps)
+	camps.setup(self)
+	zombies = ZombieDirector.new()
+	zombies.name = "ZombieDirector"
+	add_child(zombies)
+	zombies.setup(self)
 
 func spawn_vehicle(kind: String, pos: Vector3, yaw := 0.0, design := {}) -> Car:
 	var c := Car.new()
@@ -311,6 +320,10 @@ func _build_hud() -> void:
 	hud.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	hud.add_theme_constant_override("outline_size", 4)
 	cl.add_child(hud)
+	if OS.get_environment("NO_SCOPE") == "":
+		var scope := ScopeView.new()
+		cl.add_child(scope)
+		player.scope_view = scope
 	combat_hud = CombatHUD.new()
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)

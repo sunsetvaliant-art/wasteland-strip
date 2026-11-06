@@ -9,7 +9,9 @@ extends SkeletonModifier3D
 
 var rig                              # Rig
 var ragdoll                          # Ragdoll, when dead
-var lean_pitch := 0.0                # radians, + = look down
+var look_yaw := 0.0                  # where the eyes are pointed relative to the body: + = left (radians)
+var look_pitch := 0.0                # + = up
+var hip_yaw := 0.0                   # legs swung toward the direction of travel, chest stays put
 var hunch := 0.0                     # zombie stoop, radians
 var head_tilt := Vector2.ZERO        # zombie head loll (roll, yaw)
 var ik := {}                         # "L"/"R" -> {"target": Node3D, "pole": Vector3 (world dir), "w": float, "rot": Basis (hand basis offset) or null}
@@ -44,18 +46,36 @@ func _rotate_global(sk: Skeleton3D, b: int, q: Basis) -> void:
 	var g := sk.get_bone_global_pose(b)
 	sk.set_bone_global_pose(b, Transform3D(q * g.basis, g.origin))
 
+## The look: yaw and pitch shared out up the spine so the head points where the eyes are and the chest comes
+## round with it. The hips can swing toward the way we're walking (strafing) with the spine unwinding it.
+const LOOK_SPLIT := [["Spine", 0.14, 0.18], ["Chest", 0.14, 0.18], ["UpperChest", 0.14, 0.14], ["Neck", 0.24, 0.22], ["Head", 0.34, 0.28]]
 func _lean(sk: Skeleton3D) -> void:
-	# spine bends about the body's right axis (skeleton space: the model faces +Z, so right is -X)
-	var right := Vector3(-1, 0, 0)
-	var p := lean_pitch * 0.5 + hunch
-	if abs(p) > 0.001:
-		for n in ["Spine1", "Spine2"]:
-			var b := _bone(n)
-			if b >= 0: _rotate_global(sk, b, Basis(right, p * 0.5))
-	if head_tilt != Vector2.ZERO or abs(lean_pitch) > 0.001:
-		var h := _bone("Head")
-		if h >= 0:
-			_rotate_global(sk, h, Basis(Vector3(0, 0, 1), head_tilt.x) * Basis(Vector3.UP, head_tilt.y) * Basis(right, lean_pitch * 0.4 - hunch * 0.6))
+	var up := Vector3.UP
+	if abs(hip_yaw) > 0.001:
+		var hb := _bone("Hips")
+		if hb >= 0: _rotate_global(sk, hb, Basis(up, hip_yaw))
+		var sb := _bone("Spine")
+		if sb >= 0: _rotate_global(sk, sb, Basis(up, -hip_yaw * 0.55))
+		var cb := _bone("Spine1")
+		if cb >= 0: _rotate_global(sk, cb, Basis(up, -hip_yaw * 0.45))
+	if abs(look_yaw) < 0.0005 and abs(look_pitch) < 0.0005 and hunch == 0.0 and head_tilt == Vector2.ZERO:
+		return
+	if OS.get_environment("NOCHAIN") != "":
+		return
+	var cum := 0.0
+	for e in LOOK_SPLIT:
+		var b: int = sk.find_bone(e[0])
+		if b < 0:
+			continue
+		cum += look_yaw * float(e[1])
+		var right := Basis(up, cum) * Vector3(-1, 0, 0)     # the body faces +Z in skeleton space
+		var p: float = look_pitch * float(e[2])
+		if e[0] in ["Spine", "Chest"]: p -= hunch * 0.5
+		if e[0] == "Head": p += hunch * 0.6
+		var q := Basis(up, look_yaw * float(e[1])) * Basis(right, p)
+		if e[0] == "Head" and head_tilt != Vector2.ZERO:
+			q = q * Basis(Vector3(0, 0, 1), head_tilt.x) * Basis(up, head_tilt.y)
+		_rotate_global(sk, b, q)
 
 ## Two-bone IK in skeleton space: shoulder (Arm) - elbow (ForeArm) - wrist (Hand). Elbow bends towards the pole.
 func _arm_ik(sk: Skeleton3D, side: String, s: Dictionary) -> void:
@@ -70,6 +90,13 @@ func _arm_ik(sk: Skeleton3D, side: String, s: Dictionary) -> void:
 		return
 	var inv := sk.global_transform.affine_inverse()
 	var T: Vector3 = inv * t.global_position
+	# the target is the grip itself: back the wrist off so the palm sits on it and the fingers wrap round
+	if s.has("fingers"):
+		var tb: Basis = (inv.basis * t.global_transform.basis).orthonormalized()
+		var sc: float = sk.global_transform.basis.get_scale().x
+		var fw: Vector3 = (tb * (s.fingers as Vector3)).normalized()
+		var pw: Vector3 = (tb * (s.palm as Vector3)).normalized()
+		T -= (fw * float(s.get("reach", 0.085)) + pw * float(s.get("thick", 0.035))) / max(sc, 0.0001)
 	var S := sk.get_bone_global_pose(a).origin
 	var E := sk.get_bone_global_pose(e).origin
 	var H := sk.get_bone_global_pose(h).origin
@@ -90,12 +117,36 @@ func _arm_ik(sk: Skeleton3D, side: String, s: Dictionary) -> void:
 	var E_now := sk.get_bone_global_pose(e).origin
 	var H_now := sk.get_bone_global_pose(h).origin
 	_rotate_global(sk, e, _swing(H_now - E_now, T - E_now))
-	# hand: copy the target's orientation if it has one
-	if s.get("rot") != null:
+	# hand: turn it so the fingers and the palm face the way the grip wants (given in the target's own space)
+	if s.has("fingers"):
+		var t_basis: Basis = (inv.basis * t.global_transform.basis).orthonormalized()
+		var f_w: Vector3 = (t_basis * (s.fingers as Vector3)).normalized()
+		var p_w: Vector3 = (t_basis * (s.palm as Vector3)).normalized()
+		p_w = (p_w - f_w * p_w.dot(f_w)).normalized()
+		var hl := _hand_axes(sk, h, pre)
+		var L := Basis(hl[0], hl[1], hl[0].cross(hl[1]))
+		var W := Basis(f_w, p_w, f_w.cross(p_w))
+		var want := (W * L.inverse()).orthonormalized()
 		var hg := sk.get_bone_global_pose(h)
-		var want: Basis = inv.basis * t.global_transform.basis * (s.rot as Basis)
-		var sc := hg.basis.get_scale()
-		sk.set_bone_global_pose(h, Transform3D(want.orthonormalized().scaled(sc), hg.origin))
+		var blend: float = clamp(float(s.w), 0.0, 1.0)
+		var b := hg.basis.orthonormalized().slerp(want, blend)
+		sk.set_bone_global_pose(h, Transform3D(b.scaled(hg.basis.get_scale()), hg.origin))
+
+## The hand bone's own finger direction and palm normal (in its local space), from the rest pose:
+## fingers = toward the middle knuckle, palm = straight down in the T-pose.
+var _axes := {}
+func _hand_axes(sk: Skeleton3D, h: int, pre: String) -> Array:
+	if _axes.has(h):
+		return _axes[h]
+	var rest := sk.get_bone_global_rest(h)
+	var m := sk.find_bone(pre + "MiddleProximal")
+	var f := Vector3.UP
+	if m >= 0:
+		f = (rest.basis.inverse() * (sk.get_bone_global_rest(m).origin - rest.origin)).normalized()
+	var p := (rest.basis.inverse() * Vector3.DOWN).normalized()
+	p = (p - f * p.dot(f)).normalized()
+	_axes[h] = [f, p]
+	return _axes[h]
 
 static func _swing(from: Vector3, to: Vector3) -> Basis:
 	var f := from.normalized()

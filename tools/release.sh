@@ -43,6 +43,8 @@ else
   echo "diffing against: $PREV"
   $G --headless --path . --export-patch "$PRESET" $REPO_DIR/updates/patch_${BASEVER}_$ID.pck --patches "$PREV" 2>&1 | grep -E "^ERROR" || true
   PF=patch_${BASEVER}_$ID.pck
+  # drop removal markers and anything an earlier patch already shipped unchanged
+  python3 tools/pck_strip.py $REPO_DIR/updates/$PF ../build/stripped.pck $(echo "$PREV" | tr ',' ' ' | sed 's|../build/Wasteland.pck||') && mv ../build/stripped.pck $REPO_DIR/updates/$PF
   SIZE=$(stat -c %s $REPO_DIR/updates/$PF)
   PARTS=""
   if [ $SIZE -gt 95000000 ]; then        # GitHub won't take a file over 100 MB: ship it in 90 MB pieces

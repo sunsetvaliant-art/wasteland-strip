@@ -1,0 +1,11 @@
+Model Information:
+* title:	Dying (1) zombie
+* source:	https://sketchfab.com/3d-models/dying-1-zombie-285912755e314794b42690cfbff141c4
+* author:	Mixamo animations (https://sketchfab.com/mixamoanimations)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Dying (1) zombie" (https://sketchfab.com/3d-models/dying-1-zombie-285912755e314794b42690cfbff141c4) by Mixamo animations (https://sketchfab.com/mixamoanimations) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

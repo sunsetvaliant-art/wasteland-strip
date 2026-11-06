@@ -1,0 +1,11 @@
+Model Information:
+* title:	Agony zombie
+* source:	https://sketchfab.com/3d-models/agony-zombie-7f024b4e298440358e8ea2e7d8d0a61e
+* author:	Mixamo animations (https://sketchfab.com/mixamoanimations)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Agony zombie" (https://sketchfab.com/3d-models/agony-zombie-7f024b4e298440358e8ea2e7d8d0a61e) by Mixamo animations (https://sketchfab.com/mixamoanimations) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

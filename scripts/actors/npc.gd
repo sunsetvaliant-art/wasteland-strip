@@ -8,7 +8,8 @@ extends CharacterBody3D
 ##           and they fight: keep their distance, shoot in bursts, close in with shotguns, hunt where you were last seen.
 ## Both ragdoll when they die, lose limbs to big hits, and turn to paste under a car.
 
-const ZOMBIE_MODELS := ["scav_2", "survivor_female", "scav_hooded", "player"]
+const ZOMBIE_MODELS := ["zombie_hazmat", "zombie_runner", "zombie_mx", "zombie_soldier", "zombie_female"]
+const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
 const SCAV_MODELS := ["scav_hooded", "scav_2"]
 const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff"]
 const LAYER := 1 << 2
@@ -40,8 +41,11 @@ var avoid_t := 0.0
 var limp := 0.0
 var gait := 1.0
 var gun: Gun
+var anim_set := "unarmed"
+var swing_len := 1.2
 var burst := 0
 var pausing := false
+var patrol_r := 22.0
 var look_turn := 0.0
 var burst_t := 0.0
 var ragdoll: Ragdoll
@@ -89,18 +93,14 @@ func _ready() -> void:
 
 func _setup_zombie() -> void:
 	hp = randf_range(150.0, 210.0)
-	rig.tint(Color(0.74, 0.82, 0.68).lerp(Color(0.85, 0.78, 0.7), randf() * 0.5), 0.95)
-	rig.mods.hunch = randf_range(0.18, 0.42)
-	rig.mods.head_tilt = Vector2(randf_range(-0.35, 0.35), randf_range(-0.2, 0.2))
-	gait = randf_range(0.8, 1.2)
-	limp = randf_range(0.0, 0.5)
-	# arms out in front, reaching
-	reach_l = Node3D.new()
-	reach_r = Node3D.new()
-	add_child(reach_l)
-	add_child(reach_r)
-	rig.mods.ik["L"] = {"target": reach_l, "pole": Vector3.DOWN, "w": 0.0, "rot": null}
-	rig.mods.ik["R"] = {"target": reach_r, "pole": Vector3.DOWN, "w": 0.0, "rot": null}
+	anim_set = ZOMBIE_SETS.pick_random()
+	# a little grey-green on the real zombie skins; a lot on a survivor who's turned
+	var strong: bool = not model_key.begins_with("zombie")
+	rig.tint(Color(0.74, 0.82, 0.68) if strong else Color(0.92, 0.95, 0.9), 0.95)
+	rig.mods.head_tilt = Vector2(randf_range(-0.2, 0.2), randf_range(-0.12, 0.12))
+	gait = randf_range(0.8, 1.15)
+	limp = randf_range(0.0, 0.4)
+	rig.anim.speed_scale = 1.0
 
 func _setup_scav() -> void:
 	hp = 100.0
@@ -109,9 +109,7 @@ func _setup_scav() -> void:
 	gun.setup(SCAV_GUNS.pick_random(), self)
 	gun.reserve = 9999
 	gun.excludes = [get_rid()]
-	gun.position = Vector3(0.12, 1.2, -0.25)
-	rig.mods.ik["R"] = {"target": gun.grip_r, "pole": Vector3(0.6, -1, 0.3), "w": 1.0, "rot": null}
-	rig.mods.ik["L"] = {"target": gun.grip_l, "pole": Vector3(-0.6, -1, 0.2), "w": 0.0 if gun.def.get("pistol", false) else 1.0, "rot": null}
+	gun.top_level = true
 	label = Label3D.new()
 	label.position.y = 2.15
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -228,6 +226,10 @@ func _think_zombie(dt: float) -> void:
 		groan_t = randf_range(4.0, 11.0) if state != "chase" else randf_range(2.0, 5.0)
 		_say("zgroan_%d" % (randi() % 4))
 	if vis > 0.12 and player and not player.dead:
+		if state != "chase" and randf() < 0.6:
+			rig.act(Rig.SETS[anim_set].get("spot", ""), 1.2)
+			stagger = 1.2
+			_say("zattack")
 		state = "chase"
 		last_seen = _target_pos()
 		lost_t = 0.0
@@ -257,9 +259,10 @@ func _think_zombie(dt: float) -> void:
 				move_speed = 0.0
 				face_dir = (tp - global_position).normalized()
 				if attack_t <= 0.0:
-					attack_t = 1.9
+					var clip: String = Rig.SETS[anim_set].get("attack", "Punch_Forward_with_Both_Fists")
+					swing_len = rig.act(clip, 1.3)
+					attack_t = max(swing_len, 1.2) + 0.3
 					swing_t = 0.0
-					rig.play("Punch_Forward_with_Both_Fists", 0.15, 2.0)
 					_say("zattack")
 			else:
 				move_speed = 1.25 * gait
@@ -269,7 +272,7 @@ func _think_zombie(dt: float) -> void:
 	# the swing lands partway through the punch
 	if swing_t >= 0.0:
 		swing_t += dt
-		if swing_t > 0.65:
+		if swing_t > swing_len * 0.45:
 			swing_t = -1.0
 			if player and not player.dead and _flat_dist(_target_pos()) < 2.0 and player.vehicle == null:
 				player.take_damage(randf_range(14.0, 22.0), global_position)
@@ -296,7 +299,7 @@ func _think_scav(dt: float) -> void:
 					goal_t = randf_range(3.0, 9.0)
 					look_turn = randf_range(-1.2, 1.2)
 				else:
-					goal = home + Vector3(randf_range(-22, 22), 0, randf_range(-22, 22))
+					goal = home + Vector3(randf_range(-patrol_r, patrol_r), 0, randf_range(-patrol_r, patrol_r))
 					goal_t = randf_range(10.0, 25.0)
 			move_speed = 0.0 if pausing else 1.3
 			if pausing:
@@ -304,7 +307,7 @@ func _think_scav(dt: float) -> void:
 			if suspicion > 0.35:
 				state = "suspicious"
 				goal_t = 4.0
-				rig.play("Alert_Quick_Turn_Right", 0.2, 1.4)
+				rig.act("Alert_Quick_Turn_Right", 1.4)
 		"suspicious":
 			move_speed = 0.0
 			face_dir = (last_seen - global_position).normalized()
@@ -459,44 +462,39 @@ func _steer(dir: Vector3, dt: float) -> Vector3:
 			return d2
 	return dir
 
+var ready_t := 0.0
 func _animate(dt: float) -> void:
-	var hspeed := Vector2(velocity.x, velocity.z).length()
-	if swing_t >= 0.0 or (rig._cur.begins_with("Alert") and state == "suspicious"):
-		pass
-	elif kind == "zombie":
-		# shamble: the walk cycle slowed right down, never a run
-		if hspeed < 0.15:
-			rig.play("Idle_11" if rig.has_clip("Idle_11") else "Idle_8")
-		else:
-			rig.play("Walking", 0.3, clamp(hspeed / 1.9, 0.35, 0.8))
-	else:
-		rig.set_motion(hspeed)
+	var hv := Vector3(velocity.x, 0, velocity.z)
+	var lv := global_transform.basis.inverse() * hv
+	var ang := atan2(-lv.x, -lv.z)
+	var spd := hv.length()
 	if kind == "zombie":
-		var t := Time.get_ticks_msec() * 0.001
-		var reach_w := 0.85 if state == "chase" else 0.35
-		var ik_l: Dictionary = rig.mods.ik["L"]
-		var ik_r: Dictionary = rig.mods.ik["R"]
-		ik_l.w = lerpf(float(ik_l.w), reach_w, dt * 2.0)
-		ik_r.w = lerpf(float(ik_r.w), reach_w * 0.9, dt * 2.0)
-		reach_l.position = Vector3(-0.22 + sin(t * 1.3) * 0.05, 1.32 + sin(t * 2.1) * 0.06, -0.62)
-		reach_r.position = Vector3(0.24 + sin(t * 1.1 + 1.0) * 0.05, 1.28 + sin(t * 1.7 + 2.0) * 0.07, -0.58)
-	elif gun:
-		# low ready on patrol, shouldered in a fight, dipped while reloading
-		var up := state == "combat"
-		var aim_pitch := 0.0
-		if up and player:
-			var tp := _target_pos() + Vector3(0, 1.2, 0)
-			var flat := _flat_dist(tp)
-			aim_pitch = -atan2(tp.y - (global_position.y + 1.4), max(flat, 0.1))
-		var rl := gun.reload_phase()
-		var low := Vector3(0.14, 1.05, -0.32)
-		var shoulder := Vector3(0.13, 1.42, -0.3) if not gun.def.get("pistol", false) else Vector3(0.12, 1.42, -0.5)
-		var pos := low.lerp(shoulder, 1.0 if up else 0.0)
-		gun.position = gun.position.lerp(pos + Vector3(0, -0.12 * sin(rl * PI), 0), clamp(dt * 6.0, 0.0, 1.0))
-		var b := Basis(Vector3.RIGHT, -aim_pitch if up else -0.55) * Basis(Vector3.FORWARD, 0.6 * sin(rl * PI))
-		if not up: b = Basis(Vector3.UP, 0.5) * b
-		gun.basis = gun.basis.slerp(b, clamp(dt * 6.0, 0.0, 1.0))
-		rig.mods.lean_pitch = aim_pitch * 0.6 if up else 0.0
+		rig.locomote(anim_set, spd, false, ang * 0.3)
+		return
+	# scavs: rifle set when they've got a long gun, and the gun in their hands the same way you hold yours
+	var pistol: bool = gun != null and gun.def.get("pistol", false)
+	rig.locomote("unarmed" if (pistol or gun == null) else "rifle", spd, false, ang)
+	if gun == null:
+		return
+	var up := state == "combat" or (state == "suspicious" and suspicion > 0.6)
+	ready_t = move_toward(ready_t, 1.0 if up else 0.0, dt * 3.0)
+	var eye := rig.head_position() + global_transform.basis * Vector3(0, 0.07, -0.08)
+	var look := global_transform.basis
+	if player and state in ["combat", "suspicious", "search"]:
+		var tp := _target_pos() + Vector3(0, 1.2 if not (player and player.crouching) else 0.8, 0)
+		if player.vehicle: tp = player.vehicle.global_position + Vector3(0, 1.0, 0)
+		var to := (tp - eye)
+		var local := global_transform.basis.inverse() * to
+		var yaw_off: float = clamp(atan2(-local.x, -local.z), -0.9, 0.9)
+		var pit: float = clamp(atan2(local.y, Vector2(local.x, local.z).length()), -0.8, 0.8)
+		rig.mods.look_yaw = lerpf(rig.mods.look_yaw, yaw_off, dt * 6.0)
+		rig.mods.look_pitch = lerpf(rig.mods.look_pitch, pit * 0.85, dt * 6.0)
+		look = global_transform.basis * Basis(Vector3.UP, yaw_off) * Basis(Vector3.RIGHT, pit)
+	else:
+		rig.mods.look_yaw = lerpf(rig.mods.look_yaw, 0.0, dt * 3.0)
+		rig.mods.look_pitch = lerpf(rig.mods.look_pitch, -0.1, dt * 3.0)
+	gun.global_transform = WeaponHold.place(gun, Transform3D(look.orthonormalized(), eye), {"low": 1.0 - ready_t, "reload": gun.reload_phase(), "ads": 0.0})
+	WeaponHold.hands(rig, gun, global_transform.basis)
 
 func _say(n: String) -> void:
 	if voice.playing and n.begins_with("zgroan"):
@@ -564,7 +562,8 @@ func die(impulse: Vector3, point: Vector3, part: String, cuts: Array, launch := 
 	_say("zdie" if kind == "zombie" else "hit_flesh")
 	rig.frozen = true
 	rig.mods.ik.clear()
-	rig.mods.lean_pitch = 0.0
+	rig.mods.look_yaw = 0.0
+	rig.mods.look_pitch = 0.0
 	ragdoll = Ragdoll.new()
 	ragdoll.name = "Ragdoll"
 	get_parent().add_child(ragdoll)
@@ -608,6 +607,7 @@ func _drop_gun() -> void:
 	rb.add_child(cs)
 	get_parent().add_child(rb)
 	rb.global_transform = gun.global_transform
+	gun.top_level = false
 	gun.reparent(rb, true)
 	gun.excludes = []
 	rb.linear_velocity = velocity + Vector3(randf_range(-1, 1), 2.0, randf_range(-1, 1))

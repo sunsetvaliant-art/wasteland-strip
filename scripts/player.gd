@@ -38,6 +38,9 @@ var recoil := 0.0                      # camera kick still to recover (rad)
 var kick := 0.0                        # gun pushed back into the shoulder (m)
 var sway_t := 0.0
 var aim_point := Vector3.ZERO
+var body_yaw := 0.0                    # which way the body faces; the eyes (yaw) can be up to ~70° off it
+var low_ready := 0.0
+var scope_view: ScopeView
 var respawn_t := 0.0
 var ragdoll: Ragdoll
 signal hurt(amount: float)
@@ -57,6 +60,8 @@ func _ready() -> void:
 	rig = Rig.new()
 	add_child(rig)
 	rig.load_model("player")
+	for mi in rig.model.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).layers = 4      # your own body: the scope camera doesn't see it
 	body_mesh = rig
 	head = Node3D.new()
 	head.position.y = 1.62
@@ -64,7 +69,7 @@ func _ready() -> void:
 	arm = SpringArm3D.new()
 	arm.spring_length = 2.4
 	arm.margin = 0.2
-	arm.position = Vector3(0.55, 0.0, 0)
+	arm.position = Vector3(0.75, 0.12, 0)
 	arm.add_excluded_object(get_rid())
 	head.add_child(arm)
 	cam_tp = Camera3D.new()
@@ -138,8 +143,21 @@ func _physics_process(dt: float) -> void:
 		return
 	if hp < 100.0:
 		hp = min(hp + dt * (2.0 if Settings.creative() else 0.4), 100.0)
-	rotation.y = yaw
-	head.rotation.x = pitch
+	# the body follows the eyes: straight away when moving or holding a gun up, otherwise only once you've
+	# looked more than ~70° round (it shuffles round to keep up)
+	var inp0 := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var diff := wrapf(yaw - body_yaw, -PI, PI)
+	var limit := deg_to_rad(35.0 if armed() else 70.0)
+	if inp0.length() > 0.1 or (armed() and (ads > 0.1 or Input.is_action_pressed("fire"))):
+		body_yaw = lerp_angle(body_yaw, yaw, clamp(dt * 9.0, 0.0, 1.0))
+	elif abs(diff) > limit:
+		body_yaw = lerp_angle(body_yaw, yaw - sign(diff) * limit * 0.85, clamp(dt * 7.0, 0.0, 1.0))
+		turning = 0.3
+	turning = max(turning - dt, 0.0)
+	rotation.y = body_yaw
+	head.rotation = Vector3(pitch, wrapf(yaw - body_yaw, -PI, PI), 0.0)
+	rig.mods.look_yaw = clamp(wrapf(yaw - body_yaw, -PI, PI), -1.3, 1.3)
+	rig.mods.look_pitch = clamp(pitch, -1.1, 1.0) * 0.85
 	var target_h := 1.1 if crouching else 1.62
 	head.position.y = lerp(head.position.y, target_h, 10 * dt)
 	var inp := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
@@ -149,7 +167,7 @@ func _physics_process(dt: float) -> void:
 	if _noise_t <= 0.0 and velocity.length() > 0.5:
 		_noise_t = 0.5
 		Hearing.emit(get_tree(), global_position, 14.0 if speed >= RUN else (6.0 if not crouching else 1.5), "steps", self)
-	var dir := (transform.basis * Vector3(inp.x, 0, inp.y)).normalized()
+	var dir := (Basis(Vector3.UP, yaw) * Vector3(inp.x, 0, inp.y)).normalized()
 	var accel := 10.0 if is_on_floor() else 2.0
 	velocity.x = move_toward(velocity.x, dir.x * speed, accel * speed * dt)
 	velocity.z = move_toward(velocity.z, dir.z * speed, accel * speed * dt)
@@ -158,11 +176,20 @@ func _physics_process(dt: float) -> void:
 	elif Input.is_action_just_pressed("jump") and not crouching:
 		velocity.y = JUMP
 	move_and_slide()
-	rig.set_motion(Vector2(velocity.x, velocity.z).length())
+	# legs: which clip set, how fast, and which way we're going relative to the body
+	var hv := Vector3(velocity.x, 0, velocity.z)
+	var lv := Basis(Vector3.UP, body_yaw).inverse() * hv
+	var ang := atan2(-lv.x, -lv.z)
+	var spd := hv.length()
+	if turning > 0.0 and spd < 0.2: spd = 0.6                 # shuffle the feet round
+	var set_name := "unarmed"
+	if armed() and not gun().def.get("pistol", false): set_name = "rifle"
+	rig.locomote(set_name, spd, crouching, ang)
 	if global_position.y < -50:
 		global_position.y = 50
 
 var _noise_t := 0.0
+var turning := 0.0
 func _process(dt: float) -> void:
 	if first_person and vehicle == null and rig and not dead:
 		# eyes: just in front of the head bone, so looking down shows your own body
@@ -197,86 +224,61 @@ func _select(i: int) -> void:
 	for j in guns.size():
 		guns[j].visible = j == gun_i
 
+## Is a gun out and in the hands?
+func armed() -> bool:
+	return gun() != null and vehicle == null and active and not dead and not holstered
+
 ## Where the gun sits and points this frame, and what the hands do about it
 func _hold_gun(dt: float) -> void:
 	var g := gun()
-	var show := g != null and vehicle == null and active and not dead and not holstered
+	var show := armed()
 	for x in guns:
 		x.visible = show and x == g
 	var ik: Dictionary = rig.mods.ik
 	if not show:
 		ik.clear()
-		rig.mods.lean_pitch = 0.0
 		return
 	var sprinting := Input.is_action_pressed("sprint") and velocity.length() > 3.0 and not crouching
-	var aiming := Input.is_action_pressed("aim") and not sprinting and get_tree().paused == false
+	var aiming := Input.is_action_pressed("aim") and not sprinting and not get_tree().paused
 	ads = move_toward(ads, 1.0 if aiming else 0.0, dt * 6.0)
+	low_ready = move_toward(low_ready, 1.0 if sprinting else 0.0, dt * 5.0)
 	recoil = move_toward(recoil, 0.0, dt * (0.6 + recoil * 8.0))
 	kick = move_toward(kick, 0.0, dt * 0.9)
 	sway_t += dt * (1.0 + velocity.length() * 0.9)
 	var pistol: bool = g.def.get("pistol", false)
-	var half: float = float(g.def.len) * 0.5
-	# the eye and the look direction
+	# the eye and where it's looking
 	var cam := active_camera()
-	var eye: Vector3 = cam_fp.global_position if first_person else head.global_position + global_transform.basis * Vector3(0.0, -0.02, 0.0)
+	var eye_pos: Vector3 = cam_fp.global_position if first_person else rig.head_position() + Basis(Vector3.UP, yaw) * Vector3(0, 0.07, -0.08)
 	var look := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, pitch + recoil)
-	# in shoulder view, aim where the crosshair is
 	if not first_person:
+		# shoulder view: the gun points at whatever's under the crosshair
 		var c_from := cam.global_position
 		var c_dir := -cam.global_transform.basis.z
 		var q := PhysicsRayQueryParameters3D.create(c_from, c_from + c_dir * 600.0, Gun.MASK, [get_rid()])
 		var h := get_world_3d().direct_space_state.intersect_ray(q)
 		aim_point = h.position if h else c_from + c_dir * 600.0
-		var to := (aim_point - eye).normalized()
-		look = Basis.looking_at(to, Vector3.UP)
+		var to := (aim_point - eye_pos).normalized()
+		if to.length() > 0.5:
+			look = Basis.looking_at(to, Vector3.UP)
 	else:
-		aim_point = eye - look.z * 100.0
-	# shoulder (hip) and sights positions, in eye space: x right, y up, z back
-	# butt in the shoulder pocket, a bit behind the eye; down the sights the eye sits on the sight line
-	var sh: float = float(g.def.get("sight", 0.05))
-	var hip := Vector3(0.16, -0.2, 0.22 - half) if not pistol else Vector3(0.15, -0.19, -0.4)
-	var sights := Vector3(0.0, -sh, 0.11 - half) if not pistol else Vector3(0.0, -sh, -0.46)
-	var low := Vector3(0.2, -0.38, -0.1 - half * 0.6)
-	var p := hip.lerp(sights, ads)
-	if sprinting: p = low
+		aim_point = eye_pos - look.z * 100.0
 	var bob := Vector3(sin(sway_t * 1.1) * 0.006, abs(sin(sway_t * 1.1)) * 0.008, 0) * (1.0 - ads * 0.8)
-	var rl := g.reload_phase()
 	var cyc: float = g.cycling / 0.9 if g.cycling > 0.0 else 0.0
-	p += bob + Vector3(0, -0.1 * sin(rl * PI) - 0.03 * sin(cyc * PI), kick)
-	var gb := look * Basis(Vector3.FORWARD, 0.7 * sin(rl * PI) + 0.25 * sin(cyc * PI)) * Basis(Vector3.RIGHT, -0.4 * sin(rl * PI))
-	if sprinting: gb = look * Basis(Vector3.UP, 0.6) * Basis(Vector3.RIGHT, -0.5)
-	g.global_transform = Transform3D(gb, eye + look * p)
-	# hands on it: right hand on the wrist / grip, left hand on the fore-end (pistol: left cups the right).
-	# The left hand goes as far up the fore-end as the arm actually reaches.
-	if not pistol:
-		var want_l := Vector3(-0.035, float(g.def.drop_y) * 0.5 - 0.085, half - float(g.def.fore) * float(g.def.len) + 0.03)
-		var back := Vector3(-0.035, float(g.def.drop_y) * 0.5 - 0.085, g.grip_r.position.z - 0.12)
-		var shl := rig.bone_pos("LeftArm")
-		var reach := (shl.distance_to(rig.bone_pos("LeftForeArm")) + rig.bone_pos("LeftForeArm").distance_to(rig.bone_pos("LeftHand"))) * 0.96
-		var lo := 0.0
-		var hi := 1.0
-		if g.to_global(want_l).distance_to(shl) > reach:
-			for _k in 10:
-				var mid := (lo + hi) * 0.5
-				if g.to_global(want_l.lerp(back, mid)).distance_to(shl) > reach: lo = mid
-				else: hi = mid
-			g.grip_l.position = want_l.lerp(back, hi)
-		else:
-			g.grip_l.position = want_l
-	var right := global_transform.basis.x
-	ik["R"] = {"target": g.grip_r, "pole": (-global_transform.basis.y + right * 0.6 + global_transform.basis.z * 0.3), "w": 1.0, "rot": null}
-	ik["L"] = {"target": g.grip_l if not pistol else g.grip_r, "pole": (-global_transform.basis.y - right * 0.8), "w": 1.0, "rot": null}
-	rig.mods.lean_pitch = -pitch * 0.5 if first_person else -pitch * 0.4
+	g.global_transform = WeaponHold.place(g, Transform3D(look, eye_pos), {"ads": ads, "low": low_ready, "reload": g.reload_phase(), "cycle": cyc, "kick": kick, "bob": bob})
+	WeaponHold.hands(rig, g, global_transform.basis)
+	# scope: the magnified window while aiming down a scoped rifle
+	if scope_view:
+		scope_view.set_active(ads > 0.85 and g.def.get("scope", 0.0) > 0.0, g, look, eye_pos)
 	# pulling the trigger
-	var want := Input.is_action_pressed("fire") if g.def.action == "semi" or g.def.action == "revolver" else Input.is_action_just_pressed("fire")
-	if g.def.action == "semi": want = Input.is_action_just_pressed("fire")
-	if want and not sprinting and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused:
-		var origin := eye
-		var dir := (aim_point - eye).normalized()
+	var auto: bool = g.def.action in ["semi", "revolver"]
+	var want := Input.is_action_just_pressed("fire")
+	if want and low_ready < 0.3 and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused:
+		var origin := eye_pos
+		var dir := (aim_point - eye_pos).normalized()
 		var spread := (0.012 if not pistol else 0.008) * (1.0 - ads) + velocity.length() * 0.003 + (0.0 if is_on_floor() else 0.03)
 		if crouching: spread *= 0.7
 		if g.fire(origin, dir, spread):
-			recoil += float(g.def.recoil) * randf_range(0.8, 1.2)
+			recoil += float(g.def.recoil) * randf_range(0.8, 1.2) * (0.6 if crouching else 1.0)
 			yaw += randf_range(-0.3, 0.3) * float(g.def.recoil) * 0.4
 			kick = float(g.def.kick)
 	if g.ammo <= 0 and g.reserve > 0 and g.reloading <= 0.0 and Input.is_action_just_pressed("fire"):

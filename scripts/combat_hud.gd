@@ -61,6 +61,9 @@ func _draw() -> void:
 	var g: Gun = p.gun()
 	if g == null or p.holstered:
 		return
+	if p.scope_view and p.scope_view.visible:
+		_ammo(g, sz)
+		return
 	# crosshair: four ticks pushed out by the spread you'd get right now
 	var spread: float = (0.012 if not g.def.get("pistol", false) else 0.008) * (1.0 - p.ads) + p.velocity.length() * 0.003 + float(g.def.spread)
 	var r: float = clamp(spread * sz.y * 1.2, 3.0, 80.0)
@@ -68,6 +71,9 @@ func _draw() -> void:
 	for d in [Vector2(1, 0), Vector2(-1, 0), Vector2(0, 1), Vector2(0, -1)]:
 		draw_line(c + d * r, c + d * (r + 7.0), cc, 2.0)
 	draw_circle(c, 1.5, cc)
+	_ammo(g, sz)
+
+func _ammo(g: Gun, sz: Vector2) -> void:
 	# gun and rounds
 	var tx := "%s" % g.def.name
 	_text(Vector2(sz.x - 24, sz.y - 82), tx, 14, Color(1, 1, 1, 0.75), false, true)

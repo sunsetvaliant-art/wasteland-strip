@@ -1,0 +1,146 @@
+{
+ "enfield": {
+  "title": "Lee Enfield MKIII",
+  "author": "Moony_State",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/lee-enfield-mkiii-f6a2160daf134071a84e3cae5f831875"
+ },
+ "slr": {
+  "title": "Low-Poly L1A1 Rifle",
+  "author": "notcplkerry",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/low-poly-l1a1-rifle-86a2d1ade2b74e1da9d9473e57b5974f"
+ },
+ "python": {
+  "title": "GameReady: Colt Python Revolver",
+  "author": "HYQQM",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/gameready-colt-python-revolver-3def6e3980e64dfa832f298004ce1b94"
+ },
+ "dbshotgun": {
+  "title": "Double Barrel Shotgun",
+  "author": "Pepego",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/double-barrel-shotgun-04741a40f2224cffafc343b0236d5bbe"
+ },
+ "sawnoff": {
+  "title": "Sawed-Off Dirty / Double Barrel",
+  "author": "HenR1",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/sawed-off-dirty-double-barrel-907aa49d5ae94bfc952d37f686f26ad1"
+ },
+ "rem870": {
+  "title": "Remington 870 Shotgun",
+  "author": "milinam2002",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/remington-870-shotgun-6db0ad4764d14eee8f063eea3600071b"
+ },
+ "anim_army24": {
+  "title": "Modern Army Soldier with +24 pro Animations",
+  "author": "m152027350",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/modern-army-soldier-with-24-pro-animations-37566d930fa7404f87847b7fca8dca97"
+ },
+ "anim_marine": {
+  "title": "Marine_Walk_with_rifle",
+  "author": "dwelfster",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/marine-walk-with-rifle-094a698e3ddf44cc87385eadea1350e2"
+ },
+ "anim_minimal": {
+  "title": "Animated Minimal Human",
+  "author": "sethgordon",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/animated-minimal-human-a27b8cd70e3449598d113de2c9e35a8b"
+ },
+ "anim_futsoldier": {
+  "title": "Futuristic soldier (lowpoly)",
+  "author": "slagperch3d",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/futuristic-soldier-lowpoly-5ebade1ccbff4adb91ddd3a4d1fcd541"
+ },
+ "anim_jailer": {
+  "title": "BadAssJailer",
+  "author": "Reifus.Rufus",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/badassjailer-c076ae16cf17416c93d8371c84c50bbf"
+ },
+ "anim_lowpolychar": {
+  "title": "low poly Character",
+  "author": "himaamr111",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/low-poly-character-6392ece3431d40ef9037491ffc65ff97"
+ },
+ "char_mx_walk": {
+  "title": "Walking zombie",
+  "author": "mixamoanimations",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/walking-zombie-d276d9dfa25644beabfe2efcc4e9eb06"
+ },
+ "char_mx_agony": {
+  "title": "Agony zombie",
+  "author": "mixamoanimations",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/agony-zombie-7f024b4e298440358e8ea2e7d8d0a61e"
+ },
+ "char_mx_dying": {
+  "title": "Dying (1) zombie",
+  "author": "mixamoanimations",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/dying-1-zombie-285912755e314794b42690cfbff141c4"
+ },
+ "char_hazmat": {
+  "title": "Zombie Hazmat",
+  "author": "LxNazarov",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-hazmat-49b3b4307f6a4d2386fdb02354158d04"
+ },
+ "char_soldier": {
+  "title": "Zombie Soldier",
+  "author": "better_peter",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-soldier-176e930e63d144cc8f615b8dd3a8c74f"
+ },
+ "char_zombie2": {
+  "title": "zombie_2",
+  "author": "snek3755",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-2-bfeeefc906a2410b87298438cc121809"
+ },
+ "char_zb3d": {
+  "title": "Zombie",
+  "author": "Blender3D",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-4bd337e88ffb46909dc3021c5b620aa2"
+ },
+ "char_burnt": {
+  "title": "Zombie: The Burnt",
+  "author": "K3NMA",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-the-burnt-263514e15f3c4ef792796399876ca8a8"
+ },
+ "char_patromes": {
+  "title": "Zombie",
+  "author": "patromes",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-d90abce6a5134cc4a853d4ae925d2c03"
+ },
+ "char_fusefem": {
+  "title": ".fuse female zombie 1",
+  "author": "livrosparacriancas",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/fuse-female-zombie-1-98415df5d3124381a46ccef5c2e02b71"
+ },
+ "char_female": {
+  "title": "Zombie female model",
+  "author": "JonatanSantana",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-female-model-60e0e94ca09240b0bfc5736fc9fc56dc"
+ },
+ "char_warrior": {
+  "title": "Zombie Warrior",
+  "author": "xa3apg",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/zombie-warrior-2457028ac0ca4214bd1f5dc3b9d11129"
+ }
+}

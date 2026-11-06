@@ -162,6 +162,23 @@ func _ready():
 			var gc: Camera3D = get_viewport().get_camera_3d()
 			var pv = main.garage.preview
 			print("SHOT garage cam ", gc.global_position, " garage? ", gc == main.garage.cam, " preview ", pv.global_position, " visible ", pv.is_visible_in_tree(), " rig children ", pv.parts.get_child_count(), " in view ", gc.is_position_in_frustum(pv.global_position))
+		elif mode == "camp":
+			# stand a[6] m off the nearest camp to the pub, looking at it, from the shoulder
+			if main.camps.sites.is_empty(): main.camps._picked = true; main.camps._pick_sites()
+			var site = main.camps.sites[0]
+			if site.built == null: main.camps._build(site)
+			var c: Vector3 = site.pos
+			var off := Vector3(float(a[6]), 0, float(a[6]) * 0.4)
+			p.global_position = Vector3(c.x + off.x, main.ground_at(c.x + off.x, c.z + off.z) + 0.2, c.z + off.z)
+			var to: Vector3 = c - p.global_position
+			p.yaw = atan2(-to.x, -to.z); p.body_yaw = p.yaw; p.pitch = -0.12
+			p.first_person = false; p._apply_camera()
+			for _i in 120: await get_tree().physics_frame
+		elif mode == "scope":
+			p.first_person = true; p._apply_camera()
+			p._select(Gun.ORDER.find("enfield"))
+			Input.action_press("aim")
+			for _i in 60: await get_tree().physics_frame
 		elif mode == "palette":
 			main.forge.ui.visible = true
 			main.forge._set_palette(true)

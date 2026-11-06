@@ -1,0 +1,11 @@
+Model Information:
+* title:	Marine_Walk_with_rifle
+* source:	https://sketchfab.com/3d-models/marine-walk-with-rifle-094a698e3ddf44cc87385eadea1350e2
+* author:	Elisey (https://sketchfab.com/dwelfster)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Marine_Walk_with_rifle" (https://sketchfab.com/3d-models/marine-walk-with-rifle-094a698e3ddf44cc87385eadea1350e2) by Elisey (https://sketchfab.com/dwelfster) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
