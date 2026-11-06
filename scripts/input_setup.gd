@@ -15,6 +15,7 @@ static func ensure() -> void:
 		"rotate": [KEY_E], "delete": [KEY_X], "undo": [KEY_Z],
 		"reload": [KEY_R], "holster": [KEY_H], "slot_1": [KEY_1], "slot_2": [KEY_2], "slot_3": [KEY_3],
 		"slot_4": [KEY_4], "slot_5": [KEY_5], "slot_6": [KEY_6], "bug_report": [KEY_F9],
+		"inventory": [KEY_I], "heal": [KEY_B],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):
@@ -24,7 +25,7 @@ static func ensure() -> void:
 			ev.physical_keycode = k
 			if not InputMap.action_has_event(a, ev):
 				InputMap.action_add_event(a, ev)
-	var mouse := {"fire": MOUSE_BUTTON_LEFT, "aim": MOUSE_BUTTON_RIGHT, "weapon_next": MOUSE_BUTTON_WHEEL_DOWN, "weapon_prev": MOUSE_BUTTON_WHEEL_UP}
+	var mouse := {"fire": MOUSE_BUTTON_LEFT, "aim": MOUSE_BUTTON_RIGHT, "weapon_next": MOUSE_BUTTON_WHEEL_DOWN, "weapon_prev": MOUSE_BUTTON_WHEEL_UP, "carry": MOUSE_BUTTON_MIDDLE}
 	for a in mouse:
 		if not InputMap.has_action(a):
 			InputMap.add_action(a)

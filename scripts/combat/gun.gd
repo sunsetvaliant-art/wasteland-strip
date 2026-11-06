@@ -12,7 +12,7 @@ const DEFS := {
 	"slr": {"scope": 4.0, "grip_y": -0.075, "fore_y": -0.03, "sight": 0.085, "name": "L1A1 SLR (7.62 NATO)", "len": 1.14, "flip": false, "action": "semi", "dmg": 85.0, "pellets": 1, "spread": 0.0018,
 		"interval": 0.13, "mag": 20, "reload": 2.7, "recoil": 0.05, "vel": 820.0, "range": 800.0, "loud": 320.0, "sound": "shot_slr",
 		"grip": 0.33, "fore": 0.62, "drop_y": -0.03, "kick": 0.06, "force": 8.0},
-	"python": {"grip_y": -0.06, "fore_y": -0.06, "sight": 0.055, "name": "Colt Python (.357 Magnum)", "len": 0.3, "flip": false, "action": "revolver", "dmg": 62.0, "pellets": 1, "spread": 0.004,
+	"python": {"grip_y": -0.06, "fore_y": -0.06, "sight": 0.055, "name": "Colt Python (.357 Magnum)", "len": 0.3, "flip": true, "action": "revolver", "dmg": 62.0, "pellets": 1, "spread": 0.004,
 		"interval": 0.28, "mag": 6, "reload": 3.2, "recoil": 0.09, "vel": 440.0, "range": 250.0, "loud": 220.0, "sound": "shot_357",
 		"grip": 0.12, "fore": 0.1, "drop_y": -0.06, "kick": 0.05, "force": 5.0, "pistol": true},
 	"dbshotgun": {"grip_y": -0.03, "fore_y": -0.035, "sight": 0.035, "name": "Side-by-side 12 gauge", "len": 1.12, "flip": false, "action": "break", "dmg": 15.0, "pellets": 9, "spread": 0.038,
@@ -39,12 +39,14 @@ var grip_l: Node3D                  # left hand target (fore-end / pump)
 var butt: Node3D
 var ammo := 0
 var sight_h := 0.05                 # height of the line you aim along (iron sights, or the scope's axis)
+var sight_rear_z := 0.0             # the rearmost bit of gun up at sight height (rear sight / receiver): the eye sits behind it
 var reserve := 60
 var cool := 0.0                     # time until it can fire again
 var reloading := 0.0
 var cycling := 0.0                  # bolt / pump being worked
 var shooter: Node                   # who's holding it (excluded from its own shots)
 var excludes: Array = []
+var on_take := Callable()          # the player's inventory: rounds loaded come out of it
 var flash: OmniLight3D
 var flash_mesh: MeshInstance3D
 var audio: AudioStreamPlayer3D
@@ -93,6 +95,7 @@ func setup(k: String, who: Node) -> void:
 	grip_r = _marker(Vector3(0.0, float(def.get("grip_y", -0.035)), half - float(def.grip) * float(def.len)))
 	grip_l = _marker(Vector3(0.0, float(def.get("fore_y", -0.035)), half - float(def.fore) * float(def.len)))
 	sight_h = float(def.get("sight", 0.05))
+	_measure_sights(raw, half)
 	if float(def.get("scope", 0.0)) > 0.0:
 		_build_scope(half)
 	flash = OmniLight3D.new()
@@ -125,6 +128,40 @@ func setup(k: String, who: Node) -> void:
 	mech_audio = AudioStreamPlayer3D.new()
 	mech_audio.unit_size = 4.0
 	add_child(mech_audio)
+
+## Read the sights off the model itself: the front sight is the highest point in the front 12 % of the gun, so the
+## line of sight runs at that height; and the rearmost part of the gun up near that line is what the eye has to stay
+## behind when you aim (the stock comb sits lower, under your cheek).
+func _measure_sights(raw: Node3D, half: float) -> void:
+	var pts := PackedVector3Array()
+	for mi: MeshInstance3D in raw.find_children("*", "MeshInstance3D", true, false):
+		var xf := Transform3D()
+		var n: Node = mi
+		while n and n != self:
+			if n is Node3D: xf = (n as Node3D).transform * xf
+			n = n.get_parent()
+		for si in mi.mesh.get_surface_count():
+			var v: PackedVector3Array = mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			var stp := maxi(1, v.size() / 6000)
+			for i in range(0, v.size(), stp):
+				pts.append(xf * v[i])
+	if pts.size() < 10:
+		return
+	var front_top := -1.0
+	for q in pts:
+		# rifles: the front sight at the muzzle; handguns: the top of the barrel rib all along the front half
+		var zone: float = 0.0 if def.get("pistol", false) else -half + float(def.len) * 0.12
+		if q.z < zone and abs(q.x) < 0.03:
+			front_top = max(front_top, q.y)
+	if front_top < 0.005 or front_top > 0.2:
+		return                      # nothing sensible found: keep the hand-set number
+	var rear := -half
+	for q in pts:
+		if q.y > front_top - 0.018 and abs(q.x) < 0.035 and q.z < half * 0.6:
+			rear = max(rear, q.z)
+	if float(def.get("scope", 0.0)) <= 0.0:
+		sight_h = front_top + 0.003
+	sight_rear_z = rear
 
 ## A period telescopic sight on low rings over the receiver: tube, objective bell, eyepiece, turrets
 func _build_scope(half: float) -> void:
@@ -444,6 +481,7 @@ func _finish_reload() -> void:
 		# one shell at a time; keeps going while you let it
 		ammo += 1
 		reserve -= 1
+		if on_take.is_valid(): on_take.call(1)
 		if ammo < int(def.mag) and reserve > 0:
 			reloading = float(def.reload)
 			_mech("shell_in")
@@ -454,6 +492,7 @@ func _finish_reload() -> void:
 	var take: int = min(need, reserve)
 	ammo += take
 	reserve -= take
+	if on_take.is_valid() and take > 0: on_take.call(take)
 	if def.action == "bolt":
 		_mech("bolt")
 

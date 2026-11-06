@@ -9,10 +9,15 @@ uniform float height = 0.2;              // model-space height of the clump (for
 uniform float wind = 0.1;
 uniform vec3 dry : source_color = vec3(0.86, 0.78, 0.5);
 uniform float alpha_cut = 0.4;
+// the near (dense) and far (light) sets hand over at a ring round the camera: each shrinks away on its side of it
+uniform float near_hide = 0.0;
+uniform float far_hide = 10000.0;
 varying float bend;
 varying float var_k;
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+	float dc = distance(w.xz, CAMERA_POSITION_WORLD.xz);
+	float keep = smoothstep(near_hide - 3.0, near_hide, dc) * (1.0 - smoothstep(far_hide - 4.0, far_hide, dc));
 	var_k = fract(sin(dot(w.xz, vec2(12.9898, 78.233))) * 43758.5453);
 	float k = clamp(VERTEX.y / height, 0.0, 1.0);
 	bend = k;
@@ -21,6 +26,7 @@ void vertex() {
 	float s = (sin(w.x * 0.8 + t * 2.1) + 0.6 * sin(w.z * 1.1 + t * 1.6)) * wind * (0.35 + gust);
 	VERTEX.x += s * k * k * height * 4.0;
 	VERTEX.z += s * 0.6 * k * k * height * 4.0;
+	VERTEX *= keep;
 }
 void fragment() {
 	vec4 a = texture(albedo_tex, UV);

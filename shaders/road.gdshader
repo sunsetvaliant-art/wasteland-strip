@@ -17,7 +17,7 @@ uniform sampler2D conc_nrm : hint_normal, filter_linear_mipmap_anisotropic, repe
 uniform float asph_scale = 0.28;       // asphalt tile ~3.5 m
 uniform float wear = 1.3;              // master overgrowth amount (Forge / weather can push it)
 uniform vec3 paint_white : source_color = vec3(0.86, 0.85, 0.80);
-uniform vec3 grass_tint : source_color = vec3(0.78, 0.92, 0.62);
+uniform vec3 grass_tint : source_color = vec3(0.92, 0.98, 0.85);   // the dry-grass scan (2.5 m a tile)
 
 varying vec3 wpos;
 
@@ -46,12 +46,12 @@ void fragment() {
 	float tracks = (1.0 - smoothstep(0.25, 0.9, abs(lane - 0.45))) * step(0.01, hs - abs(off)) * (1.0 - wild);
 	a_col = mix(a_col, texture(tyre_alb, suv * 0.7).rgb * 0.9, 0.35 * tracks);
 	a_col *= 0.92 + 0.16 * fbm(wuv * 0.25);              // big patches of different-age seal
-	vec3 g_col = texture(dirt_alb, wuv * 1.6).rgb;
-	vec3 g_nrm = texture(dirt_nrm, wuv * 1.6).rgb;
+	vec3 g_col = texture(dirt_alb, wuv * 2.1).rgb;
+	vec3 g_nrm = texture(dirt_nrm, wuv * 2.1).rgb;
 	vec3 c_col = texture(conc_alb, suv * 0.9).rgb * 0.95;
 	vec3 c_nrm = texture(conc_nrm, suv * 0.9).rgb;
-	vec3 gr_col = texture(grass_alb, wuv * 1.3).rgb * grass_tint;
-	vec3 gr_nrm = texture(grass_nrm, wuv * 1.3).rgb;
+	vec3 gr_col = texture(grass_alb, wuv * 2.5).rgb * grass_tint;
+	vec3 gr_nrm = texture(grass_nrm, wuv * 2.5).rgb;
 
 	float is_gravel = smoothstep(0.3, 0.55, surf) * (1.0 - smoothstep(0.6, 0.8, surf));
 	float is_grass = smoothstep(0.6, 0.75, surf) * (1.0 - smoothstep(0.85, 0.95, surf));

@@ -8,11 +8,16 @@ var font: Font
 
 func setup(m) -> void:
 	main = m
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	font = ThemeDB.fallback_font
 
 func _process(_dt: float) -> void:
+	# a Control under a CanvasLayer can come out 0 x 0 (that's what hid the health and ammo): size it to the screen
+	var vs := get_viewport_rect().size
+	if size != vs:
+		position = Vector2.ZERO
+		size = vs
 	queue_redraw()
 
 func _draw() -> void:
@@ -35,7 +40,7 @@ func _draw() -> void:
 		_text(Vector2(c.x, c.y - 40), "You're dead.", 42, Color(0.9, 0.15, 0.1), true)
 		_text(Vector2(c.x, c.y + 10), "Back at the pub in %d…" % ceili(p.respawn_t), 20, Color(1, 1, 1, 0.8), true)
 		return
-	if not p.active or p.vehicle:
+	if not p.active or p.vehicle or (main.inv_ui and main.inv_ui.open):
 		return
 	# health
 	var hb := Rect2(24, sz.y - 70, 220, 12)
@@ -58,6 +63,22 @@ func _draw() -> void:
 		draw_arc(ec, 24, -PI * 0.5, -PI * 0.5 + TAU * clamp(sus, 0.0, 1.0), 32, col, 3.0)
 		if p.crouching:
 			_text(ec + Vector2(0, 40), "crouched", 12, Color(1, 1, 1, 0.6), true)
+	# what F does here, and the bandage / food you're using
+	if p.interact_hint != "":
+		_text(Vector2(c.x, c.y + 64), p.interact_hint, 18, Color(1, 0.92, 0.7), true)
+	if p.carried:
+		_text(Vector2(c.x, c.y + 64), "let go of the middle button to put it down · right click to throw", 14, Color(1, 1, 1, 0.75), true)
+	if not p.inv.using.is_empty():
+		var u: Dictionary = p.inv.using
+		var bw := 160.0
+		var br := Rect2(c.x - bw * 0.5, c.y + 90, bw, 8)
+		draw_rect(br, Color(0, 0, 0, 0.5))
+		draw_rect(Rect2(br.position, Vector2(bw * u.t / u.total, 8)), Color(0.9, 0.85, 0.6))
+		_text(Vector2(c.x, c.y + 84), "Using " + Items.def(u.stack.id).name.to_lower(), 14, Color(1, 1, 1, 0.85), true)
+	_text(Vector2(250, sz.y - 59), "%d" % roundi(p.hp), 14, Color(1, 1, 1, 0.8))
+	var bandages: int = p.inv.count("bandage")
+	if bandages > 0:
+		_text(Vector2(24, sz.y - 40), "B  bandage (%d)" % bandages, 13, Color(1, 1, 1, 0.6))
 	var g: Gun = p.gun()
 	if g == null or p.holstered:
 		return
@@ -79,7 +100,8 @@ func _ammo(g: Gun, sz: Vector2) -> void:
 	_text(Vector2(sz.x - 24, sz.y - 82), tx, 14, Color(1, 1, 1, 0.75), false, true)
 	var am := "%d  /  %d" % [g.ammo, g.reserve]
 	if g.reloading > 0.0: am = "reloading…"
-	elif g.ammo == 0: am = "EMPTY  ·  R to reload"
+	elif g.ammo == 0 and g.reserve > 0: am = "EMPTY  ·  R to reload"
+	elif g.ammo == 0: am = "EMPTY  ·  no rounds"
 	_text(Vector2(sz.x - 24, sz.y - 52), am, 26, Color(1, 0.9, 0.7) if g.ammo > 0 else Color(1, 0.4, 0.3), false, true)
 
 func _text(at: Vector2, t: String, sz: int, col: Color, centre := false, right := false) -> void:

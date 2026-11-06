@@ -20,7 +20,7 @@ const SETS := {
 		"spot": "zombie_hazmat__Zombie_EnemySpotted", "walk_speed": 0.9, "run_speed": 3.2},
 	"zombie_b": {"idle": "zombie_soldier__zombie_02_Idle", "walk": "zombie_soldier__zombie_02_Walk", "run": "zombie_runner__FEMALE_ZOMBIE_RUN", "attack": "zombie_runner__FEMALE_ZOMBIE_ATTACK",
 		"spot": "zombie_hazmat__Zombie_EnemySpotted", "walk_speed": 0.8, "run_speed": 3.0},
-	"zombie_c": {"idle": "zombie_runner__FEMALE_ZOMBIE_IDLE", "walk": "zombie_hazmat__Zombie_Walk_Root", "run": "zombie_runner__FEMALE_ZOMBIE_RUN", "attack": "zombie_runner__FEMALE_ZOMBIE_BITE",
+	"zombie_c": {"idle": "zombie_runner__FEMALE_ZOMBIE_IDLE", "walk": "zombie_hazmat__Zombie_Walk_Root", "run": "zombie_runner__FEMALE_ZOMBIE_RUN", "attack": "zombie_soldier__zombie_02_Attack",
 		"spot": "zombie_hazmat__Zombie_Skill", "walk_speed": 0.85, "run_speed": 3.0},
 }
 ## Mixamo names (what the rest of the code asks for) -> Godot humanoid profile names (what the bones are now called)

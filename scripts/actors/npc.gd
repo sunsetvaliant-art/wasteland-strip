@@ -82,6 +82,11 @@ func _ready() -> void:
 	voice.position.y = 1.6
 	voice.unit_size = 5.0
 	voice.max_distance = 70.0
+	if kind == "zombie":
+		# zombies were far too loud: quieter, shorter reach, and the groans a bit less often
+		voice.unit_size = 2.2
+		voice.volume_db = -9.0
+		voice.max_distance = 35.0
 	add_child(voice)
 	home = global_position
 	goal = home
@@ -223,7 +228,7 @@ func _target_pos() -> Vector3:
 func _think_zombie(dt: float) -> void:
 	groan_t -= dt
 	if groan_t <= 0.0:
-		groan_t = randf_range(4.0, 11.0) if state != "chase" else randf_range(2.0, 5.0)
+		groan_t = randf_range(7.0, 16.0) if state != "chase" else randf_range(3.5, 7.0)
 		_say("zgroan_%d" % (randi() % 4))
 	if vis > 0.12 and player and not player.dead:
 		if state != "chase" and randf() < 0.6:
@@ -612,8 +617,12 @@ func _drop_gun() -> void:
 	gun.excludes = []
 	rb.linear_velocity = velocity + Vector3(randf_range(-1, 1), 2.0, randf_range(-1, 1))
 	rb.add_to_group("pickups")
-	rb.set_meta("gun", gun.key)
-	rb.set_meta("ammo", gun.ammo + randi_range(4, 14))
+	var gs := Items.stack("gun_" + gun.key, 1, {"ammo": gun.ammo})
+	var items: Array = [gs]
+	var aid: String = Items.GUN_AMMO.get(gun.key, "")
+	if aid != "": items.append(Items.stack(aid, randi_range(4, 14)))
+	if randf() < 0.35: items.append(Items.fresh(["bandage", "food_can", "shirt_flanno", "pants_cargo"][randi() % 4], 1 + randi() % 2))
+	rb.set_meta("items", items)
 	gun.set_process(false)
 	gun = null
 

@@ -142,5 +142,17 @@
   "author": "xa3apg",
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/zombie-warrior-2457028ac0ca4214bd1f5dc3b9d11129"
+ },
+ "grass_lawn": {
+  "title": "Grass 01 (Low Poly Grass) material",
+  "author": "Paco Salas (BlendKit)",
+  "license": "BlendKit Royalty Free",
+  "url": "https://www.blendkit.com/asset-gallery-detail/d9bb4c54-f406-484f-90e1-78179b301687/"
+ },
+ "ground_scans": {
+  "title": "Ground textures: leafy_grass, forrest_ground_01, dry_decay_leaves, dry_mud_field_001, sand_01, mossy_rock, concrete_floor_worn_001, brown_mud_leaves_01, grass_ground; grass_medium_01 model",
+  "author": "Poly Haven",
+  "license": "CC0",
+  "url": "https://polyhaven.com"
  }
 }

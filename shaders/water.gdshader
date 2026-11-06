@@ -9,12 +9,19 @@ uniform vec3 shallow : source_color = vec3(0.30, 0.34, 0.22);
 uniform vec3 deep : source_color = vec3(0.03, 0.10, 0.11);
 uniform float clarity = 1.6;
 
-float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
-float waves(vec2 q, float t) {
-	return vn(q * 0.35 + vec2(t * 0.21, t * 0.07)) * 0.5 + vn(q * 0.9 - vec2(t * 0.11, t * 0.33)) * 0.3
-		+ vn(q * 2.3 + vec2(t * 0.5, -t * 0.4)) * 0.15 + vn(q * 6.0 + vec2(-t * 0.9, t * 0.6)) * 0.05;
+// ripples: one seamless normal-map noise sampled three times at different scales, angles and drift, so there's no
+// grid to see (the old hash noise fell apart into blocks at the map's big world coordinates)
+uniform sampler2D ripple_tex : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D foam_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform float ripple_strength = 0.55;
+vec2 rot(vec2 p, float a) { float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
+vec3 ripple(vec2 q, float t) {
+	q = mod(q, 4096.0);                      // keep the numbers small: the texture tiles anyway
+	vec3 a = texture(ripple_tex, rot(q, 0.4) / 23.0 + vec2(t * 0.011, t * 0.004)).rgb * 2.0 - 1.0;
+	vec3 b = texture(ripple_tex, rot(q, 2.1) / 9.0 - vec2(t * 0.007, t * 0.019)).rgb * 2.0 - 1.0;
+	vec3 c = texture(ripple_tex, rot(q, 4.0) / 3.1 + vec2(-t * 0.03, t * 0.024)).rgb * 2.0 - 1.0;
+	vec2 xy = (a.xy * 0.5 + b.xy * 0.35 + c.xy * 0.2) * ripple_strength;
+	return normalize(vec3(xy.x, 1.0, xy.y));
 }
 
 varying vec3 wpos;
@@ -23,8 +30,7 @@ void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float t = TIME;
 	vec2 q = wpos.xz;
-	float e = 0.15, h0 = waves(q, t);
-	vec3 n = normalize(vec3(h0 - waves(q + vec2(e, 0), t), e * 2.2, h0 - waves(q + vec2(0, e), t)));
+	vec3 n = ripple(q, t);
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 	// how much water lies between this surface and the bed behind it
 	float d = texture(depth_tex, SCREEN_UV).r;
@@ -35,7 +41,7 @@ void fragment() {
 	vec2 ruv = SCREEN_UV + n.xz * 0.02 * k;
 	vec3 under = texture(screen_tex, ruv).rgb;
 	vec3 col = mix(under * shallow * 2.2, deep, k);
-	float foam = (1.0 - smoothstep(0.0, 0.35, thick)) * (0.5 + 0.5 * vn(q * 3.0 + t * 0.4));
+	float foam = (1.0 - smoothstep(0.0, 0.35, thick)) * (0.5 + 0.5 * texture(foam_tex, mod(q, 4096.0) / 2.5 + t * 0.02).r);
 	ALBEDO = mix(col, vec3(0.85, 0.88, 0.85), foam * 0.5);
 	ROUGHNESS = 0.04 + foam * 0.4;
 	METALLIC = 0.0;

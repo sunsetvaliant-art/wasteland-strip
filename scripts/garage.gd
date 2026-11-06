@@ -188,6 +188,11 @@ func _build_ui() -> void:
 	var boxes: Array = VehicleSpecs.GEARBOXES.keys()
 	_choice("Gearbox", boxes.map(func(k): return VehicleSpecs.GEARBOXES[k].name), boxes.find(design.gearbox), func(i): design.gearbox = boxes[i]; _changed())
 	_slider("Diff ratio (final drive)", 2.5, 6.5, 0.01, design.final, func(v): design.final = v; _changed())
+	# --- wheels and tyres
+	_title("Wheels")
+	var wkeys: Array = VehicleRig.WHEEL_MODELS.keys()
+	_choice("Wheels", wkeys.map(func(k): return VehicleRig.WHEEL_MODELS[k].name), wkeys.find(str(design.get("wheel_model", "stock"))), func(i): design.wheel_model = wkeys[i]; _changed())
+	_slider("Tyre pressure (psi)", 12.0, 50.0, 1.0, float(design.get("tyre_psi", 32.0)), func(v): design.tyre_psi = v; _changed())
 	# --- axles
 	_title("Axles")
 	var row := HBoxContainer.new()

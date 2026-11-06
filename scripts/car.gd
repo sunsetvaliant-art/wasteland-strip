@@ -67,6 +67,8 @@ func _ready() -> void:
 	mass = float(design.mass)
 	continuous_cd = true
 	can_sleep = false
+	contact_monitor = true                 # to notice bodies jammed under the chassis
+	max_contacts_reported = 24
 	linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE         # drag comes from the aero + rolling model, not a fudge
 	linear_damp = 0.0
 	angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
@@ -86,6 +88,10 @@ func _ready() -> void:
 	audio = EngineAudio.new()
 	add_child(audio)
 	audio.setup(self)
+	var fx := TyreFX.new()
+	fx.name = "TyreFX"
+	add_child(fx)
+	fx.setup(self)
 	rpm = float(eng.idle)
 	w_eng = rpm * TAU / 60.0
 	if box.auto: gear = 0
@@ -155,7 +161,7 @@ func _build_wheels() -> void:
 				"r": float(a.tyre_r), "L": T, "L_prev": T, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
 				"steer": 0.0, "point": Vector3.ZERO, "normal": Vector3.UP, "slip": 0.0, "slip_a": 0.0, "surf": 1.0,
 				"vx": 0.0, "vy": 0.0, "fx": 0.0, "fy": 0.0, "drive_t": 0.0, "collider": null, "mu": 1.0, "crr": 0.015,
-				"fwd": Vector3.FORWARD, "sidev": Vector3.RIGHT,
+				"fwd": Vector3.FORWARD, "sidev": Vector3.RIGHT, "slide": 0.75, "kind": "seal", "defl": 0.0, "slipv": 0.0,
 			}
 			wheels.append(w)
 
@@ -278,6 +284,7 @@ func _physics_process(dt: float) -> void:
 	elif driver == null:
 		running = false
 		crank = 0.0
+	_unjam_bodies(dt)
 	var space := get_world_3d().direct_space_state
 	var xf := global_transform
 	var up := xf.basis.y
@@ -289,13 +296,15 @@ func _physics_process(dt: float) -> void:
 	for w in wheels:
 		var top: Vector3 = xf * w.mount
 		var reach: float = w.T + w.r
-		var q := PhysicsRayQueryParameters3D.create(top + up * 0.15, top - up * reach, 0xFFFFFFFF, ex)
+		# wheels roll through bodies and loose bits rather than climbing onto them (layer 4: ragdolls, debris, pickups)
+		var q := PhysicsRayQueryParameters3D.create(top + up * 0.15, top - up * reach, 0xFFFFFFFF & ~Ragdoll.layer_bits(), ex)
 		var hit := space.intersect_ray(q)
 		w.L_prev = w.L
 		if hit:
 			var d: float = (top + up * 0.15).distance_to(hit.position) - 0.15
-			w.L = clamp(d - w.r, -0.05, w.T)
-			w.contact = d - w.r <= w.T
+			var r_eff: float = w.r - w.defl                          # the tyre squats under load
+			w.L = clamp(d - r_eff, -0.05, w.T)
+			w.contact = d - r_eff <= w.T
 			w.point = hit.position
 			w.normal = hit.normal
 			w.collider = hit.collider
@@ -322,6 +331,11 @@ func _physics_process(dt: float) -> void:
 			var other: float = arb_c.get(str(w.axle) + str(-w.side), comp)
 			f += float(a.arb) * (comp - other)
 		w.N = max(f, 0.0)
+	# sidewall deflection for next step: N over the tyre's vertical stiffness (about 200 kN/m at 32 psi)
+	var psi: float = float(design.get("tyre_psi", 32.0))
+	for w in wheels:
+		var kt: float = 200000.0 * (psi / 32.0) * (float(w.r) / 0.33)
+		w.defl = lerpf(w.defl, clamp(w.N / kt, 0.0, float(w.r) * 0.25), 0.3) if w.contact else w.defl * 0.8
 	# ---- tyres: contact frame, velocities, then the driveline in sub-steps
 	var steer_l := steer_now
 	for w in wheels:
@@ -353,6 +367,27 @@ func _physics_process(dt: float) -> void:
 	if v2 > 1.0:
 		apply_central_force(-linear_velocity.normalized() * 0.5 * 1.2 * float(design.get("cda", AIR_CDA)) * v2)
 
+## A body (or a bit of one) under the chassis gets squeezed between the rails and the ground and jams the car on top
+## of it. Anything ragdoll-light touching the underside is let through for a moment so the car rolls over it; bodies
+## lying up on the bonnet or roof stay put.
+var _let_through := {}
+func _unjam_bodies(dt: float) -> void:
+	for b in _let_through.keys():
+		_let_through[b] -= dt
+		if _let_through[b] <= 0.0:
+			_let_through.erase(b)
+			if is_instance_valid(b): remove_collision_exception_with(b)
+	var floor_y: float = float(design.ride) + 0.45
+	for b in get_colliding_bodies():
+		if _let_through.has(b) or not (b is RigidBody3D) or b is VehicleBody3D or b.is_in_group("vehicles"):
+			continue
+		var rb := b as RigidBody3D
+		if (rb.collision_layer & Ragdoll.layer_bits()) == 0 or rb.mass > 150.0:
+			continue
+		if to_local(rb.global_position).y < floor_y:
+			add_collision_exception_with(rb)
+			_let_through[rb] = 1.5
+
 func _read_controls(dt: float) -> void:
 	var steer_in := 0.0
 	var thr := 0.0
@@ -372,18 +407,46 @@ func _read_controls(dt: float) -> void:
 		throttle = 0.0
 		handbrake = true
 
+## Grip by ground: [peak mu, sliding / peak, rolling resistance, kind]. Terrain by its texture slot (main.GROUND).
+## Loose stuff grips a lot less than bitumen and gives up more once the tyre's spinning (grass polishes, mud smears).
+const TERRAIN_SURF := [
+	[0.5, 0.6, 0.06, "grass"],     # pasture
+	[0.55, 0.7, 0.06, "dirt"],     # forest floor
+	[0.5, 0.66, 0.06, "dirt"],     # cane trash
+	[0.6, 0.75, 0.07, "dirt"],     # farm soil
+	[0.45, 0.8, 0.12, "sand"],     # sand
+	[0.62, 0.62, 0.02, "rock"],    # mossy rock
+	[0.88, 0.75, 0.013, "seal"],   # concrete
+	[0.3, 0.6, 0.12, "mud"],       # river mud
+	[0.5, 0.6, 0.05, "grass"],     # rough grass
+]
+var _terrain: Terrain3D
+
 func _surface(w: Dictionary) -> void:
-	# sealed road, gravel / dirt, or whatever the ground's doing; props and other cars grip like road
 	var c = w.collider
+	var surf: Array = [0.85, 0.75, 0.02, "seal"]      # props, other cars, buildings: hard
 	if c and c.is_in_group("road"):
-		w.mu = 1.0
-		w.crr = 0.014
+		surf = [0.95, 0.72, 0.013, "seal"]
 	elif c is Terrain3D or (c and c.get_class() == "StaticBody3D" and c.get_parent() is Terrain3D) or (c and str(c.name).begins_with("Terrain")):
-		w.mu = 0.72
-		w.crr = 0.05
-	else:
-		w.mu = 0.95
-		w.crr = 0.02
+		if _terrain == null:
+			var m = get_tree().current_scene
+			if m and "terrain" in m: _terrain = m.terrain
+		var id := 0
+		if _terrain and _terrain.data:
+			var t: Vector3 = _terrain.data.get_texture_id(w.point)
+			if not is_nan(t.x):
+				id = int(t.y) if t.z > 0.5 else int(t.x)
+		surf = TERRAIN_SURF[clampi(id, 0, TERRAIN_SURF.size() - 1)]
+	elif c and (c.is_in_group("corpses") or c is PhysicalBone3D or (c is RigidBody3D and (c as RigidBody3D).mass < 120.0)):
+		surf = [0.35, 0.6, 0.02, "flesh"]
+	# tyre pressure: soft tyres bag out and grip loose ground better, roll heavier; hard ones skate on it
+	var psi: float = float(design.get("tyre_psi", 32.0))
+	var soft: float = clamp((32.0 - psi) / 20.0, -1.0, 1.0)
+	var loose: bool = surf[3] in ["grass", "dirt", "sand", "mud"]
+	w.mu = float(surf[0]) * (1.0 + (0.22 * soft if loose else -0.06 * abs(soft)))
+	w.slide = float(surf[1])
+	w.crr = float(surf[2]) * (1.0 + 0.5 * max(soft, 0.0))
+	w.kind = surf[3]
 
 func _pac(x: float, B: float, C: float, E: float) -> float:
 	var bx := B * x
@@ -494,8 +557,11 @@ func _driveline(dt: float) -> void:
 				var vref: float = max(abs(w.vx), 1.5)
 				var sr: float = (w.omega * w.r - w.vx) / vref
 				var sa: float = atan2(w.vy, max(abs(w.vx), 1.0))
-				fx = muN * _pac(sr, 11.0, 1.65, 0.3)
-				fy = -muN * _pac(sa, 9.5, 1.35, -0.6)
+				# past the peak the tyre's sliding: grip falls to the surface's sliding share (big drop on grass / mud)
+				var slide_x: float = lerpf(1.0, w.slide, smoothstep(0.12, 0.7, abs(sr)))
+				var slide_y: float = lerpf(1.0, w.slide, smoothstep(0.14, 0.6, abs(sa)))
+				fx = muN * _pac(sr, 11.0, 1.65, 0.3) * slide_x
+				fy = -muN * _pac(sa, 9.5, 1.35, -0.6) * slide_y
 				var lowspd: float = clamp(1.0 - (abs(w.vx) + abs(w.vy)) / 2.5, 0.0, 1.0)
 				fy = lerpf(fy, clamp(-w.vy * w.N * 0.9, -muN, muN), lowspd)       # don't skate about when stopped
 				var mag := sqrt(fx * fx + fy * fy)
@@ -514,6 +580,8 @@ func _driveline(dt: float) -> void:
 			w.omega = om
 			w.fx += fx / SUBSTEPS
 			w.fy += fy / SUBSTEPS
+			if s == SUBSTEPS - 1:
+				w.slipv = Vector2(w.omega * w.r - w.vx, w.vy).length() if w.contact else 0.0
 		# wheels on the ground that are free (no drive, no brake) follow the road closely
 	rpm = w_eng * 60.0 / TAU
 	engine_load = load_acc / SUBSTEPS

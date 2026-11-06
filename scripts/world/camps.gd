@@ -204,6 +204,11 @@ func _place(root: Node3D, spec: String, p: Vector3, yaw: float, fixed: bool) -> 
 	cs.shape = bs
 	cs.position = bb.get_center()
 	body.add_child(cs)
+	# crates, boxes and toolboxes in a camp have things in them (F)
+	var ck: String = spec.split(":")[1] if ":" in spec else spec
+	if Items.CONTAINERS.has(ck):
+		body.set_meta("container", ck)
+		body.set_meta("container_name", ck.replace("_", " ").capitalize())
 	if body is RigidBody3D:
 		(body as RigidBody3D).mass = clamp(bb.size.x * bb.size.y * bb.size.z * 150.0, 3.0, 400.0)
 		body.add_to_group("physgun")
@@ -295,8 +300,7 @@ func _loot(root: Node3D, gk: String, p: Vector3) -> void:
 	cs.shape = bs
 	rb.add_child(cs)
 	rb.add_to_group("pickups")
-	rb.set_meta("gun", gk)
-	rb.set_meta("ammo", int(g.def.mag) * 2)
+	rb.set_meta("items", [Items.stack("gun_" + gk, 1, {"ammo": int(g.def.mag)}), Items.stack(Items.GUN_AMMO.get(gk, "ammo_12g"), int(g.def.mag) * 2)])
 	root.add_child(rb)
 	var gy: float = main.ground_at(p.x, p.z)
 	rb.global_transform = Transform3D(Basis(Vector3.UP, randf() * TAU) * Basis(Vector3.FORWARD, PI * 0.5), Vector3(p.x, gy + 0.3, p.z))

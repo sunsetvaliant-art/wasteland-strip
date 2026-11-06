@@ -14,7 +14,14 @@ var m_chrome: StandardMaterial3D
 var box_mesh: BoxMesh
 var cyl_mesh: CylinderMesh
 var coil_mesh: ArrayMesh
-var wheel_nodes: Array = []       # per wheel: {pivot, spin}
+var wheel_nodes: Array = []       # per wheel: {pivot, spin, model}
+## wheel models you can pick in the garage ("" = the stock car / 4x4 steelie by tyre size)
+const WHEEL_MODELS := {
+	"stock": {"name": "Stock steelies", "path": ""},
+	"globe": {"name": "Globe mags (from the old build)", "path": "res://assets/props/globe.glb"},
+	"rim4x4": {"name": "4x4 steelies", "path": "res://assets/vehicles/wheel_4x4.glb"},
+	"car": {"name": "Car steelies", "path": "res://assets/vehicles/wheel_car.glb"},
+}
 var beams: Array = []             # [{mi, fn: Callable}] updated every frame
 var tailshaft: MeshInstance3D
 var engine_node: Node3D
@@ -148,7 +155,10 @@ func _build_tailshaft() -> void:
 # ---------------------------------------------------------------- wheels
 func _build_wheels() -> void:
 	var big: bool = car.wheels[0].r > 0.35
-	var ps: PackedScene = load("res://assets/vehicles/%s.glb" % ("wheel_4x4" if big else "wheel_car"))
+	var wm: String = str(car.design.get("wheel_model", "stock"))
+	var path: String = WHEEL_MODELS.get(wm, WHEEL_MODELS.stock).path
+	if path == "": path = "res://assets/vehicles/%s.glb" % ("wheel_4x4" if big else "wheel_car")
+	var ps: PackedScene = load(path)
 	for w in car.wheels:
 		var pivot := Node3D.new()
 		add_child(pivot)
@@ -158,7 +168,7 @@ func _build_wheels() -> void:
 		m.scale = Vector3.ONE * float(w.r) * 2.0
 		m.rotation_degrees.y = 90 if w.side > 0 else -90
 		spin.add_child(m)
-		wheel_nodes.append({"pivot": pivot, "spin": spin})
+		wheel_nodes.append({"pivot": pivot, "spin": spin, "model": m})
 
 func _wheel_centre(w: Dictionary) -> Vector3:
 	return w.mount - Vector3(0, w.L, 0)
@@ -274,6 +284,10 @@ func _process(_dt: float) -> void:
 		n.pivot.position = _wheel_centre(w)
 		n.pivot.rotation = Vector3(0, w.steer, 0)
 		n.spin.rotation = Vector3(w.spin, 0, 0)
+		# sidewall deflection: the tyre sits down under load (more on soft pressures); a squash on the visual
+		var defl: float = w.get("defl", 0.0)
+		n.pivot.position.y -= defl * 0.5
+		n.pivot.scale = Vector3(1.0, 1.0 - defl / (float(w.r) * 2.0), 1.0)      # on the pivot, so it doesn't spin with the wheel
 	for b in beams:
 		var r = b.fn.call()
 		if r is Array:

@@ -21,7 +21,11 @@ static func place(g: Gun, eye: Transform3D, st: Dictionary) -> Transform3D:
 	var sh: float = g.sight_h
 	# butt in the shoulder pocket, a bit behind the eye; down the sights the eye sits on the sight line
 	var hip := Vector3(0.18, -0.26, 0.08 - half) if not pistol else Vector3(0.15, -0.21, -0.42)
+	# down the sights: eye on the sight line, the rear sight / receiver a hand's width in front of it
+	# (scoped rifles keep their eye relief behind the scope)
 	var sights := Vector3(0.0, -sh, 0.11 - half) if not pistol else Vector3(0.0, -sh, -0.46)
+	if not pistol and float(g.def.get("scope", 0.0)) <= 0.0 and g.sight_rear_z > -half:
+		sights.z = min(-0.12 - g.sight_rear_z, 0.16 - half)
 	var low := Vector3(0.18, -0.4, 0.02 - half * 0.7) if not pistol else Vector3(0.15, -0.42, -0.3)
 	var ads: float = st.get("ads", 0.0)
 	var p := hip.lerp(sights, ads)

@@ -92,9 +92,23 @@ func _ready():
 			# a[6] gun index, a[7] aim (1 = down the sights)
 			p.first_person = mode == "fpgun"
 			p._apply_camera()
-			p._select(int(a[6]) if a.size() > 6 else 0)
+			if a.size() > 6 and not a[6].is_valid_int():
+				var st := Items.fresh("gun_" + a[6])
+				p.inv.set_slot("primary", st)
+				p._select(0)
+			else:
+				p._select(int(a[6]) if a.size() > 6 else 0)
 			if a.size() > 7 and a[7] == "1": Input.action_press("aim")
 			for _i in 40: await get_tree().physics_frame
+		elif mode == "inv":
+			main.inv_ui.show_with(null)
+			for _i in 10: await get_tree().process_frame
+		elif mode == "box":
+			var fwd2: Vector3 = -p.global_transform.basis.z
+			var bx = main.forge.spawn({"type": "prop", "key": "old_military_crate", "name": "Military crate", "path": "res://assets/ph/weapons/old_military_crate/old_military_crate.gltf"}, Transform3D(Basis(), p.global_position + fwd2 * 1.5 + Vector3(0, 0.3, 0)))
+			for _i in 30: await get_tree().physics_frame
+			main.inv_ui.show_with(bx)
+			for _i in 10: await get_tree().process_frame
 		elif mode == "npcs":
 			# a[6] kind, a[7] count, a[8] distance in front, then wait a[9] frames
 			var fwd: Vector3 = -p.global_transform.basis.z
@@ -201,5 +215,21 @@ func _ready():
 			p.first_person = true; p._apply_camera()
 		for _i in 90: await get_tree().process_frame
 		get_viewport().get_texture().get_image().save_png(out + nm + ".png")
+		if main.veg:
+			for ln in main.veg.layers:
+				var cnt := 0
+				for k in main.veg.layers[ln].cells:
+					var nd = main.veg.layers[ln].cells[k]
+					if nd: for mmi in nd.get_children(): if mmi is MultiMeshInstance3D: cnt += mmi.multimesh.instance_count
+				if ln == "scan" or ln == "grass":
+					var cam3 := get_viewport().get_camera_3d()
+					for k in main.veg.layers[ln].cells:
+						var nd = main.veg.layers[ln].cells[k]
+						if nd and nd.get_child_count() > 0:
+							var mmi = nd.get_child(0)
+							var o: Vector3 = mmi.multimesh.get_instance_transform(0).origin
+							break
+				print("VEG ", ln, " cells ", main.veg.layers[ln].cells.size(), " inst ", cnt, " r ", main.veg.layers[ln].r)
+		print("WHEELS ", main.car.wheels.map(func(w): return [w.kind, snappedf(w.mu, 0.01), snappedf(w.slipv, 0.1), snappedf(w.defl, 0.001)]))
 		print("SHOT ", nm, " fps ", Engine.get_frames_per_second(), " car ", main.car.global_position, " v ", main.car.speed_kmh())
 	get_tree().quit()

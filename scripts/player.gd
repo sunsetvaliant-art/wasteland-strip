@@ -43,6 +43,11 @@ var low_ready := 0.0
 var scope_view: ScopeView
 var respawn_t := 0.0
 var ragdoll: Ragdoll
+var inv: PlayerInv
+var interact_hint := ""                # what F would do right now (the HUD shows it)
+var interact_target: Node = null
+var carried: RigidBody3D = null        # something picked up with the middle mouse button
+var carry_dist := 1.5
 signal hurt(amount: float)
 signal died
 
@@ -87,6 +92,10 @@ func _ready() -> void:
 	head.add_child(cam_fp)
 	cam_tp.current = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	inv = PlayerInv.new()
+	inv.name = "Inventory"
+	add_child(inv)
+	inv.setup(self)
 
 func active_camera() -> Camera3D:
 	if vehicle:
@@ -110,17 +119,32 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("crouch"):
 		crouching = not crouching
 	if e.is_action_pressed("interact"):
-		if not _try_pickup():
-			_try_get_in()
+		_interact()
+	if e.is_action_pressed("inventory"):
+		var ui = get_tree().current_scene.get("inv_ui")
+		if ui: ui.toggle(null)
+	if e.is_action_pressed("heal"):
+		inv.quick_heal()
+	if e.is_action_pressed("carry"):
+		_carry_start()
+	if e.is_action_released("carry"):
+		_carry_drop(false)
+	if e.is_action_pressed("aim") and carried:
+		_carry_drop(true)
+		get_viewport().set_input_as_handled()
+		return
 	if e.is_action_pressed("reload") and gun():
 		gun().start_reload()
 	if e.is_action_pressed("holster"):
 		holstered = not holstered
 	if e.is_action_pressed("weapon_next"): _select(gun_i + 1)
 	if e.is_action_pressed("weapon_prev"): _select(gun_i - 1)
-	for i in 6:
-		if e.is_action_pressed("slot_%d" % (i + 1)) and i < guns.size():
-			_select(i)
+	for i in 2:
+		if e.is_action_pressed("slot_%d" % (i + 1)):
+			# 1 = primary, 2 = secondary
+			var want = inv.equip.get("primary" if i == 0 else "secondary")
+			for j in guns.size():
+				if guns[j].get_meta("stack", null) == want: _select(j)
 
 func _apply_camera() -> void:
 	var c := active_camera()
@@ -141,6 +165,7 @@ func _physics_process(dt: float) -> void:
 	if vehicle:
 		global_position = vehicle.seat_position()
 		return
+	_carry_tick(dt)
 	if hp < 100.0:
 		hp = min(hp + dt * (2.0 if Settings.creative() else 0.4), 100.0)
 	# the body follows the eyes: straight away when moving or holding a gun up, otherwise only once you've
@@ -185,16 +210,22 @@ func _physics_process(dt: float) -> void:
 	var set_name := "unarmed"
 	if armed() and not gun().def.get("pistol", false): set_name = "rifle"
 	rig.locomote(set_name, spd, crouching, ang)
+	# off the ground for more than a moment (a jump, a drop): legs up instead of walking on air
+	air_t = 0.0 if is_on_floor() else air_t + dt
+	rig.mods.air = move_toward(rig.mods.air, 1.0 if air_t > 0.12 else 0.0, dt * (5.0 if air_t > 0.12 else 9.0))
 	if global_position.y < -50:
 		global_position.y = 50
 
 var _noise_t := 0.0
 var turning := 0.0
+var air_t := 0.0
 func _process(dt: float) -> void:
 	if first_person and vehicle == null and rig and not dead:
 		# eyes: just in front of the head bone, so looking down shows your own body
 		cam_fp.global_position = rig.head_position() + global_transform.basis * Vector3(0, 0.07, -0.11)
+	inv.tick(dt)
 	_hold_gun(dt)
+	_update_interact()
 
 # ---------------------------------------------------------------- guns
 func gun() -> Gun:
@@ -226,7 +257,7 @@ func _select(i: int) -> void:
 
 ## Is a gun out and in the hands?
 func armed() -> bool:
-	return gun() != null and vehicle == null and active and not dead and not holstered
+	return gun() != null and vehicle == null and active and not dead and not holstered and carried == null and inv.using.is_empty()
 
 ## Where the gun sits and points this frame, and what the hands do about it
 func _hold_gun(dt: float) -> void:
@@ -284,14 +315,116 @@ func _hold_gun(dt: float) -> void:
 	if g.ammo <= 0 and g.reserve > 0 and g.reloading <= 0.0 and Input.is_action_just_pressed("fire"):
 		g.start_reload()
 
-## F near a dropped gun: take it (or its ammo)
-func _try_pickup() -> bool:
-	for pk in get_tree().get_nodes_in_group("pickups"):
-		if (pk as Node3D).global_position.distance_to(global_position + Vector3(0, 0.5, 0)) < 2.2:
-			give_gun(pk.get_meta("gun"), int(pk.get_meta("ammo", 10)))
-			pk.queue_free()
-			return true
-	return false
+## What's in front of you that F does something with: a box to open, something to pick up
+func _look_target() -> Node:
+	var cam := active_camera()
+	if cam == null: return null
+	var from := cam.global_position
+	var dir := -cam.global_transform.basis.z
+	var reach := 3.2 if first_person else 5.6           # the shoulder camera sits back behind you
+	var q := PhysicsRayQueryParameters3D.create(from, from + dir * reach, 1 | (1 << 2) | (1 << 3) | (1 << 4), [get_rid()])
+	var h := get_world_3d().direct_space_state.intersect_ray(q)
+	if h.is_empty(): return null
+	if (h.position as Vector3).distance_to(global_position + Vector3(0, 1.0, 0)) > 2.8: return null
+	var n: Node = h.collider
+	for _i in 4:
+		if n == null: break
+		if InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
+		n = n.get_parent()
+	return null
+
+func _update_interact() -> void:
+	interact_hint = ""
+	interact_target = null
+	if vehicle or dead or not active: return
+	var t := _look_target()
+	if t == null:
+		# anything lying right at your feet
+		for pk in get_tree().get_nodes_in_group("pickups"):
+			if pk.has_meta("items") and (pk as Node3D).global_position.distance_to(global_position + Vector3(0, 0.4, 0)) < 1.4:
+				t = pk
+				break
+	if t:
+		interact_target = t
+		if InventoryUI.is_container(t):
+			var nm := "box"
+			if t.has_meta("forge"): nm = str(t.get_meta("forge").get("name", "box")).replace(" (old scan)", "")
+			elif t.has_meta("container_name"): nm = t.get_meta("container_name")
+			interact_hint = "F  Open %s" % nm.to_lower()
+		else:
+			interact_hint = "F  Pick up %s" % WorldItem.label(t)
+		return
+	for c in get_tree().get_nodes_in_group("vehicles"):
+		if c.global_position.distance_to(global_position) < 4.0 and c.driver == null:
+			interact_hint = "F  Get in"
+			return
+
+func _interact() -> void:
+	var t := interact_target
+	var ui = get_tree().current_scene.get("inv_ui")
+	if t and is_instance_valid(t):
+		if InventoryUI.is_container(t):
+			if ui: ui.show_with(t)
+			return
+		var items: Array = t.get_meta("items", [])
+		for s in items.duplicate():
+			var left := inv.add(s)
+			if left > 0:
+				s.n = left
+			else:
+				items.erase(s)
+		if items.is_empty():
+			t.queue_free()
+		elif ui:
+			ui.flash("No room for all of it")
+			ui.show_with(null)
+		return
+	_try_get_in()
+
+# ---------------------------------------------------------------- carrying things (middle mouse)
+func _carry_start() -> void:
+	if vehicle or dead or carried: return
+	var cam := active_camera()
+	var from := cam.global_position
+	var q := PhysicsRayQueryParameters3D.create(from, from - cam.global_transform.basis.z * (3.0 if first_person else 5.5), 0xFFFF, [get_rid()])
+	var h := get_world_3d().direct_space_state.intersect_ray(q)
+	if h.is_empty() or not (h.collider is RigidBody3D): return
+	var rb := h.collider as RigidBody3D
+	if rb is VehicleBody3D or rb.is_in_group("vehicles") or rb.freeze or rb.mass > Items.CARRY_MAX_KG: return
+	if (h.position as Vector3).distance_to(global_position + Vector3(0, 1.0, 0)) > 2.6: return
+	carried = rb
+	carry_dist = clamp(from.distance_to(rb.global_position), 1.1, 1.9) if first_person else 1.6
+	add_collision_exception_with(rb)
+	rb.sleeping = false
+	rb.gravity_scale = 0.0
+
+func _carry_drop(throw: bool) -> void:
+	if carried == null: return
+	var rb := carried
+	carried = null
+	if not is_instance_valid(rb): return
+	rb.gravity_scale = 1.0
+	if throw:
+		var dir := -active_camera().global_transform.basis.z
+		rb.linear_velocity = velocity + dir * clamp(260.0 / max(rb.mass, 1.0), 4.0, 16.0) + Vector3(0, 1.5, 0)
+		rb.angular_velocity = Vector3(randf_range(-4, 4), randf_range(-4, 4), randf_range(-4, 4))
+	get_tree().create_timer(0.5).timeout.connect(func():
+		if is_instance_valid(rb): remove_collision_exception_with(rb))
+
+func _carry_tick(dt: float) -> void:
+	if carried == null: return
+	if not is_instance_valid(carried) or vehicle or dead:
+		carried = null
+		return
+	var cam := active_camera()
+	var eye: Vector3 = head.global_position
+	var target := eye - cam.global_transform.basis.z * carry_dist + Vector3(0, -0.25, 0)
+	var err := target - carried.global_position
+	if err.length() > 2.5:
+		_carry_drop(false)           # snagged on something
+		return
+	carried.linear_velocity = err * 14.0 + velocity * 0.5
+	carried.angular_velocity = carried.angular_velocity.lerp(Vector3.ZERO, clamp(dt * 8.0, 0.0, 1.0))
 
 # ---------------------------------------------------------------- getting hurt
 ## Bullets (Gun) call this with damage per body part

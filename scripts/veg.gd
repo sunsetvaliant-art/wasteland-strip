@@ -10,7 +10,7 @@ const MPX := 10.0
 var TREE_R := 750.0
 var UNDER_R := 110.0
 var GRASS_R := 55.0
-var SCAN_R := 26.0             # scanned grass clumps out to here, the lighter procedural blades beyond
+var SCAN_R := 10.0             # real grass_medium_01 clumps out to here, cards of them beyond
 
 # key, groups it grows in (weight) — from VEG_DEF
 const DEF := {
@@ -30,12 +30,16 @@ var mask2: Image
 var roadmask: Image       # 5 m clearance from the nearest road edge: (m + 10) x 10
 var meshes := {}
 var groups := {}        # group -> [[key, weight], ...]
-var grass_mesh: ArrayMesh
 var scan_meshes: Array = []     # photogrammetry grass and weed clumps, one mesh per variant
+var near_mats: Array = []
+var card_mesh: ArrayMesh        # beyond the real clumps: crossed cards showing pictures of them
+var card_mat: ShaderMaterial
+var cards_ready := false
 var layers := {}        # name -> {cell, radius, cells: {}}
 var colliders: Array = []
 
 var density := 1.0
+var cam_last := Vector3.ZERO
 
 ## Live from the settings menu. A density change regrows the scrub and grass.
 func set_ranges(tree_r: float, grass_r: float, dens: float) -> void:
@@ -47,8 +51,9 @@ func set_ranges(tree_r: float, grass_r: float, dens: float) -> void:
 	layers.tree.r = TREE_R
 	layers.small.r = UNDER_R
 	layers.grass.r = GRASS_R
-	SCAN_R = clamp(grass_r * 0.4, 10.0, 30.0)
+	SCAN_R = clamp(grass_r * 0.22, 7.0, 14.0)
 	if layers.has("scan"): layers.scan.r = SCAN_R
+	_apply_hand_over()
 	if abs(dens - density) > 0.01:
 		density = dens
 		for n in ["small", "grass", "scan"]:
@@ -68,21 +73,22 @@ func setup(t: Terrain3D) -> void:
 			if not groups.has(g):
 				groups[g] = []
 			groups[g].append([k, DEF[k][g]])
-	grass_mesh = _make_grass()
 	_load_scans()
 	layers = {
 		"tree": {"cell": 256.0, "r": TREE_R, "cells": {}},
 		"small": {"cell": 64.0, "r": UNDER_R, "cells": {}},
-		"grass": {"cell": 32.0, "r": GRASS_R, "cells": {}},
+		"grass": {"cell": 16.0, "r": GRASS_R, "cells": {}},
 	}
 	if scan_meshes.size():
-		layers["scan"] = {"cell": 12.0, "r": SCAN_R, "cells": {}}
+		layers["scan"] = {"cell": 8.0, "r": SCAN_R, "cells": {}}
+		_make_cards()
+	_apply_hand_over()
 
 ## Pull every clump out of the Poly Haven grass sets (they come as a scene of variants), bake each one's transform
 ## into its own mesh, and give it the wind / translucency shader with its own photo textures.
 func _load_scans() -> void:
 	# grass sets are a scene of separate clumps; the weeds are one plant made of pieces (merge them)
-	var sets := {"grass_medium_02": [1.0, false], "grass_medium_01": [1.0, false], "weed_plant_02": [0.08, true], "dandelion_01": [0.06, true]}
+	var sets := {"grass_medium_01": [1.0, false], "weed_plant_02": [0.05, true], "dandelion_01": [0.04, true]}
 	for id in sets:
 		var path := "res://assets/ph/grass/%s/%s.gltf" % [id, id]
 		if not ResourceLoader.exists(path):
@@ -138,7 +144,10 @@ func _load_scans() -> void:
 					sm.set_shader_parameter("rough_tex", src.roughness_texture)
 				sm.set_shader_parameter("height", max(hi.y - lo.y, 0.05))
 				out.surface_set_material(out.get_surface_count() - 1, sm)
-			scan_meshes.append({"mesh": out, "w": float(sets[id][0]) / (1.0 if sets[id][1] else 1.0), "h": hi.y - lo.y, "weed": sets[id][1]})
+			var nf := 0
+			for sf in surfs: nf += (sf[0][Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3 if sf[0][Mesh.ARRAY_INDEX] != null else (sf[0][Mesh.ARRAY_VERTEX] as PackedVector3Array).size() / 3
+			scan_meshes.append({"mesh": out, "w": float(sets[id][0]), "h": hi.y - lo.y, "weed": sets[id][1], "faces": nf})
+			for si in out.get_surface_count(): near_mats.append(out.surface_get_material(si))
 		root.free()
 
 func sample(x: float, z: float) -> Color:
@@ -178,7 +187,9 @@ func _pick(rng: RandomNumberGenerator, g: String) -> String:
 	return L[0][0]
 
 func update(cam_pos: Vector3, budget := 3) -> void:
+	cam_last = cam_pos
 	for name in layers:
+		if name == "grass" and not cards_ready: continue
 		var L: Dictionary = layers[name]
 		var cs: float = L.cell
 		var r: float = L.r
@@ -216,7 +227,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 	var x0 := key.x * cs
 	var z0 := key.y * cs
 	var per := {}     # key -> Array[Transform3D]
-	var step: float = {"tree": 8.0, "small": 2.6, "grass": 0.9, "scan": 0.6}[layer]
+	var step: float = {"tree": 8.0, "small": 2.6, "grass": 0.42, "scan": 0.34}[layer]
 	var nn := int(cs / step)
 	for i in nn:
 		for j in nn:
@@ -253,10 +264,11 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 					else: continue
 					sc = rng.randf_range(0.7, 1.3)
 				"grass":
-					var pg := (1.0 - m.r * 0.6) * (1.0 - m.g) * (1.0 - m.b) * 0.85
+					# cards: pictures of the grass_medium_01 clumps, dense and cheap
+					var pg := (1.0 - m.r * 0.6) * (1.0 - m.g) * (1.0 - m.b) * 0.9
 					if rng.randf() > pg * density: continue
-					kind = "_grass"
-					sc = rng.randf_range(0.7, 1.3) * (1.0 + m2.g * 1.2 + (1.0 - m2.r) * 0.4)   # long and rank where nobody mows
+					kind = "_card"
+					sc = rng.randf_range(0.7, 1.25) * (1.0 + m2.g * 0.7 + (1.0 - m2.r) * 0.35)
 				"scan":
 					var pg := (1.0 - m.r * 0.5) * (1.0 - m.g) * (1.0 - m.b * 0.8) * 0.9
 					if rng.randf() > pg * density: continue
@@ -296,7 +308,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 		if kind.begins_with("_scan"):
 			mm.mesh = scan_meshes[int(kind.substr(5))].mesh
 		else:
-			mm.mesh = grass_mesh if kind == "_grass" else meshes[kind]
+			mm.mesh = card_mesh if kind == "_card" else meshes[kind]
 		var xs: Array = per[kind]
 		mm.instance_count = xs.size()
 		for k in xs.size():
@@ -329,41 +341,89 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 	add_child(node)
 	return node
 
-func _make_grass() -> ArrayMesh:
-	# one clump: 14 curved blades, darker at the root
+func _apply_hand_over() -> void:
+	if OS.get_environment("GRASS_NOHIDE") != "": return
+	for m in near_mats: (m as ShaderMaterial).set_shader_parameter("far_hide", SCAN_R)
+	if card_mat:
+		card_mat.set_shader_parameter("near_hide", SCAN_R if layers.has("scan") else 0.0)
+		card_mat.set_shader_parameter("far_hide", GRASS_R)
+
+## Photograph four of the fuller grass_medium_01 clumps side by side (flat ambient light, so the scene lights the
+## cards later), then make the crossed-card mesh that shows them. Takes a couple of frames; the card layer waits.
+func _make_cards() -> void:
+	var picks: Array = []
+	for i in scan_meshes.size():
+		if not scan_meshes[i].weed and scan_meshes[i].faces >= 600: picks.append(i)
+	if picks.is_empty():
+		return
+	while picks.size() < 4: picks.append(picks[picks.size() % picks.size()])
+	picks = picks.slice(0, 4)
+	var sv := SubViewport.new()
+	sv.size = Vector2i(1024, 256)
+	sv.transparent_bg = true
+	sv.own_world_3d = true
+	sv.msaa_3d = Viewport.MSAA_4X
+	sv.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(sv)
+	var we := WorldEnvironment.new()
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(1, 1, 1)
+	env.ambient_light_energy = 1.0
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	we.environment = env
+	sv.add_child(we)
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	cam.size = 1.0
+	cam.position = Vector3(2.0, 0.5, 5.0)
+	sv.add_child(cam)
+	cam.current = true
+	for f in 4:
+		var sm: Dictionary = scan_meshes[picks[f]]
+		var mesh: ArrayMesh = sm.mesh.duplicate()
+		for si in mesh.get_surface_count():
+			var mt: ShaderMaterial = mesh.surface_get_material(si).duplicate()
+			mt.set_shader_parameter("wind", 0.0)
+			mt.set_shader_parameter("dry", Color(1, 1, 1))
+			mesh.surface_set_material(si, mt)
+		var aabb := mesh.get_aabb()
+		var fit: float = 0.94 / max(aabb.size.y, max(aabb.size.x, aabb.size.z) * 0.6)
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.scale = Vector3.ONE * fit
+		mi.position = Vector3(0.5 + f, -aabb.position.y * fit + 0.02, 0)
+		sv.add_child(mi)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img := sv.get_texture().get_image()
+	sv.queue_free()
+	if img == null or img.is_empty():
+		return
+	img.convert(Image.FORMAT_RGBA8)
+	img.fix_alpha_edges()
+	img.generate_mipmaps()
+	card_mat = ShaderMaterial.new()
+	card_mat.shader = load("res://shaders/grass_card.gdshader")
+	card_mat.set_shader_parameter("atlas", ImageTexture.create_from_image(img))
+	# two crossed quads, 0.6 m tall, frame chosen per clump in the shader
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	for b in 14:
-		var a := rng.randf() * TAU
-		var off := Vector3(cos(a), 0, sin(a)) * rng.randf() * 0.28
-		var lean := Vector3(rng.randf() - 0.5, 0, rng.randf() - 0.5) * 0.5
-		var h := rng.randf_range(0.35, 0.8)
-		var w := rng.randf_range(0.025, 0.045)
-		var side := Vector3(-sin(a), 0, cos(a)) * w
-		var segs := 4
-		var prev_l := off - side
-		var prev_r := off + side
-		for s in range(1, segs + 1):
-			var t := float(s) / segs
-			var c := off + Vector3(0, h * t, 0) + lean * t * t
-			var ww := 1.0 - t * 0.95
-			var l := c - side * ww
-			var r := c + side * ww
-			var c0 := Color(0.16, 0.24, 0.07).lerp(Color(0.42, 0.55, 0.18), t - 1.0 / segs)
-			var c1 := Color(0.16, 0.24, 0.07).lerp(Color(0.42, 0.55, 0.18), t)
-			for v in [[prev_l, c0, t - 1.0 / segs], [prev_r, c0, t - 1.0 / segs], [r, c1, t], [prev_l, c0, t - 1.0 / segs], [r, c1, t], [l, c1, t]]:
-				st.set_color(v[1])
-				st.set_uv(Vector2(0, v[2]))
-				st.set_normal(Vector3.UP)
-				st.add_vertex(v[0])
-			prev_l = l
-			prev_r = r
-	var m := ShaderMaterial.new()
-	m.shader = load("res://shaders/grass.gdshader")
-	st.set_material(m)
-	return st.commit()
+	for a in [0.0, PI * 0.5, PI * 0.25 + PI * 0.5]:
+		var d := Vector3(cos(a), 0, sin(a)) * 0.3
+		var n := Vector3(-d.z, 0, d.x).normalized()
+		var q := [[-d, Vector2(0, 1)], [d, Vector2(1, 1)], [d + Vector3(0, 0.6, 0), Vector2(1, 0)], [-d + Vector3(0, 0.6, 0), Vector2(0, 0)]]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			st.set_normal(n)
+			st.set_uv(q[idx][1])
+			st.add_vertex(q[idx][0])
+	st.set_material(card_mat)
+	card_mesh = st.commit()
+	_apply_hand_over()
+	cards_ready = true
 
 ## After a terrain edit: drop the cells over that ground so they regrow on the new heights
 func refresh_area(c: Vector3, r: float) -> void:

@@ -14,6 +14,8 @@ var look_pitch := 0.0                # + = up
 var hip_yaw := 0.0                   # legs swung toward the direction of travel, chest stays put
 var hunch := 0.0                     # zombie stoop, radians
 var head_tilt := Vector2.ZERO        # zombie head loll (roll, yaw)
+var air := 0.0                       # 0 on the ground .. 1 in the air: knees come up, feet tuck, arms out a little
+const AIR_SIGN := 1.0
 var ik := {}                         # "L"/"R" -> {"target": Node3D, "pole": Vector3 (world dir), "w": float, "rot": Basis (hand basis offset) or null}
 var severed := {}                    # bone index -> true (root of a removed chain)
 var crushed := {}                    # every bone index inside a removed chain
@@ -58,6 +60,8 @@ func _lean(sk: Skeleton3D) -> void:
 		if sb >= 0: _rotate_global(sk, sb, Basis(up, -hip_yaw * 0.55))
 		var cb := _bone("Spine1")
 		if cb >= 0: _rotate_global(sk, cb, Basis(up, -hip_yaw * 0.45))
+	if air > 0.001:
+		_air_pose(sk)
 	if abs(look_yaw) < 0.0005 and abs(look_pitch) < 0.0005 and hunch == 0.0 and head_tilt == Vector2.ZERO:
 		return
 	if OS.get_environment("NOCHAIN") != "":
@@ -76,6 +80,22 @@ func _lean(sk: Skeleton3D) -> void:
 		if e[0] == "Head" and head_tilt != Vector2.ZERO:
 			q = q * Basis(Vector3(0, 0, 1), head_tilt.x) * Basis(up, head_tilt.y)
 		_rotate_global(sk, b, q)
+
+## In the air: thighs come forward, knees bend so the feet tuck up behind, one leg a bit more than the other
+## (a jump / falling pose instead of walking on nothing). Body faces +Z, so the hinge axis is X.
+func _air_pose(sk: Skeleton3D) -> void:
+	var hinge := Vector3(1, 0, 0)
+	for e in [["Left", 1.0], ["Right", 0.65]]:
+		var th := _bone(e[0] + "UpLeg")
+		var sh := _bone(e[0] + "Leg")
+		var ft := _bone(e[0] + "Foot")
+		var k: float = air * float(e[1])
+		if th >= 0: _rotate_global(sk, th, Basis(hinge, -1.0 * k * AIR_SIGN))
+		if sh >= 0: _rotate_global(sk, sh, Basis(hinge, 1.55 * k * AIR_SIGN))
+		if ft >= 0: _rotate_global(sk, ft, Basis(hinge, -0.35 * k * AIR_SIGN))
+	for e in [["Left", 1.0], ["Right", -1.0]]:
+		var ua := _bone(e[0] + "Arm")
+		if ua >= 0: _rotate_global(sk, ua, Basis(Vector3(0, 0, 1), 0.35 * air * float(e[1])))
 
 ## Two-bone IK in skeleton space: shoulder (Arm) - elbow (ForeArm) - wrist (Hand). Elbow bends towards the pole.
 func _arm_ik(sk: Skeleton3D, side: String, s: Dictionary) -> void:
