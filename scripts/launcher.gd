@@ -17,6 +17,7 @@ var dir := ""
 var current := {}
 
 func _ready() -> void:
+	InputSetup.ensure()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	dir = OS.get_executable_path().get_base_dir().path_join("patches")
 	if (OS.has_feature("editor") and OS.get_environment("WASTELAND_FORCE_UPDATE") == "") or not _writable(dir):

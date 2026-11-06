@@ -25,6 +25,7 @@ var camps: ScavCamps
 var zombies: ZombieDirector
 
 func _ready() -> void:
+	InputSetup.ensure()
 	_build_environment()
 	_build_terrain()
 	_build_water()

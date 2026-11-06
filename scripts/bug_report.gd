@@ -33,6 +33,8 @@ func setup(m) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_ui()
 	panel.visible = false
+	if OS.get_environment("WASTELAND_TEST_F9") != "":
+		_self_test()
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("bug_report"):
@@ -69,6 +71,16 @@ func _capture() -> void:
 	token_row.visible = false
 	panel.visible = true
 	notes.grab_focus()
+
+## Packaged-build check: press a real F9 and report whether the form came up
+func _self_test() -> void:
+	await get_tree().create_timer(2.0).timeout
+	var ev := InputEventKey.new()
+	ev.physical_keycode = KEY_F9
+	ev.pressed = true
+	Input.parse_input_event(ev)
+	await get_tree().create_timer(1.0).timeout
+	print("F9TEST action=%s fire=%s reload=%s panel=%s paused=%s" % [InputMap.has_action("bug_report"), InputMap.has_action("fire"), InputMap.has_action("reload"), panel.visible, get_tree().paused])
 
 func _close() -> void:
 	panel.visible = false
