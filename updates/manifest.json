@@ -81,6 +81,13 @@
    "date": "2026-11-06",
    "notes": "F9 bug report box now sits in the middle of the screen, so the Send button and token box are visible.",
    "size": 14232
+  },
+  {
+   "file": "patch_0.2.0_0010.pck",
+   "version": "0.2.10",
+   "date": "2026-11-06",
+   "notes": "Inventory (I): Unturned-style grid with shaped items, worn clothes and bags add pockets, guns load from carried rounds; F opens crates, ammo boxes and other props; MMB carry, RMB throw; B bandage. HUD health and ammo fixed. New PBR ground at real scale, BlendKit lawn, Poly Haven grass clumps everywhere. Water ripple grid fixed. Iron sights measured from each gun (no more rifles in your face), revolver turned the right way round. Mid-air leg pose. Zombies quieter, no more floor-eating attack. Tyres: grip by ground type, slide falloff, tyre pressure, deflection, smoke, rubber marks, screech, dirt spray; Globe mags in the garage. Cars no longer get stuck on corpses.",
+   "size": 26119552
   }
  ],
  "full": {
