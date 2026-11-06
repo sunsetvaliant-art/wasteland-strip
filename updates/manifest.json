@@ -37,6 +37,22 @@
    "date": "2026-11-06",
    "notes": "Updater fix: no time limit on big downloads.",
    "size": 167904
+  },
+  {
+   "file": "patch_0.2.0_0005.pck",
+   "version": "0.2.5",
+   "date": "2026-11-06",
+   "notes": "Big one. Simulated driving: real engine torque curves, auto and manual boxes, clutch, diffs (open / LSD / locked), raycast suspension with springs, dampers, bump stops and sway bars, Pacejka tyres; you can watch the shocks, springs, leaf packs, wishbones and sway bars work under the car. Engine sounds synthesised for the 202, 22R, 351 Cleveland and Jeep 4.0, with crackle on lift-off and the starter. Zombies (slow, arms out, they hit hard) and scavs (patrol, suspicion, whistle alarm, they shoot back). Ragdolls, limbs and heads come off, blood, run them over. Six period guns (Lee-Enfield, SLR, Colt Python, side-by-side, sawn-off, 870 pump) held in your hands, aim down the sights with right mouse. Garage (Esc menu, creative): build a vehicle from any cab on a ladder chassis, pick engine, box, axles, springs, travel, damping, tyres, add a third axle, save and drive it. Scanned grass up close. Credits page.",
+   "size": 598559648,
+   "parts": [
+    "patch_0.2.0_0005.pck.p00",
+    "patch_0.2.0_0005.pck.p01",
+    "patch_0.2.0_0005.pck.p02",
+    "patch_0.2.0_0005.pck.p03",
+    "patch_0.2.0_0005.pck.p04",
+    "patch_0.2.0_0005.pck.p05",
+    "patch_0.2.0_0005.pck.p06"
+   ]
   }
  ],
  "full": {
