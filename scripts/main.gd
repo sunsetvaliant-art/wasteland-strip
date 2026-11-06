@@ -26,16 +26,23 @@ var garage: Garage
 var camps: ScavCamps
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
+var road_pilot: RoadPilot
 
 func _ready() -> void:
 	InputSetup.ensure()
 	_build_environment()
 	_build_terrain()
-	_build_water()
+	if OS.get_environment("WATER_OFF") == "":
+		_build_water()
 	roads = Roads.new()
 	roads.name = "Roads"
 	add_child(roads)
 	roads.setup(self)
+	if OS.get_environment("NO_ROAD_PILOT") == "":
+		road_pilot = RoadPilot.new()
+		road_pilot.name = "RoadPilot"
+		add_child(road_pilot)
+		road_pilot.setup()
 	veg = Vegetation.new()
 	veg.name = "Vegetation"
 	add_child(veg)
@@ -208,7 +215,11 @@ func _build_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	env.sky = sky
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_sky_contribution = 1.0
+	# Half the fill light from the sky, half a neutral grey: all-sky ambient tinted anything grey or pale (roads,
+	# concrete, dry ground) sky blue
+	env.ambient_light_sky_contribution = 0.5
+	env.ambient_light_color = Color(0.58, 0.6, 0.58)
+	env.ambient_light_energy = 1.0
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.0
@@ -245,7 +256,7 @@ func _build_environment() -> void:
 	add_child(we)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, -35, 0)
-	sun.light_energy = 1.25
+	sun.light_energy = 1.35
 	sun.light_color = Color(1.0, 0.96, 0.9)
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
@@ -285,6 +296,8 @@ func _build_terrain() -> void:
 	# Forge terrain edits are saved to user://terrain; use them when they exist
 	terrain.data_directory = "user://terrain" if FileAccess.file_exists("user://terrain/terrain3d_00_00.res") else "res://terrain"
 	add_child(terrain)
+	if OS.get_environment("TERRAIN_DEBUG") != "":
+		mat.set("show_" + OS.get_environment("TERRAIN_DEBUG"), true)
 	mat.set_shader_param("blend_sharpness", 0.75)
 	mat.set_shader_param("dual_scale_texture", 8)
 	mat.set_shader_param("dual_scale_reduction", 0.3)

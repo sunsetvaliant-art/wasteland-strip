@@ -5,11 +5,11 @@ extends RefCounted
 ## grid: the pockets or bag it brings with it (w, h) when worn.  model: what it looks like on the ground.
 
 const DEFS := {
-	# guns: rifles and long guns 3 x 1, handguns 2 x 1, never stack. data.ammo = rounds in it
-	"gun_enfield": {"name": "Lee-Enfield .303", "w": 3, "h": 1, "stack": 1, "kind": "gun", "gun": "enfield", "slot": "primary"},
-	"gun_slr": {"name": "L1A1 SLR", "w": 3, "h": 1, "stack": 1, "kind": "gun", "gun": "slr", "slot": "primary"},
+	# guns: as long as they really are (about 29 cm a cell), one high, never stack. data.ammo = rounds in it
+	"gun_enfield": {"name": "Lee-Enfield .303", "w": 5, "h": 1, "stack": 1, "kind": "gun", "gun": "enfield", "slot": "primary"},
+	"gun_slr": {"name": "L1A1 SLR", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "slr", "slot": "primary"},
 	"gun_rem870": {"name": "Remington 870", "w": 3, "h": 1, "stack": 1, "kind": "gun", "gun": "rem870", "slot": "primary"},
-	"gun_dbshotgun": {"name": "Side-by-side 12g", "w": 3, "h": 1, "stack": 1, "kind": "gun", "gun": "dbshotgun", "slot": "primary"},
+	"gun_dbshotgun": {"name": "Side-by-side 12g", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "dbshotgun", "slot": "primary"},
 	"gun_sawnoff": {"name": "Sawn-off 12g", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "sawnoff", "slot": "secondary"},
 	"gun_python": {"name": "Colt Python .357", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "python", "slot": "secondary"},
 	# rounds, loose: one cell holds a box's worth

@@ -154,5 +154,23 @@
   "author": "Poly Haven",
   "license": "CC0",
   "url": "https://polyhaven.com"
+ },
+ "engine_sim": {
+  "title": "Engine sounds recorded from Engine Simulator (Chev 454, BMW M52, 2JZ, Honda B18 models)",
+  "author": "Ange Yaghi (AngeTheGreat)",
+  "license": "MIT",
+  "url": "https://github.com/ange-yaghi/engine-sim"
+ },
+ "road_generator": {
+  "title": "Road Generator addon",
+  "author": "TheDuckCow and contributors",
+  "license": "MIT",
+  "url": "https://github.com/TheDuckCow/godot-road-generator"
+ },
+ "osm": {
+  "title": "Road layout for the pilot area",
+  "author": "OpenStreetMap contributors",
+  "license": "ODbL",
+  "url": "https://www.openstreetmap.org/copyright"
  }
 }

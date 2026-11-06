@@ -141,12 +141,12 @@ func _layout() -> void:
 	# equipment column
 	var ey := top + 30.0
 	for sl in PlayerInv.SLOTS:
-		var w := C * 3.0 if sl in ["primary", "secondary"] else C * 2.0
+		var w := C * 5.0 if sl == "primary" else (C * 3.0 if sl == "secondary" else C * 2.0)
 		var h := C * 1.2 if sl in ["primary", "secondary"] else C * 1.6
 		regions.append({"type": "slot", "slot": sl, "rect": Rect2(x0, ey, w, h)})
 		ey += h + 18.0
 	# your grids, flowed down and across
-	var gx := x0 + C * 3.0 + 40.0
+	var gx := x0 + C * 5.0 + 40.0
 	var gy := top + 30.0
 	var colw := 0.0
 	for pair in inv.grids():
@@ -436,28 +436,32 @@ func _draw_grid(r: Dictionary) -> void:
 
 func _draw_item(s: Dictionary, rect: Rect2, alpha: float, ok: bool, fit := false) -> void:
 	var d := Items.def(s.id)
+	var ic := ItemIcons.get_icon(s.id)
 	var col: Color = Items.KIND_COL.get(d.kind, Color.GRAY)
+	if ic: col = col.darkened(0.45)               # with a picture, the tile is just a faint backing
 	if not ok: col = Color(0.6, 0.1, 0.1)
-	col.a = 0.92 * alpha
+	col.a = (0.55 if ic else 0.92) * alpha
 	var rr := rect.grow(-2.0)
 	root.draw_rect(rr, col)
-	root.draw_rect(rr, Color(1, 1, 1, 0.25 * alpha), false, 1.0)
-	var ic := ItemIcons.get_icon(s.id)
+	root.draw_rect(rr, Color(1, 1, 1, 0.22 * alpha), false, 1.0)
 	if ic:
-		var isz := ic.get_size()
-		var k: float = min(rr.size.x / isz.x, rr.size.y / isz.y) * 0.92
+		# the icon is rendered at the item's exact grid shape, so it fills its cells; turned items draw it turned
 		var turned: bool = s.get("r", false) and not fit
 		if turned:
-			k = min(rr.size.x / isz.y, rr.size.y / isz.x) * 0.92
 			root.draw_set_transform(rr.get_center(), PI * 0.5, Vector2.ONE)
-			root.draw_texture_rect(ic, Rect2(-isz * k * 0.5, isz * k), false, Color(1, 1, 1, alpha))
+			root.draw_texture_rect(ic, Rect2(-Vector2(rr.size.y, rr.size.x) * 0.5, Vector2(rr.size.y, rr.size.x)), false, Color(1, 1, 1, alpha))
 			root.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
+			var isz := ic.get_size()
+			var k: float = min(rr.size.x / isz.x, rr.size.y / isz.y)
 			root.draw_texture_rect(ic, Rect2(rr.get_center() - isz * k * 0.5, isz * k), false, Color(1, 1, 1, alpha))
-	var fs := 11 if rr.size.x < C * 1.5 else 12
-	var nm: String = d.name
-	if rr.size.x < C * 1.5 and nm.length() > 7: nm = nm.substr(0, 6) + "…"
-	_text(rr.position + Vector2(3, fs + 1), nm, fs, Color(1, 1, 1, 0.9 * alpha))
+	else:
+		var fs := 11 if rr.size.x < C * 1.5 else 12
+		var nm: String = d.name
+		if rr.size.x < C * 1.5 and nm.length() > 7: nm = nm.substr(0, 6) + "…"
+		_text(rr.position + Vector2(3, fs + 1), nm, fs, Color(1, 1, 1, 0.9 * alpha))
+	if d.kind == "ammo":
+		_text(rr.position + Vector2(2, 10), {"ammo_303": ".303", "ammo_762": "7.62", "ammo_357": ".357", "ammo_12g": "12g"}.get(s.id, ""), 10, Color(1, 1, 1, 0.95 * alpha))
 	if s.n > 1:
 		_text(rr.end - Vector2(4, 4), "%d" % s.n, 13, Color(1, 0.92, 0.6, alpha), true)
 	if d.kind == "gun":

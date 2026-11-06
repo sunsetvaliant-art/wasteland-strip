@@ -125,50 +125,100 @@ log("dense points", len(D))
 tree = cKDTree(D[:, :2])
 
 # ------------------------------------------------------------------ carve the height map, build the clearance field
-H16 = np.fromfile(f"{GAME}/data/height.r16", "<u2").reshape(T, T)
-OUT = np.empty_like(H16)
-MASK = np.full((T, T), 255, np.uint8)
-xs = X0 + np.arange(T) * SP
-STRIP = 200
-moved = 0
-for y0 in range(0, T, STRIP):
-    y1 = min(T, y0 + STRIP)
-    H = H16[y0:y1].astype(np.float32) / 65535 * HR + HMIN
-    zz = Z0 + np.arange(y0, y1) * SP
-    gx, gz = np.meshgrid(xs, zz)
-    pts = np.column_stack([gx.ravel(), gz.ravel()])
-    dist, k = tree.query(pts, distance_upper_bound=40.0)
-    hit = np.isfinite(dist)
-    Hf = H.ravel().copy()
-    if hit.any():
-        Q = D[k[hit]]; dd = dist[hit]; p = pts[hit]
-        nx, nz = Q[:, 9], -Q[:, 8]                       # n = (tz, -tx), the browser build's right-hand normal
-        side = np.where((p[:, 0] - Q[:, 0]) * nx + (p[:, 1] - Q[:, 1]) * nz < 0, -1.0, 1.0)
-        hs = Q[:, 10]; inner = Q[:, 11]; bridge = Q[:, 12] > 0.5
-        e = np.where(side < 0, Q[:, 4], Q[:, 6])
-        e = np.maximum(e, inner + 4.0)
-        sn = np.clip(dd / hs, 0, 1) * side
-        y_seal = Q[:, 2] - 0.025 * hs * np.abs(sn) + sn * Q[:, 3] * hs
-        y_edge = Q[:, 2] - 0.025 * hs + side * Q[:, 3] * hs
-        target = np.where(dd <= hs, y_seal, y_edge) - SINK
-        t = np.clip((dd - inner) / np.maximum(e - inner, 0.1), 0, 1)
-        w = np.where(dd <= inner, 1.0, 1.0 - (t * t * (3 - 2 * t)))
-        w[bridge] = 0.0                                  # a bridge flies over what's under it
-        old = Hf[hit]
-        new = old * (1 - w) + target * w
-        moved += int((np.abs(new - old) > 0.05).sum())
-        Hf[hit] = new
-        clear = dd - (inner - 0.5)
-        mv = np.clip((clear + 10.0) * 10.0, 0, 255).astype(np.uint8)
-        MASK.ravel()[y0 * T:y1 * T][np.flatnonzero(hit)] = mv
-    OUT[y0:y1] = np.clip(np.round((Hf.reshape(H.shape) - HMIN) / HR * 65535), 0, 65535).astype(np.uint16)
-    sys.stdout.write(f"\rcarve {y1}/{T}"); sys.stdout.flush()
-print()
-OUT.astype("<u2").tofile(f"{GAME}/data/height_roads.r16")
-from PIL import Image
-Image.fromarray(MASK, "L").save(f"{GAME}/assets/roadmask.png", optimize=True)
-log("cells moved", moved)
-del H16, OUT, MASK, tree, D
+MESH_ONLY = os.environ.get("MESH_ONLY", "") != ""      # just rebuild the road meshes (the terrain carve is unchanged)
+def _carve():
+    global H16, OUT, MASK
+    H16 = np.fromfile(f"{GAME}/data/height.r16", "<u2").reshape(T, T)
+    OUT = np.empty_like(H16)
+    MASK = np.full((T, T), 255, np.uint8)
+    xs = X0 + np.arange(T) * SP
+    STRIP = 200
+    moved = 0
+    for y0 in range(0, T, STRIP):
+        y1 = min(T, y0 + STRIP)
+        H = H16[y0:y1].astype(np.float32) / 65535 * HR + HMIN
+        zz = Z0 + np.arange(y0, y1) * SP
+        gx, gz = np.meshgrid(xs, zz)
+        pts = np.column_stack([gx.ravel(), gz.ravel()])
+        dist, k = tree.query(pts, distance_upper_bound=40.0)
+        hit = np.isfinite(dist)
+        Hf = H.ravel().copy()
+        if hit.any():
+            Q = D[k[hit]]; dd = dist[hit]; p = pts[hit]
+            nx, nz = Q[:, 9], -Q[:, 8]                       # n = (tz, -tx), the browser build's right-hand normal
+            side = np.where((p[:, 0] - Q[:, 0]) * nx + (p[:, 1] - Q[:, 1]) * nz < 0, -1.0, 1.0)
+            hs = Q[:, 10]; inner = Q[:, 11]; bridge = Q[:, 12] > 0.5
+            e = np.where(side < 0, Q[:, 4], Q[:, 6])
+            e = np.maximum(e, inner + 4.0)
+            sn = np.clip(dd / hs, 0, 1) * side
+            y_seal = Q[:, 2] - 0.025 * hs * np.abs(sn) + sn * Q[:, 3] * hs
+            y_edge = Q[:, 2] - 0.025 * hs + side * Q[:, 3] * hs
+            target = np.where(dd <= hs, y_seal, y_edge) - SINK
+            t = np.clip((dd - inner) / np.maximum(e - inner, 0.1), 0, 1)
+            w = np.where(dd <= inner, 1.0, 1.0 - (t * t * (3 - 2 * t)))
+            w[bridge] = 0.0                                  # a bridge flies over what's under it
+            old = Hf[hit]
+            new = old * (1 - w) + target * w
+            moved += int((np.abs(new - old) > 0.05).sum())
+            Hf[hit] = new
+            clear = dd - (inner - 0.5)
+            mv = np.clip((clear + 10.0) * 10.0, 0, 255).astype(np.uint8)
+            MASK.ravel()[y0 * T:y1 * T][np.flatnonzero(hit)] = mv
+        OUT[y0:y1] = np.clip(np.round((Hf.reshape(H.shape) - HMIN) / HR * 65535), 0, 65535).astype(np.uint16)
+        sys.stdout.write(f"\rcarve {y1}/{T}"); sys.stdout.flush()
+    print()
+    OUT.astype("<u2").tofile(f"{GAME}/data/height_roads.r16")
+    from PIL import Image
+    Image.fromarray(MASK, "L").save(f"{GAME}/assets/roadmask.png", optimize=True)
+    log("cells moved", moved)
+    del H16, OUT, MASK
+
+
+if not MESH_ONLY:
+    _carve()
+
+# ------------------------------------------------------------------ the Road Generator pilot's roads replace these stretches
+CUT = os.environ.get("PILOT_CUT", f"{GAME}/assets/roads/pilot_cut.json")
+if os.path.exists(CUT):
+    segs = []
+    for c in json.load(open(CUT)):
+        P = np.array(c["pts"], float)
+        if len(P) == 1:
+            P = np.vstack([P, P])
+        for i in range(len(P) - 1):
+            segs.append((P[i, 0], P[i, 1], P[i + 1, 0], P[i + 1, 1], c["r"]))
+    S = np.array(segs)
+    def inside(x, z):
+        ax, az, bx, bz, rr = S.T
+        dx, dz = bx - ax, bz - az
+        L2 = dx * dx + dz * dz + 1e-9
+        t = np.clip(((x - ax) * dx + (z - az) * dz) / L2, 0, 1)
+        return bool((((ax + dx * t - x) ** 2 + (az + dz * t - z) ** 2) < rr * rr).any())
+    pieces = []
+    cut_pts = 0
+    for r in roads:
+        P = r["P"]
+        keep = np.array([not inside(P[i, 0], P[i, 1]) for i in range(len(P))])
+        cut_pts += int((~keep).sum())
+        i = 0
+        while i < len(P):
+            if not keep[i]:
+                i += 1; continue
+            j = i
+            while j < len(P) and keep[j]: j += 1
+            if j - i >= 2:
+                q = dict(r)
+                for k in ("P", "along", "tx", "tz", "curve", "endf"):
+                    q[k] = r[k][i:j]
+                # markings fade out where a cut end meets the new road
+                e = q["endf"].copy(); dd = q["along"] - q["along"][0]
+                if i > 0: e = np.minimum(e, np.minimum(1.0, dd / 14.0))
+                if j < len(P): e = np.minimum(e, np.minimum(1.0, (dd[-1] - dd) / 14.0))
+                q["endf"] = e
+                pieces.append(q)
+            i = j
+    log("pilot cut: points removed", cut_pts, "roads", len(roads), "->", len(pieces))
+    roads = pieces
 
 # ------------------------------------------------------------------ road meshes
 def section(r):

@@ -100,6 +100,15 @@ func _ready():
 				p._select(int(a[6]) if a.size() > 6 else 0)
 			if a.size() > 7 and a[7] == "1": Input.action_press("aim")
 			for _i in 40: await get_tree().physics_frame
+		elif mode == "cam":
+			# free camera: x z are the camera, a[4] a[5] the point to look at (y from the ground)
+			var fc := Camera3D.new()
+			main.add_child(fc)
+			var tx := float(a[4]); var tz := float(a[5])
+			var ty: float = main.height_at(tx, tz)
+			fc.look_at_from_position(Vector3(float(a[2]), ty + float(a[6]), float(a[3])), Vector3(tx, ty, tz), Vector3.UP)
+			fc.current = true
+			for _i in 20: await get_tree().process_frame
 		elif mode == "inv":
 			main.inv_ui.show_with(null)
 			for _i in 10: await get_tree().process_frame
@@ -231,5 +240,17 @@ func _ready():
 							break
 				print("VEG ", ln, " cells ", main.veg.layers[ln].cells.size(), " inst ", cnt, " r ", main.veg.layers[ln].r)
 		print("WHEELS ", main.car.wheels.map(func(w): return [w.kind, snappedf(w.mu, 0.01), snappedf(w.slipv, 0.1), snappedf(w.defl, 0.001)]))
+		if main.road_pilot and main.road_pilot.container:
+			var ms: Array = main.road_pilot.container.find_children("*", "MeshInstance3D", true, false)
+			var cam4 := get_viewport().get_camera_3d()
+			var near_d := 1e9
+			var near_aabb := AABB()
+			for mmi in ms:
+				var ab: AABB = (mmi as MeshInstance3D).global_transform * (mmi as MeshInstance3D).get_aabb()
+				var dd := ab.get_center().distance_to(cam4.global_position)
+				if dd < near_d:
+					near_d = dd
+					near_aabb = ab
+			print("PILOTDBG meshes ", ms.size(), " vis ", (ms[0] as MeshInstance3D).is_visible_in_tree() if ms.size() else false, " nearest ", near_aabb, " d ", near_d, " cam ", cam4.global_position, " layers ", (ms[0] as MeshInstance3D).layers if ms.size() else 0, " mat ", (ms[0] as MeshInstance3D).get_surface_override_material(0) if ms.size() else null)
 		print("SHOT ", nm, " fps ", Engine.get_frames_per_second(), " car ", main.car.global_position, " v ", main.car.speed_kmh())
 	get_tree().quit()
