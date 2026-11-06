@@ -60,6 +60,13 @@
    "date": "2026-11-06",
    "notes": "Animation overhaul: every character now shares one humanoid skeleton, so 50+ clips play on any body. New rifle animations (idle, walk, run, crouch, reload), body turns to follow where you look after ~70 degrees (35 with a gun up), head and spine look where the camera looks, legs swing toward the way you're walking. Hands properly on the gun in first and third person (right hand on the grip, left under the fore-end). Scopes on the Lee-Enfield (3.5x) and SLR (4x): aim to get a magnified scope window. Five new zombie models with real zombie walks, idles, attacks, bites and a scream when they spot you. 14 scav camps across the map (fire, shelters, barricades, a wreck, loot, a sentry on the gate). Zombies now wander in along the roads, out of sight, instead of fixed spawns.",
    "size": 84974024
+  },
+  {
+   "file": "patch_0.2.0_0007.pck",
+   "version": "0.2.7",
+   "date": "2026-11-06",
+   "notes": "F9 bug report: grabs a screenshot and the whole game state (where you are, what you're driving or holding, nearby zombies and scavs, settings, frame rate, recent log), pauses, and lets you type what happened. Save it as a zip, or Send it straight to a private GitHub repo for Claude to read.",
+   "size": 158028
   }
  ],
  "full": {
