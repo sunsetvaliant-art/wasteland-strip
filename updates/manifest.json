@@ -67,6 +67,13 @@
    "date": "2026-11-06",
    "notes": "F9 bug report: grabs a screenshot and the whole game state (where you are, what you're driving or holding, nearby zombies and scavs, settings, frame rate, recent log), pauses, and lets you type what happened. Save it as a zip, or Send it straight to a private GitHub repo for Claude to read.",
    "size": 158028
+  },
+  {
+   "file": "patch_0.2.0_0008.pck",
+   "version": "0.2.8",
+   "date": "2026-11-06",
+   "notes": "Fix: keys added in updates (F9 bug report, fire, aim, reload, weapon slots, holster) weren't being registered on installed copies. They are now.",
+   "size": 164912
   }
  ],
  "full": {
