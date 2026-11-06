@@ -248,8 +248,12 @@ func _next_upload(tok: String, repo: String) -> void:
 
 # ---------------------------------------------------------------- the form
 func _build_ui() -> void:
+	# a full-screen centre container, so the form sits in the middle whatever the window size
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(centre)
 	panel = PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
 	panel.custom_minimum_size = Vector2(560, 0)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.07, 0.065, 0.06, 0.96)
@@ -258,7 +262,7 @@ func _build_ui() -> void:
 	sb.set_corner_radius_all(6)
 	sb.set_content_margin_all(16)
 	panel.add_theme_stylebox_override("panel", sb)
-	add_child(panel)
+	centre.add_child(panel)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
 	panel.add_child(v)
@@ -268,7 +272,7 @@ func _build_ui() -> void:
 	t.add_theme_color_override("font_color", Color(0.95, 0.55, 0.2))
 	v.add_child(t)
 	thumb = TextureRect.new()
-	thumb.custom_minimum_size = Vector2(528, 297)
+	thumb.custom_minimum_size = Vector2(528, 240)
 	thumb.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	thumb.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	v.add_child(thumb)
