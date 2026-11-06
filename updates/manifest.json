@@ -88,6 +88,18 @@
    "date": "2026-11-06",
    "notes": "Inventory (I): Unturned-style grid with shaped items, worn clothes and bags add pockets, guns load from carried rounds; F opens crates, ammo boxes and other props; MMB carry, RMB throw; B bandage. HUD health and ammo fixed. New PBR ground at real scale, BlendKit lawn, Poly Haven grass clumps everywhere. Water ripple grid fixed. Iron sights measured from each gun (no more rifles in your face), revolver turned the right way round. Mid-air leg pose. Zombies quieter, no more floor-eating attack. Tyres: grip by ground type, slide falloff, tyre pressure, deflection, smoke, rubber marks, screech, dirt spray; Globe mags in the garage. Cars no longer get stuck on corpses.",
    "size": 26119552
+  },
+  {
+   "file": "patch_0.2.0_0011.pck",
+   "version": "0.2.11",
+   "date": "2026-11-07",
+   "notes": "Roads round the pub and down Tweed Valley Way past the gallery rebuilt with a node road generator from real map data: proper roundabout with a kerbed island, junctions, and the overtaking lane south of the gallery. Inventory items now have pictures that fill their grid shape (rifles long, pistols short). Engine sounds re-recorded from a real engine simulator. Less blue tint on roads and pale ground; matte ground textures.",
+   "size": 193668080,
+   "parts": [
+    "patch_0.2.0_0011.pck.p00",
+    "patch_0.2.0_0011.pck.p01",
+    "patch_0.2.0_0011.pck.p02"
+   ]
   }
  ],
  "full": {
