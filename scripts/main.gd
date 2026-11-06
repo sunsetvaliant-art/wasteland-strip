@@ -68,6 +68,10 @@ func _ready() -> void:
 		for k in Gun.ORDER: player.give_gun(k)
 	else:
 		player.give_gun("python", 18)
+	var bug := BugReport.new()
+	bug.name = "BugReport"
+	add_child(bug)
+	bug.setup(self)
 	camps = ScavCamps.new()
 	camps.name = "ScavCamps"
 	add_child(camps)
@@ -328,7 +332,7 @@ func _build_hud() -> void:
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · 1-6 / wheel switch · H holster · F pick up\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nF9 bug report · Guns: LMB fire · RMB aim · R reload · 1-6 / wheel switch · H holster · F pick up\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.position = Vector2(14, -72)

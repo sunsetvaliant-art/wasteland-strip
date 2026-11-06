@@ -32,7 +32,7 @@ func _setup_inputs() -> void:
 		"forge": [KEY_O], "forge_menu": [KEY_TAB], "fly_up": [KEY_SPACE], "fly_down": [KEY_CTRL],
 		"rotate": [KEY_E], "delete": [KEY_X], "undo": [KEY_Z],
 		"reload": [KEY_R], "holster": [KEY_H], "slot_1": [KEY_1], "slot_2": [KEY_2], "slot_3": [KEY_3],
-		"slot_4": [KEY_4], "slot_5": [KEY_5], "slot_6": [KEY_6],
+		"slot_4": [KEY_4], "slot_5": [KEY_5], "slot_6": [KEY_6], "bug_report": [KEY_F9],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):
