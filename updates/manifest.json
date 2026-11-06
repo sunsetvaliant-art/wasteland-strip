@@ -94,12 +94,7 @@
    "version": "0.2.11",
    "date": "2026-11-07",
    "notes": "Roads round the pub and down Tweed Valley Way past the gallery rebuilt with a node road generator from real map data: proper roundabout with a kerbed island, junctions, and the overtaking lane south of the gallery. Inventory items now have pictures that fill their grid shape (rifles long, pistols short). Engine sounds re-recorded from a real engine simulator. Less blue tint on roads and pale ground; matte ground textures.",
-   "size": 193668080,
-   "parts": [
-    "patch_0.2.0_0011.pck.p00",
-    "patch_0.2.0_0011.pck.p01",
-    "patch_0.2.0_0011.pck.p02"
-   ]
+   "size": 90139912
   }
  ],
  "full": {
