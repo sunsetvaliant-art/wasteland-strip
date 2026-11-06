@@ -19,6 +19,8 @@ var show_debug := false
 var env: Environment
 var pause_menu: PauseMenu
 var forge: Forge
+var combat_hud: CombatHUD
+var garage: Garage
 
 func _ready() -> void:
 	_build_environment()
@@ -53,12 +55,24 @@ func _ready() -> void:
 	pause_menu.name = "PauseMenu"
 	add_child(pause_menu)
 	pause_menu.setup(self)
+	garage = Garage.new()
+	garage.name = "Garage"
+	add_child(garage)
+	garage.setup(self)
 	Settings.changed.connect(func(): Settings.apply(self))
 	Settings.apply(self)
+	# what you're carrying: the lot in creative, a revolver and a handful of rounds in survival
+	if Settings.creative():
+		for k in Gun.ORDER: player.give_gun(k)
+	else:
+		player.give_gun("python", 18)
+	_default_spawns()
 
-func spawn_vehicle(kind: String, pos: Vector3, yaw := 0.0) -> Car:
+func spawn_vehicle(kind: String, pos: Vector3, yaw := 0.0, design := {}) -> Car:
 	var c := Car.new()
 	c.kind = kind
+	if not design.is_empty():
+		c.design = design.duplicate(true)
 	c.name = kind
 	add_child(c)
 	c.global_position = pos
@@ -90,6 +104,70 @@ func _physics_process(dt: float) -> void:
 		elif near and rb.get_meta("auto_frozen", false):
 			rb.set_meta("auto_frozen", false)
 			rb.freeze = false
+
+# ---------------------------------------------------------------- zombies and scavs
+## If the saved layout has no zombie or scav spawns yet, put a few round the pub (they show and save in the Forge)
+func _default_spawns() -> void:
+	for o in forge.objects:
+		var e: Dictionary = o.get_meta("forge", {})
+		if e.get("type") == "marker" and e.get("key") in ["zombie", "scav"]:
+			return
+	var spots := [["zombie", Vector3(70, 0, 45)], ["zombie", Vector3(-85, 0, 95)], ["zombie", Vector3(130, 0, -70)],
+		["zombie", Vector3(-40, 0, -120)], ["scav", Vector3(210, 0, 140)], ["scav", Vector3(-190, 0, -60)]]
+	for sp in spots:
+		var p: Vector3 = PUB + sp[1]
+		p.y = height_at(p.x, p.z)
+		if p.y < 1.0:
+			continue          # that's in the river
+		forge.spawn({"type": "marker", "key": sp[0], "name": sp[0].capitalize() + " spawn"}, Transform3D(Basis(), p))
+
+## Spawns come alive when you're near and go back to sleep when you leave
+var _npc_t := 0.0
+func _npc_director(dt: float) -> void:
+	_npc_t -= dt
+	if _npc_t > 0.0:
+		return
+	_npc_t = 1.0
+	if forge.active or OS.get_environment("NPC_OFF") != "":
+		return
+	var me: Vector3 = player.vehicle.global_position if player.vehicle else player.global_position
+	for o in forge.objects:
+		if not is_instance_valid(o):
+			continue
+		var e: Dictionary = o.get_meta("forge", {})
+		if e.get("type") != "marker" or not (e.get("key") in ["zombie", "scav"]):
+			continue
+		var d: float = (o as Node3D).global_position.distance_to(me)
+		var live: Array = o.get_meta("npcs", [])
+		live = live.filter(func(n): return is_instance_valid(n))
+		if d < 190.0 and not o.get_meta("spawned", false):
+			o.set_meta("spawned", true)
+			var count := 4 if e.key == "zombie" else 3
+			for i in count:
+				var n := NPC.new()
+				n.kind = e.key
+				var off := Vector3(randf_range(-8, 8), 0, randf_range(-8, 8))
+				var p: Vector3 = (o as Node3D).global_position + off
+				p.y = height_at(p.x, p.z) + 0.1
+				add_child(n)
+				n.global_position = p
+				n.rotation.y = randf() * TAU
+				n.home = p
+				n.goal = p
+				live.append(n)
+		elif d > 300.0 and o.get_meta("spawned", false):
+			for n in live:
+				if not n.dead: n.free_body()
+			live = []
+			o.set_meta("spawned", false)
+		o.set_meta("npcs", live)
+
+## The real ground (roads, bridges, anything solid) under a point, falling back to the heightmap
+func ground_at(x: float, z: float) -> float:
+	var h := height_at(x, z)
+	var q := PhysicsRayQueryParameters3D.create(Vector3(x, h + 60.0, z), Vector3(x, h - 5.0, z), 1)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	return max(h, hit.position.y) if hit else h
 
 func height_at(x: float, z: float) -> float:
 	var h := terrain.data.get_height(Vector3(x, 0, z))
@@ -233,11 +311,14 @@ func _build_hud() -> void:
 	hud.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	hud.add_theme_constant_override("outline_size", 4)
 	cl.add_child(hud)
+	combat_hud = CombatHUD.new()
+	cl.add_child(combat_hud)
+	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · 1-6 / wheel switch · H holster · F pick up\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
-	hint.position = Vector2(14, -52)
+	hint.position = Vector2(14, -72)
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	hint.add_theme_constant_override("outline_size", 4)
@@ -251,6 +332,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		show_debug = not show_debug
 
 func _process(_dt: float) -> void:
+	_npc_director(_dt)
 	var cam := get_viewport().get_camera_3d()
 	if cam:
 		veg.update(cam.global_position)

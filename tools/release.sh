@@ -32,7 +32,16 @@ else
   BASEVER=$(cat ../build/base_version)
   VER="${BASEVER%.*}.$((${BASEVER##*.} + 10#$ID))"
   echo "$VER" > version.txt
-  $G --headless --path . --export-patch "$PRESET" $REPO_DIR/updates/patch_${BASEVER}_$ID.pck --patches ../build/Wasteland.pck 2>&1 | grep -E "^ERROR" || true
+  # diff against the base build AND every patch already out there, so only what's new ships
+  mkdir -p ../build/prev
+  PREV=../build/Wasteland.pck
+  for f in $(cd $REPO_DIR/updates && ls patch_${BASEVER}_*.pck patch_${BASEVER}_*.pck.p00 2>/dev/null | sed 's/\.p00$//' | sort -u); do
+    [ "$f" = "patch_${BASEVER}_$ID.pck" ] && continue
+    if [ -f $REPO_DIR/updates/$f ]; then cp $REPO_DIR/updates/$f ../build/prev/$f; else cat $REPO_DIR/updates/$f.p* > ../build/prev/$f; fi
+    PREV="$PREV,../build/prev/$f"
+  done
+  echo "diffing against: $PREV"
+  $G --headless --path . --export-patch "$PRESET" $REPO_DIR/updates/patch_${BASEVER}_$ID.pck --patches "$PREV" 2>&1 | grep -E "^ERROR" || true
   PF=patch_${BASEVER}_$ID.pck
   SIZE=$(stat -c %s $REPO_DIR/updates/$PF)
   PARTS=""

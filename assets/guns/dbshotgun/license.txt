@@ -1,0 +1,11 @@
+Model Information:
+* title:	Double Barrel Shotgun
+* source:	https://sketchfab.com/3d-models/double-barrel-shotgun-04741a40f2224cffafc343b0236d5bbe
+* author:	Pepego (https://sketchfab.com/Pepego)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Double Barrel Shotgun" (https://sketchfab.com/3d-models/double-barrel-shotgun-04741a40f2224cffafc343b0236d5bbe) by Pepego (https://sketchfab.com/Pepego) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

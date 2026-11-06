@@ -11,6 +11,8 @@ var _building := false
 var widgets := {}
 var mode_btn: Button
 var forge_btn: Button
+var garage_btn: Button
+var credits_panel: Control
 
 const ACCENT := Color(0.94, 0.65, 0.23)
 
@@ -47,10 +49,16 @@ func setup(m) -> void:
 	_btn(home, "Settings", func(): settings_panel.visible = not settings_panel.visible)
 	mode_btn = _btn(home, "", _toggle_mode)
 	forge_btn = _btn(home, "Forge mode  (O)", func(): close(); main.forge.toggle())
+	garage_btn = _btn(home, "Garage: build a vehicle", func():
+		close()
+		if main.forge.active: main.forge.toggle()
+		main.garage.show_garage())
 	_btn(home, "Reset world", func(): main.reset_world())
 	var mp := _btn(home, "Multiplayer  (coming)", func(): pass)
 	mp.disabled = true
+	_btn(home, "Credits", func(): credits_panel.visible = not credits_panel.visible)
 	_btn(home, "Quit to desktop", func(): get_tree().quit())
+	_build_credits()
 	_build_settings()
 	root.visible = false
 
@@ -73,6 +81,7 @@ func _toggle_mode() -> void:
 func _refresh_mode() -> void:
 	mode_btn.text = "Mode:  " + ("CREATIVE  (Forge on)" if Settings.creative() else "SURVIVAL  (no Forge)")
 	forge_btn.disabled = not Settings.creative()
+	garage_btn.disabled = not Settings.creative()
 
 func show_menu() -> void:
 	_refresh_mode()
@@ -217,6 +226,25 @@ func _refresh() -> void:
 func _refresh_presets() -> void:
 	for p in ["Low", "Medium", "High", "Ultra"]:
 		widgets["preset_" + p].set_pressed_no_signal(Settings.get_v("preset") == p)
+
+func _build_credits() -> void:
+	credits_panel = PanelContainer.new()
+	credits_panel.position = Vector2(460, 140)
+	credits_panel.custom_minimum_size = Vector2(760, 500)
+	credits_panel.visible = false
+	root.add_child(credits_panel)
+	var t := RichTextLabel.new()
+	t.bbcode_enabled = true
+	t.fit_content = true
+	t.custom_minimum_size = Vector2(740, 480)
+	var s := "[b]Credits[/b]\n\nGuns from Sketchfab (CC BY 4.0):\n"
+	var c = JSON.parse_string(FileAccess.get_file_as_string("res://assets/guns/credits.json"))
+	if c is Dictionary:
+		for k in c:
+			s += "  • %s by %s\n" % [c[k].title, c[k].author]
+	s += "\nTextures, grass and props: Poly Haven (CC0).\nCharacters: Meshy, animated with Mixamo.\nEngine: Godot (MIT), terrain: Terrain3D (MIT), physics: Jolt (MIT).\nEngine, gun and creature sounds: synthesised for this game."
+	t.text = s
+	credits_panel.add_child(t)
 
 func _btn(parent: Control, text: String, cb: Callable) -> Button:
 	var b := Button.new()

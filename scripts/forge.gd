@@ -289,7 +289,7 @@ func spawn(entry: Dictionary, xf: Transform3D, frozen := false) -> Node3D:
 	var n: Node3D
 	match entry.type:
 		"vehicle":
-			var c: Car = main.spawn_vehicle(entry.key, xf.origin, 0.0)
+			var c: Car = main.spawn_vehicle(entry.key, xf.origin, 0.0, entry.get("design", {}))
 			c.global_transform = xf
 			n = c
 		"prop":
@@ -772,6 +772,8 @@ func _build_ui() -> void:
 	palette.add_child(tabs)
 	var cat := Car.catalog()
 	var veh := []
+	var builds := Garage.saved_designs()
+	for b in builds: veh.append({"type": "vehicle", "key": builds[b].cab, "name": "★ " + b + " (your build)", "design": builds[b]})
 	for k in cat: veh.append({"type": "vehicle", "key": k, "name": cat[k].name})
 	_palette_page(tabs, "Vehicles", veh)
 	# every placeable model, sorted into tabs: the browser build's scans, Poly Haven (CC0) and the engines

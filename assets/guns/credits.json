@@ -1,0 +1,38 @@
+{
+ "enfield": {
+  "title": "Lee Enfield MKIII",
+  "author": "Moony_State",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/lee-enfield-mkiii-f6a2160daf134071a84e3cae5f831875"
+ },
+ "slr": {
+  "title": "Low-Poly L1A1 Rifle",
+  "author": "notcplkerry",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/low-poly-l1a1-rifle-86a2d1ade2b74e1da9d9473e57b5974f"
+ },
+ "python": {
+  "title": "GameReady: Colt Python Revolver",
+  "author": "HYQQM",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/gameready-colt-python-revolver-3def6e3980e64dfa832f298004ce1b94"
+ },
+ "dbshotgun": {
+  "title": "Double Barrel Shotgun",
+  "author": "Pepego",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/double-barrel-shotgun-04741a40f2224cffafc343b0236d5bbe"
+ },
+ "sawnoff": {
+  "title": "Sawed-Off Dirty / Double Barrel",
+  "author": "HenR1",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/sawed-off-dirty-double-barrel-907aa49d5ae94bfc952d37f686f26ad1"
+ },
+ "rem870": {
+  "title": "Remington 870 Shotgun",
+  "author": "milinam2002",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/remington-870-shotgun-6db0ad4764d14eee8f063eea3600071b"
+ }
+}

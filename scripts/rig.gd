@@ -14,6 +14,11 @@ var anim: AnimationPlayer
 var head_bone := -1
 var _cur := ""
 var _speed := 0.0
+var model_path := ""
+var mods: BodyMods
+var frozen := false                  # dead: the ragdoll has the bones now
+var tint_mat_cache := {}             # original material -> tinted copy (zombies), shared with gibs
+var _bone_cache := {}
 
 static func _pool() -> Dictionary:
 	if clip_pool.is_empty():
@@ -43,7 +48,8 @@ static func _strip_root_motion(a: Animation) -> void:
 		a.loop_mode = Animation.LOOP_LINEAR
 
 func load_model(key: String) -> void:
-	var ps: PackedScene = load("res://assets/characters/%s.glb" % key)
+	model_path = "res://assets/characters/%s.glb" % key
+	var ps: PackedScene = load(model_path)
 	model = ps.instantiate()
 	add_child(model)
 	skel = model.find_children("*", "Skeleton3D", true, false)[0]
@@ -75,10 +81,13 @@ func load_model(key: String) -> void:
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	anim.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	play("Idle_8")
+	mods = BodyMods.new()
+	mods.rig = self
+	skel.add_child(mods)
 
 var _head_hidden := false
 func _process(dt: float) -> void:
-	if anim:
+	if anim and not frozen:
 		anim.advance(dt)
 		if _head_hidden and head_bone >= 0:
 			skel.set_bone_pose_scale(head_bone, Vector3.ONE * 0.001)
@@ -92,6 +101,87 @@ func _aabb() -> AABB:
 		out = b if first else out.merge(b)
 		first = false
 	return out
+
+## Mixamo bone by short name ("Hips", "LeftForeArm"), whichever prefix this export used
+func bone(n: String) -> int:
+	if _bone_cache.has(n):
+		return _bone_cache[n]
+	var i := skel.find_bone("mixamorig_" + n)
+	if i < 0: i = skel.find_bone("mixamorig:" + n)
+	if i < 0: i = skel.find_bone(n)
+	_bone_cache[n] = i
+	return i
+
+## World position of a bone
+func bone_pos(n: String) -> Vector3:
+	var b := bone(n)
+	return skel.global_transform * skel.get_bone_global_pose(b).origin if b >= 0 else global_position
+
+## Every body part's bone, for working out what a bullet hit (nearest bone to the hit point)
+const HIT_BONES := {"head": "Head", "chest": "Spine2", "pelvis": "Hips", "l_upperarm": "LeftArm", "l_forearm": "LeftForeArm",
+	"r_upperarm": "RightArm", "r_forearm": "RightForeArm", "l_thigh": "LeftUpLeg", "l_shin": "LeftLeg", "r_thigh": "RightUpLeg", "r_shin": "RightLeg"}
+const HIT_ENDS := {"head": "HeadTop_End", "chest": "Neck", "pelvis": "Spine", "l_upperarm": "LeftForeArm", "l_forearm": "LeftHand",
+	"r_upperarm": "RightForeArm", "r_forearm": "RightHand", "l_thigh": "LeftLeg", "l_shin": "LeftFoot", "r_thigh": "RightLeg", "r_shin": "RightFoot"}
+const HIT_RADIUS := {"head": 0.11, "chest": 0.17, "pelvis": 0.15, "l_upperarm": 0.055, "r_upperarm": 0.055, "l_forearm": 0.045,
+	"r_forearm": 0.045, "l_thigh": 0.085, "r_thigh": 0.085, "l_shin": 0.06, "r_shin": 0.06}
+## Which body part a shot hit: the bullet's path through the body (entry point p, direction dir) against each part
+## as a capsule round its bone; the first part the line actually passes through wins.
+func part_at(p: Vector3, dir := Vector3.ZERO) -> String:
+	var best := "chest"
+	var bd := 1e9
+	var through := dir.length() > 0.01
+	var a0 := p - dir.normalized() * 0.4 if through else p
+	var a1 := p + dir.normalized() * 0.9 if through else p
+	var first_t := 1e9
+	for part in HIT_BONES:
+		if mods and mods.crushed.has(bone(HIT_BONES[part])):
+			continue
+		var a := bone_pos(HIT_BONES[part])
+		var b := bone_pos(HIT_ENDS[part])
+		var r: float = HIT_RADIUS[part]
+		var cp := Geometry3D.get_closest_points_between_segments(a0, a1, a, b)
+		var d: float = cp[0].distance_to(cp[1]) - r
+		if through and d <= 0.0:
+			var t: float = a0.distance_to(cp[0])
+			if t < first_t:
+				first_t = t
+				best = part
+				bd = -1.0
+		elif first_t == 1e9 and d < bd:
+			bd = d
+			best = part
+	return best
+
+## Remove a body part's bone chain from this skeleton (it's become a gib); leaves a stump
+func sever(part: String) -> bool:
+	if not Ragdoll.CHAIN.has(part):
+		return false
+	var b := bone(HIT_BONES[part])
+	if b < 0 or mods.crushed.has(b):
+		return false
+	mods.severed[b] = true
+	mods.crushed[b] = true
+	for i in skel.get_bone_count():
+		var pa := skel.get_bone_parent(i)
+		if pa >= 0 and mods.crushed.has(pa):
+			mods.crushed[i] = true
+	Gore.stump(self, b, skel.get_bone_parent(b))
+	return true
+
+## Zombie skin: every material tinted grey-green and dirtied (copies, shared with this body's gibs)
+func tint(c: Color, rough := 0.9) -> void:
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		for s in m.mesh.get_surface_count():
+			var src: Material = m.mesh.surface_get_material(s)
+			if not (src is BaseMaterial3D):
+				continue
+			if not tint_mat_cache.has(src):
+				var t: BaseMaterial3D = src.duplicate()
+				t.albedo_color = t.albedo_color * c
+				t.roughness = rough
+				tint_mat_cache[src] = t
+			m.set_surface_override_material(s, tint_mat_cache[src])
 
 func has_clip(n: String) -> bool:
 	return anim.has_animation("pool/" + n)

@@ -31,6 +31,8 @@ func _setup_inputs() -> void:
 		"debug": [KEY_F3], "seat_up": [KEY_BRACKETRIGHT], "seat_down": [KEY_BRACKETLEFT],
 		"forge": [KEY_O], "forge_menu": [KEY_TAB], "fly_up": [KEY_SPACE], "fly_down": [KEY_CTRL],
 		"rotate": [KEY_E], "delete": [KEY_X], "undo": [KEY_Z],
+		"reload": [KEY_R], "holster": [KEY_H], "slot_1": [KEY_1], "slot_2": [KEY_2], "slot_3": [KEY_3],
+		"slot_4": [KEY_4], "slot_5": [KEY_5], "slot_6": [KEY_6],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):
@@ -39,3 +41,10 @@ func _setup_inputs() -> void:
 			var ev := InputEventKey.new()
 			ev.physical_keycode = k
 			InputMap.action_add_event(a, ev)
+	var mouse := {"fire": MOUSE_BUTTON_LEFT, "aim": MOUSE_BUTTON_RIGHT, "weapon_next": MOUSE_BUTTON_WHEEL_DOWN, "weapon_prev": MOUSE_BUTTON_WHEEL_UP}
+	for a in mouse:
+		if not InputMap.has_action(a):
+			InputMap.add_action(a)
+		var mb := InputEventMouseButton.new()
+		mb.button_index = mouse[a]
+		InputMap.action_add_event(a, mb)
