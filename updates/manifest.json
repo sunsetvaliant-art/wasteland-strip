@@ -29,14 +29,14 @@
    "version": "0.2.2",
    "date": "2026-11-06",
    "notes": "Updater upgrade: lets the launcher download big updates in pieces. If the next update shows a download error, close the game and open it again.",
-   "size": 167904
+   "size": 11908
   },
   {
    "file": "patch_0.2.0_0004.pck",
    "version": "0.2.4",
    "date": "2026-11-06",
    "notes": "Updater fix: no time limit on big downloads.",
-   "size": 167904
+   "size": 11908
   },
   {
    "file": "patch_0.2.0_0005.pck",
