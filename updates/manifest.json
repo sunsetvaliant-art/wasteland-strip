@@ -74,6 +74,13 @@
    "date": "2026-11-06",
    "notes": "Fix: keys added in updates (F9 bug report, fire, aim, reload, weapon slots, holster) weren't being registered on installed copies. They are now.",
    "size": 164912
+  },
+  {
+   "file": "patch_0.2.0_0009.pck",
+   "version": "0.2.9",
+   "date": "2026-11-06",
+   "notes": "F9 bug report box now sits in the middle of the screen, so the Send button and token box are visible.",
+   "size": 14232
   }
  ],
  "full": {
