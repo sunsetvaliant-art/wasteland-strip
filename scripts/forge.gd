@@ -10,7 +10,9 @@ extends Node3D
 
 const LAYOUT := "user://forge/layout.json"
 const SHIPPED := "res://forge/layout.json"
-const BIG_PROPS := ["hut", "quonset", "boxes", "cont1", "bridge", "cliff1", "cliff2", "bould1", "bould2", "bould3", "rface1", "rface2", "trunk2", "bench"]
+## Models you can walk into or drive under: their collision follows the mesh (a static trimesh), not a hull round it
+const WALK_IN := ["village_hq", "servo_canopy"]
+const BIG_PROPS := ["village_hq", "servo_canopy", "hut", "quonset", "boxes", "cont1", "bridge", "cliff1", "cliff2", "bould1", "bould2", "bould3", "rface1", "rface2", "trunk2", "bench"]
 const MARKERS := {"scav": Color(0.9, 0.35, 0.2), "zombie": Color(0.45, 0.75, 0.3), "loot": Color(0.95, 0.8, 0.25), "player_spawn": Color(0.3, 0.6, 1.0), "vehicle_spawn": Color(0.7, 0.4, 0.95)}
 const TOOLS := ["Place", "Phys gun", "Delete", "Terrain"]
 
@@ -292,6 +294,24 @@ func spawn(entry: Dictionary, xf: Transform3D, frozen := false) -> Node3D:
 			var c: Car = main.spawn_vehicle(entry.key, xf.origin, 0.0, entry.get("design", {}))
 			c.global_transform = xf
 			n = c
+		"prop" when entry.key in WALK_IN:
+			var sb := StaticBody3D.new()
+			var vis2 := _make_visual(entry)
+			sb.add_child(vis2)
+			for mi: MeshInstance3D in vis2.find_children("*", "MeshInstance3D", true, false):
+				var cs3 := CollisionShape3D.new()
+				cs3.shape = mi.mesh.create_trimesh_shape()
+				var xf3 := Transform3D()
+				var nn: Node = mi
+				while nn and nn != vis2:
+					if nn is Node3D: xf3 = (nn as Node3D).transform * xf3
+					nn = nn.get_parent()
+				cs3.transform = xf3
+				sb.add_child(cs3)
+			sb.add_to_group("physgun")
+			main.add_child(sb)
+			sb.global_transform = xf
+			n = sb
 		"prop":
 			var rb := RigidBody3D.new()
 			var vis := _make_visual(entry)
@@ -789,6 +809,19 @@ func _build_ui() -> void:
 		var fn := f.trim_suffix(".import").trim_suffix(".remap")
 		if fn.ends_with(".glb") and not groups["Car parts"].any(func(x): return x.key == fn.get_basename()):
 			groups["Car parts"].append({"type": "prop", "key": fn.get_basename(), "name": _pretty(fn.get_basename()), "path": "res://assets/engines/" + fn})
+	# models made in Meshy (assets/meshy, put at real size by tools/glb_place.py)
+	const MESHY_TAB := {"blown_v8": "Car parts", "hemi_426_engine": "Car parts", "pickup_v8_1979": "Car parts", "oil_cans": "Car parts",
+		"village_hq": "World", "servo_canopy": "World", "revolver_45": "Weapons", "scoped_rifle": "Weapons"}
+	const MESHY_NAME := {"blown_v8": "Blown V8 (twin superchargers)", "hemi_426_engine": "426 Hemi and gearbox", "pickup_v8_1979": "1979 pickup V8",
+		"oil_cans": "Vintage oil cans", "village_hq": "Old two-storey house", "servo_canopy": "Servo canopy and pumps", "revolver_45": ".45 Magnum revolver (prop)",
+		"scoped_rifle": "Scoped hunting rifle (prop)"}
+	for f in DirAccess.get_files_at("res://assets/meshy"):
+		var fn := f.trim_suffix(".import").trim_suffix(".remap")
+		if not fn.ends_with(".glb"): continue
+		var k := fn.get_basename()
+		var g: String = MESHY_TAB.get(k, "World")
+		if not groups[g].any(func(x): return x.key == k):
+			groups[g].append({"type": "prop", "key": k, "name": MESHY_NAME.get(k, _pretty(k)), "path": "res://assets/meshy/" + fn})
 	var ph_tab := {"weapons": "Weapons", "carparts": "Car parts", "tools": "Tools", "survival": "Survival", "world": "World", "nature": "Nature"}
 	for d in ph_tab:
 		var base: String = "res://assets/ph/" + d

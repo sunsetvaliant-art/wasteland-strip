@@ -8,7 +8,7 @@ extends CharacterBody3D
 ##           and they fight: keep their distance, shoot in bursts, close in with shotguns, hunt where you were last seen.
 ## Both ragdoll when they die, lose limbs to big hits, and turn to paste under a car.
 
-const ZOMBIE_MODELS := ["zombie_hazmat", "zombie_runner", "zombie_mx", "zombie_soldier", "zombie_female"]
+const ZOMBIE_MODELS := ["zombie_hazmat", "zombie_runner", "zombie_mx", "zombie_soldier", "zombie_female", "zombie_hollow", "zombie_hollow"]
 const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
 const SCAV_MODELS := ["scav_hooded", "scav_2"]
 const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff"]
@@ -246,7 +246,8 @@ func _think_zombie(dt: float) -> void:
 				goal = home + Vector3(randf_range(-18, 18), 0, randf_range(-18, 18))
 				goal_t = randf_range(8.0, 20.0)
 		"wander", "investigate":
-			move_speed = 0.55 * gait if state == "wander" else 0.9 * gait
+			var zs: Dictionary = Rig.SETS[anim_set]
+			move_speed = float(zs.get("wander_speed", 0.55)) * gait if state == "wander" else float(zs.get("wander_speed", 0.55)) * 1.4 * gait
 			if _flat_dist(goal) < 1.5 or goal_t <= 0.0:
 				state = "idle"
 				goal_t = randf_range(3.0, 9.0)
@@ -270,7 +271,10 @@ func _think_zombie(dt: float) -> void:
 					swing_t = 0.0
 					_say("zattack")
 			else:
-				move_speed = 1.25 * gait
+				var zs: Dictionary = Rig.SETS[anim_set]
+				move_speed = float(zs.get("chase_speed", 1.25)) * gait
+				if d < 6.0 and zs.has("close_speed"):
+					move_speed = float(zs.close_speed) * gait      # the last few metres at a run
 				if lost_t > 12.0:
 					state = "wander"
 					goal_t = 15.0

@@ -120,12 +120,43 @@ func _gather() -> Dictionary:
 		var g: Gun = p.gun()
 		if g: pd.gun = {"key": g.key, "ammo": g.ammo, "reserve": g.reserve, "reloading": g.reloading > 0.0, "holstered": p.holstered, "ads": snappedf(p.ads, 0.01)}
 		pd.anim = p.rig.anim.current_animation if p.rig and p.rig.anim else ""
-		if p.vehicle:
-			var c: Car = p.vehicle
-			pd.vehicle = {"kind": c.kind, "kmh": snappedf(c.speed_kmh(), 0.1), "gear": c.gear_name(), "rpm": int(c.rpm), "throttle": snappedf(c.throttle, 0.01),
+		# the car you're in, or the nearest one (most car reports are written after climbing out)
+		var c: Car = p.vehicle
+		if c == null:
+			var best := 60.0
+			for v in get_tree().get_nodes_in_group("vehicles"):
+				if v is Car and v.global_position.distance_to(p.global_position) < best:
+					best = v.global_position.distance_to(p.global_position)
+					c = v
+		if c:
+			pd.vehicle = {"in_it": p.vehicle == c, "speedo_kmh": snappedf(c.speedo_kmh(), 0.1), "diffs": c.design.axles.map(func(a): return [a.get("drive", false), a.get("diff", "open")]),
+				"park_hold": c._park_at != Vector3.INF, "tyre_psi": c.design.get("tyre_psi", 32.0), "kind": c.kind, "kmh": snappedf(c.speed_kmh(), 0.1), "gear": c.gear_name(), "rpm": int(c.rpm), "throttle": snappedf(c.throttle, 0.01),
 				"pos": _v3(c.global_position), "up": snappedf(c.global_transform.basis.y.y, 0.01), "engine": c.design.get("engine", ""), "gearbox": c.design.get("gearbox", ""),
-				"wheels": c.wheels.map(func(w): return {"contact": w.contact, "load_N": int(w.N), "compress": snappedf(w.L, 0.01)})}
+				"wheels": c.wheels.map(func(w): return {"contact": w.contact, "load_N": int(w.N), "compress": snappedf(w.L, 0.01), "surface": w.get("kind", ""), "mu": snappedf(w.get("mu", 0.0), 0.01), "spin_ms": snappedf(w.omega * w.r, 0.1), "slip_ms": snappedf(w.get("slipv", 0.0), 0.1)})}
 		d.player = pd
+		# what's under the crosshair: aim at the problem before pressing F9 and the report says exactly what it is
+		var cam := get_viewport().get_camera_3d()
+		if cam:
+			var o := cam.global_position
+			var dir := -cam.global_transform.basis.z
+			var q := PhysicsRayQueryParameters3D.create(o, o + dir * 150.0)
+			q.collision_mask = 0xFFFFFFFF
+			q.exclude = [p.get_rid()]
+			var hit := cam.get_world_3d().direct_space_state.intersect_ray(q)
+			if hit:
+				var hc: Object = hit.collider
+				var owner_path := ""
+				var vis_meshes := 0
+				if hc is Node:
+					owner_path = str((hc as Node).get_path())
+					var top: Node = (hc as Node).get_parent() if (hc as Node).get_parent() else hc
+					for mi in top.find_children("*", "GeometryInstance3D", true, false):
+						if (mi as GeometryInstance3D).is_visible_in_tree(): vis_meshes += 1
+				d.aim = {"hit": _v3(hit.position), "dist": snappedf(o.distance_to(hit.position), 0.01), "collider": owner_path,
+					"class": hc.get_class() if hc else "", "groups": (hc as Node).get_groups() if hc is Node else [], "visible_meshes_near_it": vis_meshes,
+					"layer": (hc as CollisionObject3D).collision_layer if hc is CollisionObject3D else 0, "normal": _v3(hit.normal)}
+			else:
+				d.aim = {"hit": null}
 		# who's about
 		var near: Array = []
 		for n in get_tree().get_nodes_in_group("npcs") + get_tree().get_nodes_in_group("corpses"):

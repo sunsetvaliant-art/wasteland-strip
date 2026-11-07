@@ -219,12 +219,20 @@ func _island(c: Vector3, r: float) -> void:
 	tm.height = 0.52
 	tm.radial_segments = 48
 	top.mesh = tm
+	# the same lawn scan as the paddocks, with its normal map and roughness (in the normal map's alpha), half-metre
+	# tiles so the blades are life size up close
 	var gm := StandardMaterial3D.new()
 	gm.albedo_texture = load("res://assets/ground/pasture_alb_h.png")
-	gm.albedo_color = Color(0.6, 0.66, 0.48)
+	gm.albedo_color = Color(0.62, 0.6, 0.4)          # sun-dried, like the paddocks round it
+	gm.normal_enabled = true
+	gm.normal_texture = load("res://assets/ground/pasture_nrm_r.png")
+	gm.normal_scale = 1.2
+	gm.roughness_texture = load("res://assets/ground/pasture_nrm_r.png")
+	gm.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_ALPHA
+	gm.roughness = 1.0
+	gm.metallic_specular = 0.25
 	gm.uv1_triplanar = true
-	gm.uv1_scale = Vector3.ONE
-	gm.roughness = 0.95
+	gm.uv1_scale = Vector3.ONE * 2.2
 	top.material_override = gm
 	top.position = c + Vector3(0, 0.08, 0)
 	add_child(top)

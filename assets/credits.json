@@ -172,5 +172,11 @@
   "author": "OpenStreetMap contributors",
   "license": "ODbL",
   "url": "https://www.openstreetmap.org/copyright"
+ },
+ "meshy_user": {
+  "title": "Hollow Walker zombie and its animations; blown V8, 426 Hemi, 1979 pickup V8, oil cans, two-storey house, servo canopy, .45 revolver, scoped rifle",
+  "author": "Made by the developer in Meshy AI (animations Mixamo)",
+  "license": "Own work",
+  "url": "https://www.meshy.ai"
  }
 }

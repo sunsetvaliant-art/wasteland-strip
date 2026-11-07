@@ -8,7 +8,7 @@ const HEIGHT := 1.78
 ## Every file with clips worth having. All characters are imported with Godot's humanoid retarget (one bone map,
 ## rests fixed), so a clip from any of them plays on any body.
 const CLIP_SOURCES := ["player", "warbringer", "scav_hooded", "warboy", "aclip_army", "aclip_soldier", "zombie_hazmat",
-	"zombie_runner", "zombie_soldier", "zombie_mx", "zclip_agony", "zclip_dying"]
+	"zombie_runner", "zombie_soldier", "zombie_mx", "zclip_agony", "zclip_dying", "zombie_hollow"]
 ## Clip sets: which clip does what for each kind of body
 const SETS := {
 	"unarmed": {"idle": "Idle_8", "walk": "Walking", "run": "Running", "crouch_idle": "aclip_army__crouch_idle", "crouch_walk": "aclip_army__walk_crouch",
@@ -16,12 +16,18 @@ const SETS := {
 	"rifle": {"idle": "aclip_army__idle_simple", "walk": "aclip_army__simple_walk", "run": "aclip_soldier__Rifle_run", "crouch_idle": "aclip_army__crouch_idle",
 		"crouch_walk": "aclip_army__walk_crouch", "shoot": "aclip_army__simple_shoot", "reload": "aclip_army__reload_idle", "reload_walk": "aclip_army__reload_walk",
 		"walk_speed": 1.5, "run_speed": 5.0, "crouch_speed": 1.1},
-	"zombie_a": {"idle": "zombie_hazmat__Zombie_Idle", "walk": "zombie_mx__walk", "run": "zombie_soldier__zombie_02_Run", "attack": "zombie_soldier__zombie_02_Attack",
-		"spot": "zombie_hazmat__Zombie_EnemySpotted", "walk_speed": 0.9, "run_speed": 3.2},
-	"zombie_b": {"idle": "zombie_soldier__zombie_02_Idle", "walk": "zombie_soldier__zombie_02_Walk", "run": "zombie_runner__FEMALE_ZOMBIE_RUN", "attack": "zombie_runner__FEMALE_ZOMBIE_ATTACK",
-		"spot": "zombie_hazmat__Zombie_EnemySpotted", "walk_speed": 0.8, "run_speed": 3.0},
-	"zombie_c": {"idle": "zombie_runner__FEMALE_ZOMBIE_IDLE", "walk": "zombie_hazmat__Zombie_Walk_Root", "run": "zombie_runner__FEMALE_ZOMBIE_RUN", "attack": "zombie_soldier__zombie_02_Attack",
-		"spot": "zombie_hazmat__Zombie_Skill", "walk_speed": 0.85, "run_speed": 3.0},
+	# Zombies move on the Hollow Walker's clips. Each set is a different kind of zombie, and its speeds match its
+	# clips' strides (measured off the clips) so the feet don't skate: wander/chase_speed are how fast it goes.
+	# walker: walks with purpose, breaks into a run when it's close
+	"zombie_a": {"idle": "hollow__Head_Hold_in_Pain", "walk": "hollow__Walking", "run": "hollow__Running", "attack": "zombie_soldier__zombie_02_Attack",
+		"spot": "hollow__Zombie_Scream", "walk_speed": 1.4, "run_speed": 4.2, "wander_speed": 0.75, "chase_speed": 1.35, "close_speed": 3.0},
+	# shambler: an unsteady drag when it's wandering, a lurching walk when it's after you
+	"zombie_b": {"idle": "hollow__Mummy_Stagger", "walk": "hollow__Unsteady_Walk", "run": "hollow__Walking", "attack": "zombie_runner__FEMALE_ZOMBIE_ATTACK",
+		"spot": "hollow__Zombie_Scream", "walk_speed": 0.45, "run_speed": 1.4, "wander_speed": 0.4, "chase_speed": 1.15},
+	# lurcher: a shaky old walk, then a head-down charge
+	"zombie_c": {"idle": "zombie_runner__FEMALE_ZOMBIE_IDLE", "walk": "hollow__Elderly_Shaky_Walk_inplace", "run": "hollow__Male_Head_Down_Charge",
+		"attack": "zombie_soldier__zombie_02_Attack", "spot": "hollow__Zombie_Scream", "walk_speed": 0.3, "run_speed": 4.8, "wander_speed": 0.3,
+		"chase_speed": 3.2},
 }
 ## Mixamo names (what the rest of the code asks for) -> Godot humanoid profile names (what the bones are now called)
 const PROFILE := {"Spine1": "Chest", "Spine2": "UpperChest", "LeftArm": "LeftUpperArm", "LeftForeArm": "LeftLowerArm",
@@ -72,7 +78,7 @@ static func _strip_root_motion(a: Animation) -> void:
 				var v: Vector3 = a.track_get_key_value(t, k)
 				a.track_set_key_value(t, k, Vector3(0, v.y, 0))
 	var n := a.resource_name.to_lower()
-	for w in ["run", "walk", "idle", "crouch"]:
+	for w in ["run", "walk", "idle", "crouch", "stagger", "charge", "head_hold"]:
 		if n.contains(w) and not n.contains("death") and not n.contains("to_") and not n.contains("reload"):
 			a.loop_mode = Animation.LOOP_LINEAR
 

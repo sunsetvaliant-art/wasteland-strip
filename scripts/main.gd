@@ -401,7 +401,7 @@ func _process(_dt: float) -> void:
 	if Boot.patches_loaded.size():
 		s += "  ·  patches: " + ", ".join(Boot.patches_loaded)
 	if player.vehicle:
-		s += "\n%s  %d km/h" % [player.vehicle.gear_name(), roundi(player.vehicle.speed_kmh())]
+		s += "\n%s  %d km/h" % [player.vehicle.gear_name(), roundi(player.vehicle.speedo_kmh())]
 	if show_debug or Settings.get_v("show_fps"):
 		var p: Vector3 = player.global_position if not player.vehicle else player.vehicle.global_position
 		s += "\n%d fps · x %.0f z %.0f · h %.1f m" % [Engine.get_frames_per_second(), p.x, p.z, p.y]

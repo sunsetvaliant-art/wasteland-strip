@@ -14,6 +14,53 @@ func _ready():
 		var a := step.split(":")
 		var nm := a[0]; var mode := a[1]
 		var p = main.player
+		if mode == "probe2":
+			# stand where a bug report was (a[2], a[3]) and fire level rays all round at knee, chest and head height
+			p.global_position = Vector3(float(a[2]), main.height_at(float(a[2]), float(a[3])) + 1.0, float(a[3]))
+			for _i in 120: await get_tree().physics_frame
+			var space2: PhysicsDirectSpaceState3D = main.get_world_3d().direct_space_state
+			var hits := {}
+			for hgt in [0.5, 1.2, 1.7]:
+				for deg in range(0, 360, 2):
+					var dir := Vector3(sin(deg_to_rad(deg)), 0, cos(deg_to_rad(deg)))
+					var o: Vector3 = p.global_position + Vector3(0, hgt - 0.9, 0)
+					var q := PhysicsRayQueryParameters3D.create(o, o + dir * 70.0)
+					q.exclude = [p.get_rid()]
+					var h := space2.intersect_ray(q)
+					if h:
+						var c: Node = h.collider
+						var gy: float = main.height_at(h.position.x, h.position.z)
+						var k := "%s|%s" % [c.get_path() if c else "?", c.get_class() if c else ""]
+						if not hits.has(k): hits[k] = [0, h.position, gy, deg, hgt]
+						hits[k][0] += 1
+			for k in hits:
+				print("PROBE2 ", hits[k][0], " ", k, " first at ", hits[k][1], " ground ", snappedf(hits[k][2], 0.01), " deg ", hits[k][3], " h ", hits[k][4])
+			continue
+		if mode == "probe":
+			# look for collision sticking up above the ground: rays straight down over a box of the map (a[2..5] = x0 z0 x1 z1)
+			for _i in 60: await get_tree().physics_frame
+			var space: PhysicsDirectSpaceState3D = main.get_world_3d().direct_space_state
+			var found := {}
+			var x0 := float(a[2]); var z0 := float(a[3]); var x1 := float(a[4]); var z1 := float(a[5])
+			var x := x0
+			while x <= x1:
+				var z := z0
+				while z <= z1:
+					var g: float = main.height_at(x, z)
+					var q := PhysicsRayQueryParameters3D.create(Vector3(x, g + 8.0, z), Vector3(x, g - 2.0, z))
+					q.collision_mask = 0xFFFFFFFF
+					var h := space.intersect_ray(q)
+					if h and h.position.y > g + 0.6:
+						var c: Node = h.collider
+						var key := str(c.get_path()) if c else "?"
+						if not found.has(key): found[key] = [0, Vector3(x, h.position.y, z), g, c.get_class() if c else ""]
+						found[key][0] += 1
+					z += 2.0
+				x += 2.0
+			for k in found:
+				print("PROBE ", found[k][0], " ", k, " ", found[k][3], " at ", found[k][1], " ground ", snappedf(found[k][2], 0.01))
+			print("PROBE done ", found.size())
+			continue
 		if a.size() > 3:
 			var x := float(a[2]); var z := float(a[3])
 			if mode.begins_with("car") or mode == "drive":
@@ -69,11 +116,23 @@ func _ready():
 			var keys := OS.get_environment("SHOWCASE").split(",")
 			var fwd: Vector3 = -f.cam.global_transform.basis.z; fwd.y = 0; fwd = fwd.normalized()
 			var right: Vector3 = f.cam.global_transform.basis.x; right.y = 0; right = right.normalized()
+			var dist := float(OS.get_environment("SHOWCASE_DIST")) if OS.get_environment("SHOWCASE_DIST") != "" else 4.5
+			var xs := 0.0
+			var made := []
 			for i in keys.size():
 				var path: String = keys[i]
-				var pos: Vector3 = f.cam.global_position + fwd * 4.5 + right * ((i - (keys.size() - 1) * 0.5) * 1.15)
-				pos.y = main.height_at(pos.x, pos.z) + 0.6
+				var pos: Vector3 = f.cam.global_position + fwd * dist
 				var n = f.spawn({"type": "prop", "key": path.get_file().get_basename(), "name": path, "path": path}, Transform3D(Basis(Vector3.UP, f.yaw + PI * 0.5), pos))
+				var w: float = max(f._aabb(n).size.x, f._aabb(n).size.z) if n else 1.0
+				made.append([n, w])
+				xs += w + 0.4
+			var cur := -xs * 0.5
+			for m in made:
+				if m[0] == null: continue
+				var pos2: Vector3 = f.cam.global_position + fwd * dist + right * (cur + m[1] * 0.5)
+				pos2.y = main.height_at(pos2.x, pos2.z) + 0.05
+				m[0].global_position = pos2
+				cur += m[1] + 0.4
 			for _i in 150: await get_tree().physics_frame
 		elif mode == "rig":
 			# cab lifted off: a low Forge camera beside the bare chassis, a[2] = side offset, a[3] = height, a[4] = hide cab

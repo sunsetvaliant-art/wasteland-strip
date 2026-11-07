@@ -34,6 +34,8 @@ var w_eng := 78.0                            # rad/s
 var gear := 0                                # auto: 0 P, 1 R, 2 N, 3 D ; manual: 0 R, 1 N, 2.. = 1st..
 var auto_gear := 0                           # which forward ratio the auto box is in
 var shift_t := 0.0                           # time left in a shift (clutch out)
+var gear_held := 0.0                         # auto: how long it's been in this gear (it won't flick through them)
+var _park_at := Vector3.INF                  # parked with nobody in it: where the handbrake's holding it
 var clutch := 1.0
 var running := false
 var crank := 0.0                             # > 0 while the starter is turning it over
@@ -214,6 +216,17 @@ func gear_name() -> String:
 func speed_kmh() -> float:
 	return linear_velocity.length() * 3.6
 
+## What the speedo reads: like a real one it's driven off the gearbox, so it's the driven wheels' speed (it runs
+## away when you light the tyres up)
+func speedo_kmh() -> float:
+	var n := 0
+	var v := 0.0
+	for w in wheels:
+		if w.a.drive:
+			v += float(w.omega) * float(w.r)
+			n += 1
+	return abs(v / max(n, 1)) * 3.6
+
 func ratio() -> float:
 	## overall gear ratio, engine turns per wheel turn (negative in reverse, 0 in neutral / park / mid-shift)
 	var fd: float = design.final
@@ -285,6 +298,7 @@ func _physics_process(dt: float) -> void:
 		running = false
 		crank = 0.0
 	_unjam_bodies(dt)
+	_park_hold()
 	var space := get_world_3d().direct_space_state
 	var xf := global_transform
 	var up := xf.basis.y
@@ -367,6 +381,32 @@ func _physics_process(dt: float) -> void:
 	if v2 > 1.0:
 		apply_central_force(-linear_velocity.normalized() * 0.5 * 1.2 * float(design.get("cda", AIR_CDA)) * v2)
 
+## Parked with nobody in it, the handbrake holds it where it stopped (the tyre model alone lets it creep down a
+## slope a few millimetres a frame). Something big shoving it (more than the tyres could hold) moves it on.
+func _park_hold() -> void:
+	var hv := linear_velocity
+	if driver != null or hv.length() > 1.5:
+		_park_at = Vector3.INF
+		return
+	var on_ground := 0
+	for w in wheels:
+		if w.contact: on_ground += 1
+	if on_ground < 3:
+		_park_at = Vector3.INF
+		return
+	if _park_at == Vector3.INF:
+		if hv.length() < 0.6: _park_at = global_position
+		return
+	var off := _park_at - global_position
+	off.y = 0.0
+	var f := (off * 60.0 - Vector3(hv.x, 0, hv.z) * 14.0) * mass
+	var cap := mass * 9.8 * 0.7
+	if f.length() > cap:
+		_park_at = global_position          # shoved harder than the handbrake can hold: it slides, and holds again
+		return
+	apply_central_force(f)
+	apply_torque(Vector3(0, -angular_velocity.y * 6.0, 0) * mass)
+
 ## A body (or a bit of one) under the chassis gets squeezed between the rails and the ground and jams the car on top
 ## of it. Anything ragdoll-light touching the underside is let through for a moment so the car rolls over it; bodies
 ## lying up on the bonnet or roof stay put.
@@ -401,7 +441,7 @@ func _read_controls(dt: float) -> void:
 	throttle = move_toward(throttle, thr, 6.0 * dt)
 	brake_in = move_toward(brake_in, brk, 8.0 * dt)
 	var v: float = abs(linear_velocity.dot(global_transform.basis.z))
-	var max_steer: float = lerp(0.62, 0.12, clamp(v / 32.0, 0.0, 1.0))
+	var max_steer: float = lerp(0.62, 0.2, clamp(v / 38.0, 0.0, 1.0))
 	steer_now = move_toward(steer_now, steer_in * max_steer, (1.9 if steer_in != 0.0 else 2.6) * dt)
 	if driver == null:
 		throttle = 0.0
@@ -410,15 +450,15 @@ func _read_controls(dt: float) -> void:
 ## Grip by ground: [peak mu, sliding / peak, rolling resistance, kind]. Terrain by its texture slot (main.GROUND).
 ## Loose stuff grips a lot less than bitumen and gives up more once the tyre's spinning (grass polishes, mud smears).
 const TERRAIN_SURF := [
-	[0.5, 0.6, 0.06, "grass"],     # pasture
+	[0.5, 0.55, 0.06, "grass"],    # pasture
 	[0.55, 0.7, 0.06, "dirt"],     # forest floor
 	[0.5, 0.66, 0.06, "dirt"],     # cane trash
 	[0.6, 0.75, 0.07, "dirt"],     # farm soil
 	[0.45, 0.8, 0.12, "sand"],     # sand
 	[0.62, 0.62, 0.02, "rock"],    # mossy rock
-	[0.88, 0.75, 0.013, "seal"],   # concrete
+	[0.88, 0.85, 0.013, "seal"],   # concrete
 	[0.3, 0.6, 0.12, "mud"],       # river mud
-	[0.5, 0.6, 0.05, "grass"],     # rough grass
+	[0.5, 0.55, 0.05, "grass"],    # rough grass
 ]
 var _terrain: Terrain3D
 
@@ -426,7 +466,7 @@ func _surface(w: Dictionary) -> void:
 	var c = w.collider
 	var surf: Array = [0.85, 0.75, 0.02, "seal"]      # props, other cars, buildings: hard
 	if c and c.is_in_group("road"):
-		surf = [0.95, 0.72, 0.013, "seal"]
+		surf = [0.95, 0.85, 0.013, "seal"]
 	elif c is Terrain3D or (c and c.get_class() == "StaticBody3D" and c.get_parent() is Terrain3D) or (c and str(c.name).begins_with("Terrain")):
 		if _terrain == null:
 			var m = get_tree().current_scene
@@ -448,9 +488,15 @@ func _surface(w: Dictionary) -> void:
 	w.crr = float(surf[2]) * (1.0 + 0.5 * max(soft, 0.0))
 	w.kind = surf[3]
 
+## The tyre's force curve up to its peak; past the peak it stays at the peak and the slide factor does the falling
+## off (the raw curve dropped to half at big slip on top of that, so a spinning tyre had a third of its grip and
+## a V8 would sit there doing a burnout at 15 km/h)
 func _pac(x: float, B: float, C: float, E: float) -> float:
 	var bx := B * x
-	return sin(C * atan(bx - E * (bx - atan(bx))))
+	var a := C * atan(bx - E * (bx - atan(bx)))
+	if abs(a) > PI * 0.5:
+		return signf(a)
+	return sin(a)
 
 func _driveline(dt: float) -> void:
 	var h := dt / SUBSTEPS
@@ -464,9 +510,12 @@ func _driveline(dt: float) -> void:
 	var Tcap: float = 1.6 * 480.0
 	if shift_t > 0.0:
 		shift_t -= dt
+	gear_held += dt
 	# auto box: pick the gear from road speed and throttle
 	if box.auto and gear == 3 and shift_t <= 0.0:
-		# the valve body shifts off output-shaft speed (road speed) and throttle, never off engine revs
+		# the valve body shifts off output-shaft speed and throttle, never off engine revs. With the tyres lit up the
+		# shaft's spinning fast too, so it holds each gear a good second before it'll go up another (it used to run
+		# through to third in half a second), and won't hunt back down straight after a change
 		var ratios: Array = box.ratios
 		var w_out := 0.0
 		for w in driven: w_out += w.omega
@@ -475,14 +524,16 @@ func _driveline(dt: float) -> void:
 		var shaft_rpm: float = w_out * float(ratios[auto_gear]) * fd * 60.0 / TAU
 		var up_rpm := lerpf(2000.0, float(eng.redline) * 0.93, throttle)
 		var dn_rpm := lerpf(900.0, 2300.0, throttle)
-		if shaft_rpm > up_rpm and auto_gear < ratios.size() - 1:
+		if shaft_rpm > up_rpm and auto_gear < ratios.size() - 1 and gear_held > 1.3:
 			auto_gear += 1
 			shift_t = float(box.shift_time)
-		elif auto_gear > 0:
+			gear_held = 0.0
+		elif auto_gear > 0 and gear_held > 0.6:
 			var lower_rpm: float = w_out * float(ratios[auto_gear - 1]) * fd * 60.0 / TAU
 			if shaft_rpm < dn_rpm and lower_rpm < float(eng.redline) * 0.8:
 				auto_gear -= 1
 				shift_t = float(box.shift_time)
+				gear_held = 0.0
 		R = ratio()
 	for w in wheels:
 		w.fx = 0.0
@@ -561,7 +612,7 @@ func _driveline(dt: float) -> void:
 				var slide_x: float = lerpf(1.0, w.slide, smoothstep(0.12, 0.7, abs(sr)))
 				var slide_y: float = lerpf(1.0, w.slide, smoothstep(0.14, 0.6, abs(sa)))
 				fx = muN * _pac(sr, 11.0, 1.65, 0.3) * slide_x
-				fy = -muN * _pac(sa, 9.5, 1.35, -0.6) * slide_y
+				fy = -muN * _pac(sa, 15.0, 1.35, -0.2) * slide_y        # peaks about 8 deg of slip, like a real tyre
 				var lowspd: float = clamp(1.0 - (abs(w.vx) + abs(w.vy)) / 2.5, 0.0, 1.0)
 				fy = lerpf(fy, clamp(-w.vy * w.N * 0.9, -muN, muN), lowspd)       # don't skate about when stopped
 				var mag := sqrt(fx * fx + fy * fy)

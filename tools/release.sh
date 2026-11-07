@@ -4,6 +4,7 @@
 #   tools/release.sh patch 0001 "notes"   -> exports only what changed since the last full build into the repo's updates/ folder,
 #                                            adds it to updates/manifest.json and pushes; every player's launcher picks it up
 set -e
+sed -i "/^Shot=/d" /home/claude/game/project.godot     # a test run killed part way leaves its autoload behind
 cd /home/claude/game
 G=/home/claude/godot/Godot_v4.7.2-stable_linux.x86_64
 REPO_DIR=/home/claude/wasteland-strip
