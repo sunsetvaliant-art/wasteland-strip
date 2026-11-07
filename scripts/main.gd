@@ -24,6 +24,9 @@ var forge: Forge
 var combat_hud: CombatHUD
 var garage: Garage
 var camps: ScavCamps
+var landmarks: Landmarks
+var net: Net
+var rg_roads: RgRoads
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon can't stop the game starting
@@ -34,11 +37,17 @@ func _ready() -> void:
 	_build_terrain()
 	if OS.get_environment("WATER_OFF") == "":
 		_build_water()
+	_build_backdrop()
 	roads = Roads.new()
 	roads.name = "Roads"
 	add_child(roads)
 	roads.setup(self)
-	if OS.get_environment("NO_ROAD_PILOT") == "":
+	if OS.get_environment("NO_ROAD_PILOT") == "" and RgRoads.available():
+		rg_roads = RgRoads.new()
+		rg_roads.name = "RgRoads"
+		add_child(rg_roads)
+		rg_roads.setup(self)
+	elif OS.get_environment("NO_ROAD_PILOT") == "":
 		var rps: Script = load("res://scripts/world/road_pilot.gd")
 		if rps != null and rps.can_instantiate():
 			road_pilot = rps.new()
@@ -68,6 +77,9 @@ func _ready() -> void:
 	forge.name = "Forge"
 	add_child(forge)
 	forge.setup(self)
+	net = Net.new()
+	add_child(net)
+	net.setup(self)
 	pause_menu = PauseMenu.new()
 	pause_menu.name = "PauseMenu"
 	add_child(pause_menu)
@@ -92,6 +104,10 @@ func _ready() -> void:
 	camps.name = "ScavCamps"
 	add_child(camps)
 	camps.setup(self)
+	landmarks = Landmarks.new()
+	landmarks.name = "Landmarks"
+	add_child(landmarks)
+	landmarks.setup(self)
 	zombies = ZombieDirector.new()
 	zombies.name = "ZombieDirector"
 	add_child(zombies)
@@ -307,6 +323,24 @@ func _build_terrain() -> void:
 	mat.set_shader_param("dual_scale_reduction", 0.3)
 	mat.set_shader_param("dual_scale_far", 300.0)
 	mat.set_shader_param("dual_scale_near", 60.0)
+
+# ---------------------------------------------------------------- the country past the map edge
+## Wollumbin (Mt Warning), the caldera rim and the ranges round it, out to 26 km past the edge of the map, so the
+## skyline is the real one (tools/bake_backdrop.py). Seen from a long way off only: no collision, no shadows.
+func _build_backdrop() -> void:
+	if not ResourceLoader.exists("res://assets/backdrop/backdrop.glb"):
+		return
+	var n: Node3D = (load("res://assets/backdrop/backdrop.glb") as PackedScene).instantiate()
+	n.name = "Backdrop"
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var m: Material = (mi as MeshInstance3D).mesh.surface_get_material(0)
+		if m is StandardMaterial3D:
+			var sm := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
+			sm.roughness = 1.0
+			sm.metallic_specular = 0.2
+			(mi as MeshInstance3D).material_override = sm
+	add_child(n)
 
 # ---------------------------------------------------------------- rivers and sea
 func _build_water() -> void:

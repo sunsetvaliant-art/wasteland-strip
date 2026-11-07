@@ -55,7 +55,14 @@ var reach_l: Node3D
 var reach_r: Node3D
 var corpse_dmg := {}
 var main
-var player: Player
+var player                 # the nearest player (you, or someone on the LAN when you're hosting)
+var puppet := false        # LAN client: a copy of the host's NPC that follows its snapshots
+var net_id := 0
+var puppet_gun := ""
+var _net_pos := Vector3.ZERO
+var _net_vel := Vector3.ZERO
+var _net_yaw := 0.0
+var _pick_t := 0.0
 
 func _ready() -> void:
 	main = get_tree().current_scene
@@ -111,7 +118,7 @@ func _setup_scav() -> void:
 	hp = 100.0
 	gun = Gun.new()
 	add_child(gun)
-	gun.setup(SCAV_GUNS.pick_random(), self)
+	gun.setup(puppet_gun if puppet_gun != "" else SCAV_GUNS.pick_random(), self)
 	gun.reserve = 9999
 	gun.excludes = [get_rid()]
 	gun.top_level = true
@@ -130,7 +137,22 @@ func _setup_scav() -> void:
 func _physics_process(dt: float) -> void:
 	if dead:
 		return
-	var far := player == null or global_position.distance_to(player.global_position) > 160.0
+	if puppet:
+		_puppet_step(dt)
+		return
+	_pick_t -= dt
+	if _pick_t <= 0.0 and main and main.net and main.net.online():
+		_pick_t = 0.5
+		var best = main.player
+		var bd := 1e12
+		for pl in main.net.all_players():
+			if is_instance_valid(pl) and not pl.dead:
+				var dd := global_position.distance_squared_to(pl.global_position)
+				if dd < bd:
+					bd = dd
+					best = pl
+		player = best
+	var far: bool = player == null or global_position.distance_to(player.global_position) > 160.0
 	_check_cars()
 	if dead:
 		return
@@ -147,7 +169,7 @@ func _perceive(dt: float) -> void:
 		return
 	see_t = 0.15
 	vis = 0.0
-	var p := player
+	var p = player
 	if p == null or p.dead:
 		return
 	var tgt: Vector3 = p.global_position + Vector3(0, 1.2 if not p.crouching else 0.8, 0)
@@ -516,8 +538,33 @@ func _say(n: String) -> void:
 const SEVER_AT := {"head": 95.0, "l_upperarm": 42.0, "r_upperarm": 42.0, "l_forearm": 32.0, "r_forearm": 32.0,
 	"l_thigh": 55.0, "r_thigh": 55.0, "l_shin": 42.0, "r_shin": 42.0}
 
+## LAN client: where the host says this one is
+func net_target(pos: Vector3, yaw: float, vel: Vector3, action: String) -> void:
+	_net_pos = pos
+	_net_yaw = yaw
+	_net_vel = vel
+	if action != "" and rig.action == "":
+		rig.act(action, 1.2 if kind == "zombie" else 1.0)
+
+func _puppet_step(dt: float) -> void:
+	if _net_pos == Vector3.ZERO:
+		return
+	if global_position.distance_to(_net_pos) > 8.0:
+		global_position = _net_pos
+	else:
+		global_position = global_position.lerp(_net_pos + _net_vel * 0.05, clamp(dt * 8.0, 0.0, 1.0))
+	velocity = _net_vel
+	face_dir = Vector3(sin(_net_yaw), 0, cos(_net_yaw))
+	rotation.y = lerp_angle(rotation.y, atan2(-face_dir.x, -face_dir.z), clamp(dt * 8.0, 0.0, 1.0))
+	_animate(dt)
+
 func take_hit(parts: Dictionary, dir: Vector3, point: Vector3, force: float, attacker: Node) -> void:
 	if dead:
+		return
+	if puppet:
+		# the host does the damage; here it just flinches
+		if main and main.net: main.net.hit_npc(self, parts, dir, point, force)
+		stagger = 0.2
 		return
 	var total := 0.0
 	var cuts: Array = []
@@ -562,6 +609,7 @@ func die(impulse: Vector3, point: Vector3, part: String, cuts: Array, launch := 
 		return
 	if launch != Vector3.ZERO:
 		velocity = launch
+	if not puppet and main and main.net: main.net.npc_died(self, impulse, point, part, cuts)
 	dead = true
 	remove_from_group("npcs")
 	collision_layer = 0

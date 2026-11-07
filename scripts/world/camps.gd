@@ -7,7 +7,7 @@ extends Node3D
 
 const BUILD_R := 360.0
 const DROP_R := 480.0
-const SHELTERS := ["props:hut", "props:quonset", "props:cont1"]
+const SHELTERS := ["props:hut", "props:quonset", "props:cont1"]   # (steel_frame_shelves_01 comes in at 21 m tall: not used)
 const BARRICADE := ["props:barrier", "props:tyre", "props:drum1", "props:drum2", "ph:wooden_barrels_01", "ph:Barrel_01", "props:wcrate", "ph:modular_chainlink_fence"]
 const CLUTTER := ["props:crate", "props:jerry", "props:boxes", "props:propane", "ph:wooden_crate_01", "ph:wooden_crate_02", "ph:plastic_crate_01",
 	"ph:trashbag", "ph:Sofa_01", "ph:old_bed_frame", "ph:plastic_monobloc_chair_01", "ph:wooden_picnic_table", "ph:worn_metal_rack",
@@ -77,7 +77,7 @@ func _process(dt: float) -> void:
 	if not _picked:
 		_picked = true
 		_pick_sites()
-		print("CAMPS %d sites, nearest %.0f m from the pub" % [sites.size(), sites[0].pos.distance_to(main.PUB) if sites.size() else -1.0])
+		print("CAMPS %d sites, nearest %.0f m from the pub at %s" % [sites.size(), sites[0].pos.distance_to(main.PUB) if sites.size() else -1.0, sites[0].pos if sites.size() else Vector3.ZERO])
 	if OS.get_environment("NPC_OFF") != "":
 		return
 	var me: Vector3 = main.player.vehicle.global_position if main.player.vehicle else main.player.global_position
@@ -120,22 +120,55 @@ func _build(s: Dictionary) -> void:
 		var r := rng.randf_range(8.0, 11.0)
 		var p := c + Vector3(cos(a), 0, sin(a)) * r
 		_place(root, SHELTERS[rng.randi() % SHELTERS.size()], p, -a + PI * 0.5, true)
-	# barricade ring with a gap for the gate
+	# the wall: runs of one kind of junk each (a stretch of drums, a stretch of barriers, a length of fence), stood
+	# shoulder to shoulder along the ring and turned to follow it; the gate is two drums either side of a gap
 	var ring_r := rng.randf_range(15.0, 18.0)
-	var steps := int(TAU * ring_r / 2.4)
-	for i in steps:
-		var a := TAU * float(i) / steps
-		if abs(wrapf(a - gate_a, -PI, PI)) < 0.32:
-			continue
-		if rng.randf() < 0.22:
-			continue                                 # gaps where it's fallen down
-		var p := c + Vector3(cos(a), 0, sin(a)) * (ring_r + rng.randf_range(-0.6, 0.6))
-		_place(root, BARRICADE[rng.randi() % BARRICADE.size()], p, -a + rng.randf_range(-0.3, 0.3), true)
-	# junk lying about
-	for i in rng.randi_range(10, 16):
-		var a := rng.randf() * TAU
-		var p := c + Vector3(cos(a), 0, sin(a)) * rng.randf_range(2.5, 13.0)
-		_place(root, CLUTTER[rng.randi() % CLUTTER.size()], p, rng.randf() * TAU, false)
+	var WALL := [["props:barrier", 1.6], ["props:drum1", 0.75], ["props:drum2", 0.75], ["props:tyre", 0.9], ["ph:Barrel_01", 0.75], ["props:wcrate", 0.9]]
+	var wall_a := gate_a + 0.3
+	var run_left := 0
+	var cur: Array = WALL[0]
+	while wall_a < gate_a + TAU - 0.3:
+		if run_left <= 0:
+			cur = WALL[rng.randi() % WALL.size()]
+			run_left = rng.randi_range(3, 7)
+		var pa := c + Vector3(cos(wall_a), 0, sin(wall_a)) * ring_r
+		if rng.randf() > 0.08:                       # now and then a piece has fallen out
+			_place(root, cur[0], pa, -wall_a - PI * 0.5, true)      # long side along the ring
+		run_left -= 1
+		wall_a += float(cur[1]) / ring_r
+	for side in [-1.0, 1.0]:
+		var ga: float = gate_a + side * 0.24
+		_place(root, "props:drum1", c + Vector3(cos(ga), 0, sin(ga)) * ring_r, -ga, true)
+	# round the fire: seats facing it, the stove and a table to one side
+	var SEATS := ["ph:plastic_monobloc_chair_01", "ph:painted_wooden_bench", "ph:Sofa_01", "props:tyre", "ph:wooden_crate_01"]
+	var n_seat := rng.randi_range(3, 5)
+	for i in n_seat:
+		var sa := gate_a + PI * 0.25 + TAU * 0.75 * float(i) / n_seat
+		var sp := c + Vector3(cos(sa), 0, sin(sa)) * rng.randf_range(2.1, 2.6)
+		_place(root, SEATS[rng.randi() % SEATS.size()], sp, atan2(-cos(sa), -sin(sa)), false)     # front (+Z) to the fire
+	var cook := gate_a + PI * 0.15
+	_place(root, "ph:barrel_stove", c + Vector3(cos(cook), 0, sin(cook)) * 4.0, -cook, true)
+	_place(root, "ph:wooden_picnic_table", c + Vector3(cos(cook + 0.5), 0, sin(cook + 0.5)) * 5.2, -cook, true)
+	# the store: shelving with its back to a shelter, crates stacked neatly in front of it, jerry cans in a row
+	var store_a := gate_a + PI * 0.75
+	var store := c + Vector3(cos(store_a), 0, sin(store_a)) * 6.5
+	var along := Vector3(-sin(store_a), 0, cos(store_a))
+	var face := -store_a + PI * 0.5
+	_place(root, "ph:vintage_cabinet_01", store - Vector3(cos(store_a), 0, sin(store_a)) * 1.2, face, true)
+	_place(root, "props:cabinet", store - Vector3(cos(store_a), 0, sin(store_a)) * 1.2 + along * 1.4, face, true)
+	var CRATES := ["ph:wooden_crate_01", "ph:wooden_crate_02", "props:wcrate", "ph:plastic_crate_01", "props:crate"]
+	var ck2: String = CRATES[rng.randi() % CRATES.size()]
+	for col in 3:
+		for lvl in rng.randi_range(1, 2):
+			_place(root, ck2, store + along * (float(col) - 1.0) * 0.9, face, false, lvl)
+	for j in rng.randi_range(2, 4):
+		_place(root, "props:jerry", store + along * (2.4 + j * 0.45) + Vector3(cos(store_a), 0, sin(store_a)) * 0.4, face, false)
+	# the tip: rubbish bags and boxes heaped just outside the wall, away from the gate
+	var tip_a := gate_a + PI + 0.9
+	var tip := c + Vector3(cos(tip_a), 0, sin(tip_a)) * (ring_r + 3.0)
+	for j in rng.randi_range(4, 7):
+		var o := Vector3(rng.randf_range(-1.6, 1.6), 0, rng.randf_range(-1.6, 1.6))
+		_place(root, ["ph:trashbag", "ph:cardboard_box_01", "ph:trashbag", "props:tyre"][rng.randi() % 4], tip + o, rng.randf() * TAU, false)
 	# a wreck dragged in for parts
 	var cat: Dictionary = Car.catalog()
 	var keys: Array = cat.keys()
@@ -143,11 +176,16 @@ func _build(s: Dictionary) -> void:
 	var wa := gate_a + PI + rng.randf_range(-0.6, 0.6)
 	var wreck := _wreck(wk, c + Vector3(cos(wa), 0, sin(wa)) * rng.randf_range(5.0, 9.0), rng.randf() * TAU)
 	if wreck: root.add_child(wreck)
+	# the workshop end: tyres stacked by the wreck and a drum of oil
+	var wp := c + Vector3(cos(wa), 0, sin(wa)) * 9.5
+	for lvl in rng.randi_range(2, 4):
+		_place(root, "props:tyre", wp + Vector3(cos(wa + PI * 0.5), 0, sin(wa + PI * 0.5)) * 2.0, rng.randf() * TAU, false, lvl - 1)
+	_place(root, "props:drum2", wp + Vector3(cos(wa - PI * 0.5), 0, sin(wa - PI * 0.5)) * 2.0, 0.0, true)
 	# something worth the trouble: a gun and rounds by the fire
 	var loot_at := c + Vector3(rng.randf_range(-2.5, 2.5), 0, rng.randf_range(-2.5, 2.5))
 	_loot(root, LOOT[rng.randi() % LOOT.size()], loot_at)
-	# the people who live here
-	if not s.cleared:
+	# the people who live here (on a LAN client they're the host's, sent over)
+	if not s.cleared and (main.net == null or main.net.runs_world()):
 		var n := rng.randi_range(3, 5)
 		for i in n:
 			var npc := NPC.new()
@@ -190,7 +228,7 @@ func _scene(spec: String) -> PackedScene:
 	return ps
 
 ## A prop, sat on the ground, solid. Big ones are static; small ones can be knocked about.
-func _place(root: Node3D, spec: String, p: Vector3, yaw: float, fixed: bool) -> void:
+func _place(root: Node3D, spec: String, p: Vector3, yaw: float, fixed: bool, level := 0) -> void:
 	var ps := _scene(spec)
 	if ps == null:
 		return
@@ -214,7 +252,8 @@ func _place(root: Node3D, spec: String, p: Vector3, yaw: float, fixed: bool) -> 
 		body.add_to_group("physgun")
 	root.add_child(body)
 	var gy: float = main.ground_at(p.x, p.z)
-	body.global_transform = Transform3D(Basis(Vector3.UP, yaw), Vector3(p.x, gy - bb.position.y - 0.02, p.z))
+	# stacked: sat on top of the ones under it (same kind, same height)
+	body.global_transform = Transform3D(Basis(Vector3.UP, yaw), Vector3(p.x, gy - bb.position.y - 0.02 + bb.size.y * level, p.z))
 
 func _fire(root: Node3D, c: Vector3) -> void:
 	var y: float = main.ground_at(c.x, c.z)

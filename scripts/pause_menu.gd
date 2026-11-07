@@ -54,12 +54,15 @@ func setup(m) -> void:
 		if main.forge.active: main.forge.toggle()
 		main.garage.show_garage())
 	_btn(home, "Reset world", func(): main.reset_world())
-	var mp := _btn(home, "Multiplayer  (coming)", func(): pass)
-	mp.disabled = true
+	_btn(home, "Multiplayer (LAN)", func():
+		mp_panel.visible = not mp_panel.visible
+		main.net.listen_for_games(mp_panel.visible)
+		_refresh_mp())
 	_btn(home, "Credits", func(): credits_panel.visible = not credits_panel.visible)
 	_btn(home, "Quit to desktop", func(): get_tree().quit())
 	_build_credits()
 	_build_settings()
+	_build_mp()
 	root.visible = false
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -226,6 +229,86 @@ func _refresh() -> void:
 func _refresh_presets() -> void:
 	for p in ["Low", "Medium", "High", "Ultra"]:
 		widgets["preset_" + p].set_pressed_no_signal(Settings.get_v("preset") == p)
+
+# ---------------------------------------------------------------- LAN multiplayer
+var mp_panel: PanelContainer
+var mp_status: Label
+var mp_games: VBoxContainer
+var mp_name: LineEdit
+var mp_ip: LineEdit
+var mp_leave: Button
+
+func _build_mp() -> void:
+	mp_panel = PanelContainer.new()
+	mp_panel.position = Vector2(440, 140)
+	mp_panel.custom_minimum_size = Vector2(560, 0)
+	mp_panel.visible = false
+	root.add_child(mp_panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	mp_panel.add_child(v)
+	var t := Label.new()
+	t.text = "MULTIPLAYER  ·  LAN"
+	t.add_theme_color_override("font_color", ACCENT)
+	v.add_child(t)
+	var r1 := _row(v, "Your name")
+	mp_name = LineEdit.new()
+	mp_name.text = main.net.my_name
+	mp_name.custom_minimum_size = Vector2(260, 0)
+	mp_name.text_changed.connect(func(x): main.net.my_name = x if x.strip_edges() != "" else "Survivor")
+	r1.add_child(mp_name)
+	_btn(v, "Host a game on this network", func(): main.net.my_name = mp_name.text; main.net.host(); _refresh_mp())
+	var gl := Label.new()
+	gl.text = "Games on your network (click to join):"
+	gl.modulate = Color(1, 1, 1, 0.7)
+	v.add_child(gl)
+	mp_games = VBoxContainer.new()
+	v.add_child(mp_games)
+	var r2 := _row(v, "Or join by address")
+	mp_ip = LineEdit.new()
+	mp_ip.placeholder_text = "192.168.1.20"
+	mp_ip.custom_minimum_size = Vector2(200, 0)
+	r2.add_child(mp_ip)
+	var jb := Button.new()
+	jb.text = "Join"
+	jb.pressed.connect(func(): main.net.my_name = mp_name.text; main.net.join(mp_ip.text); _refresh_mp())
+	r2.add_child(jb)
+	mp_leave = _btn(v, "Leave / stop hosting", func(): main.net.leave(); _refresh_mp())
+	mp_status = Label.new()
+	mp_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mp_status.custom_minimum_size = Vector2(520, 0)
+	v.add_child(mp_status)
+	var note := Label.new()
+	note.text = "Everyone needs the same version (the launcher keeps you up to date). The host runs the zombies and scavs; loot and inventories stay your own. Windows may ask to let Wasteland through the firewall: allow it on private networks."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size = Vector2(520, 0)
+	note.modulate = Color(1, 1, 1, 0.55)
+	v.add_child(note)
+	main.net.changed.connect(_refresh_mp)
+
+func _refresh_mp() -> void:
+	if mp_panel == null:
+		return
+	for c in mp_games.get_children(): c.queue_free()
+	for ip in main.net.found:
+		var g: Dictionary = main.net.found[ip]
+		var b := Button.new()
+		b.text = "%s's game  ·  %d playing  ·  v%s  ·  %s" % [g.name, g.players, g.version, ip]
+		b.disabled = main.net.online() or str(g.version) != Boot.version
+		b.pressed.connect(func(): main.net.my_name = mp_name.text; main.net.join(ip); _refresh_mp())
+		mp_games.add_child(b)
+	if main.net.found.is_empty():
+		var l := Label.new()
+		l.text = "  (none heard yet)"
+		l.modulate = Color(1, 1, 1, 0.45)
+		mp_games.add_child(l)
+	var who := ""
+	if main.net.online():
+		var ns: Array = [main.net.my_name + " (you)"]
+		for id in main.net.names: ns.append(main.net.names[id])
+		who = "\nPlaying: " + ", ".join(ns)
+	mp_status.text = main.net.status + who
+	mp_leave.disabled = not main.net.online()
 
 func _build_credits() -> void:
 	credits_panel = PanelContainer.new()

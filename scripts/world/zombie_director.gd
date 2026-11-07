@@ -24,17 +24,24 @@ func _process(dt: float) -> void:
 	_t = 2.0
 	if OS.get_environment("NPC_OFF") != "" or (main.forge and main.forge.active):
 		return
-	var me: Vector3 = main.player.vehicle.global_position if main.player.vehicle else main.player.global_position
+	if main.net and not main.net.runs_world():
+		return                     # on a LAN client the host's zombies come over the network
+	# on the host they gather round everyone: spawn round one player at a time, drop only when far from all of them
+	var who: Array = main.net.all_players() if main.net and main.net.online() else [main.player]
+	var pick = who[rng.randi() % who.size()]
+	var me: Vector3 = pick.vehicle.global_position if pick.vehicle else pick.global_position
 	live = live.filter(func(n): return is_instance_valid(n))
 	var alive := 0
 	for n in live:
-		var d: float = n.global_position.distance_to(me)
+		var d := 1e9
+		for pl in who:
+			if is_instance_valid(pl): d = min(d, n.global_position.distance_to(pl.global_position))
 		if d > DROP and not n.dead:
 			n.free_body()
 		elif not n.dead:
 			alive += 1
 	# fewer in survival's first minutes, more at night would go here
-	if alive >= target_count:
+	if alive >= target_count * who.size():
 		return
 	var cam: Camera3D = get_viewport().get_camera_3d()
 	for attempt in 12:

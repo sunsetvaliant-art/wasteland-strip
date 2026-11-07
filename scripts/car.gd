@@ -35,7 +35,8 @@ var gear := 0                                # auto: 0 P, 1 R, 2 N, 3 D ; manual
 var auto_gear := 0                           # which forward ratio the auto box is in
 var shift_t := 0.0                           # time left in a shift (clutch out)
 var gear_held := 0.0                         # auto: how long it's been in this gear (it won't flick through them)
-var _park_at := Vector3.INF                  # parked with nobody in it: where the handbrake's holding it
+var _park_at := Vector3.INF
+var home_pos := Vector3.ZERO                 # where it was when the world was made (LAN: the same car on every machine)                  # parked with nobody in it: where the handbrake's holding it
 var clutch := 1.0
 var running := false
 var crank := 0.0                             # > 0 while the starter is turning it over
@@ -284,6 +285,8 @@ func _shift(d: int) -> void:
 
 # ---------------------------------------------------------------- simulation
 func _physics_process(dt: float) -> void:
+	if home_pos == Vector3.ZERO:
+		home_pos = global_position
 	if freeze:
 		return
 	_read_controls(dt)

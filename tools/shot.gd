@@ -14,6 +14,39 @@ func _ready():
 		var a := step.split(":")
 		var nm := a[0]; var mode := a[1]
 		var p = main.player
+		if mode == "mphost" or mode == "mpjoin":
+			# LAN test: a[2] = frames to run. Host hosts; join joins 127.0.0.1, walks forward and shoots the nearest puppet
+			if mode == "mphost":
+				main.net.my_name = "Host"
+				print("MPTEST host: ", main.net.host())
+			else:
+				main.net.my_name = "Joiner"
+				p.global_position += Vector3(4, 0, 0)
+				print("MPTEST join: ", main.net.join("127.0.0.1"))
+			var shot_done := false
+			for f in int(a[2]):
+				await get_tree().physics_frame
+				if f % 120 == 0:
+					var pups := 0
+					for id in main.net.npcs:
+						var n = main.net.npcs[id]
+						if is_instance_valid(n) and n.get("puppet"): pups += 1
+					var rps := []
+					for id in main.net.players:
+						var rp = main.net.players[id]
+						if is_instance_valid(rp): rps.append([rp.display_name, rp.global_position.round(), rp.gun_key])
+					print("MPTEST %s f=%d online=%s players=%s npcs=%d puppets=%d status=%s conn=%s same=%s" % [mode, f, main.net.online(), rps, main.net.npcs.size(), pups, main.net.status,
+						main.net.peer.get_connection_status() if main.net.peer else -1, main.net.multiplayer.multiplayer_peer == main.net.peer])
+				if mode == "mpjoin" and f == int(a[2]) - 240 and not shot_done:
+					shot_done = true
+					var best = null
+					for id in main.net.npcs:
+						var n = main.net.npcs[id]
+						if is_instance_valid(n) and not n.dead and (best == null or n.global_position.distance_to(p.global_position) < best.global_position.distance_to(p.global_position)): best = n
+					if best:
+						print("MPTEST shooting puppet ", best.net_id, " at ", best.global_position.distance_to(p.global_position))
+						best.take_hit({"head": 400.0}, Vector3.FORWARD, best.global_position + Vector3.UP * 1.6, 10.0, p)
+			continue
 		if mode == "probe2":
 			# stand where a bug report was (a[2], a[3]) and fire level rays all round at knee, chest and head height
 			p.global_position = Vector3(float(a[2]), main.height_at(float(a[2]), float(a[3])) + 1.0, float(a[3]))
@@ -84,6 +117,11 @@ func _ready():
 		elif mode == "menu":
 			main.pause_menu.show_menu()
 			main.pause_menu.settings_panel.visible = true
+		elif mode == "mpmenu":
+			main.pause_menu.show_menu()
+			main.pause_menu.mp_panel.visible = true
+			main.net.found["192.168.1.23"] = {"name": "Dave", "version": Boot.version, "players": 2, "t": Time.get_ticks_msec() + 100000}
+			main.pause_menu._refresh_mp()
 		elif mode == "forge":
 			if main.pause_menu.open: main.pause_menu.close()
 			if not main.forge.active: main.forge.toggle()
@@ -162,12 +200,24 @@ func _ready():
 		elif mode == "cam":
 			# free camera: x z are the camera, a[4] a[5] the point to look at (y from the ground)
 			var fc := Camera3D.new()
+			fc.far = 48000.0
 			main.add_child(fc)
 			var tx := float(a[4]); var tz := float(a[5])
 			var ty: float = main.height_at(tx, tz)
 			fc.look_at_from_position(Vector3(float(a[2]), ty + float(a[6]), float(a[3])), Vector3(tx, ty, tz), Vector3.UP)
 			fc.current = true
 			for _i in 20: await get_tree().process_frame
+		elif mode == "campcam":
+			# a camera over the nearest scav camp (a[6] = height), once it's been built
+			p.global_position = main.camps.sites[0].pos + Vector3(30, 2, 0)
+			for _i in 200: await get_tree().physics_frame
+			var cc: Vector3 = main.camps.sites[0].pos
+			var fc2 := Camera3D.new()
+			fc2.far = 48000.0
+			main.add_child(fc2)
+			fc2.look_at_from_position(cc + Vector3(18, float(a[6]), 22), cc, Vector3.UP)
+			fc2.current = true
+			for _i in 60: await get_tree().process_frame
 		elif mode == "inv":
 			main.inv_ui.show_with(null)
 			for _i in 10: await get_tree().process_frame

@@ -309,6 +309,8 @@ func _hold_gun(dt: float) -> void:
 		var spread := (0.012 if not pistol else 0.008) * (1.0 - ads) + velocity.length() * 0.003 + (0.0 if is_on_floor() else 0.03)
 		if crouching: spread *= 0.7
 		if g.fire(origin, dir, spread):
+			var m = get_tree().current_scene
+			if m and "net" in m and m.net: m.net.shot(origin, dir, g.key)
 			recoil += float(g.def.recoil) * randf_range(0.8, 1.2) * (0.6 if crouching else 1.0)
 			yaw += randf_range(-0.3, 0.3) * float(g.def.recoil) * 0.4
 			kick = float(g.def.kick)

@@ -12,12 +12,18 @@ var manager: RoadManager
 var container: RoadContainer
 var mat: ShaderMaterial
 
+var make_islands := true
+var islands: Array = []           # [[centre, radius]] of the roundabouts built
+
 func setup() -> void:
 	var f := FileAccess.open(DATA, FileAccess.READ)
 	if f == null:
 		return
-	var d: Dictionary = JSON.parse_string(f.get_as_text())
-	mat = ShaderMaterial.new()
+	build(JSON.parse_string(f.get_as_text()))
+
+## The road surface material: scanned asphalt in world space, the addon's lane markings painted Australian white
+static func make_material() -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/road_rg.gdshader")
 	var P := "res://assets/ph/tex/"
 	mat.set_shader_parameter("marks", load("res://addons/road-generator/resources/road_texture.png"))
@@ -28,6 +34,11 @@ func setup() -> void:
 	mat.set_shader_parameter("dirt_alb", load("res://assets/ground/farm_soil_alb_h.png"))
 	mat.set_shader_parameter("grass_alb", load("res://assets/ground/rough_grass_alb_h.png"))
 	mat.set_shader_parameter("grass_nrm", load("res://assets/ground/rough_grass_nrm_r.png"))
+	return mat
+
+## Builds a road graph ({edges, junctions}, tools/road_graph.py or road_pilot.py) with the Road Generator addon
+func build(d: Dictionary) -> void:
+	mat = make_material()
 	manager = RoadManager.new()
 	manager.name = "RoadManager"
 	add_child(manager)
@@ -48,7 +59,8 @@ func setup() -> void:
 		var c := Vector3(j.pos[0], j.pos[1], j.pos[2])
 		if j.kind == "roundabout":
 			rbs[j.id] = {"c": c, "r": float(j.r), "legs": []}
-			_island(c, float(j.r))
+			islands.append([c, float(j.r)])
+			if make_islands: _island(c, float(j.r))
 			continue
 		var it := RoadIntersection.new()
 		it.name = "J_" + str(j.id)
@@ -198,6 +210,10 @@ func _ring(rb: Dictionary) -> void:
 
 ## The roundabout's middle: a mountable concrete kerb ring and a grassed island, leaving a ring road about 7 m wide
 func _island(c: Vector3, r: float) -> void:
+	add_child(island_node(c, r))
+
+static func island_node(c: Vector3, r: float) -> Node3D:
+	var holder := Node3D.new()
 	var ir: float = max(r - 3.6, 3.0)
 	var kerb := MeshInstance3D.new()
 	var km := CylinderMesh.new()
@@ -211,7 +227,7 @@ func _island(c: Vector3, r: float) -> void:
 	cm.roughness = 0.9
 	kerb.material_override = cm
 	kerb.position = c + Vector3(0, 0.05, 0)
-	add_child(kerb)
+	holder.add_child(kerb)
 	var top := MeshInstance3D.new()
 	var tm := CylinderMesh.new()
 	tm.top_radius = ir - 0.35
@@ -235,7 +251,7 @@ func _island(c: Vector3, r: float) -> void:
 	gm.uv1_scale = Vector3.ONE * 2.2
 	top.material_override = gm
 	top.position = c + Vector3(0, 0.08, 0)
-	add_child(top)
+	holder.add_child(top)
 	var body := StaticBody3D.new()
 	var cs := CollisionShape3D.new()
 	var sh := CylinderShape3D.new()
@@ -244,4 +260,5 @@ func _island(c: Vector3, r: float) -> void:
 	cs.shape = sh
 	body.add_child(cs)
 	body.position = c + Vector3(0, 0.05, 0)
-	add_child(body)
+	holder.add_child(body)
+	return holder

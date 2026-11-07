@@ -225,7 +225,7 @@ if not MESH_ONLY:
     _carve()
 
 # ------------------------------------------------------------------ the Road Generator pilot's roads replace these stretches
-CUT = os.environ.get("PILOT_CUT", f"{GAME}/assets/roads/pilot_cut.json")
+CUT = os.environ.get("PILOT_CUT", f"{GAME}/assets/roads/rg_cut.json" if os.path.exists(f"{GAME}/assets/roads/rg_cut.json") else f"{GAME}/assets/roads/pilot_cut.json")
 if os.path.exists(CUT):
     segs = []
     for c in json.load(open(CUT)):
@@ -233,10 +233,19 @@ if os.path.exists(CUT):
         if len(P) == 1:
             P = np.vstack([P, P])
         for i in range(len(P) - 1):
-            segs.append((P[i, 0], P[i, 1], P[i + 1, 0], P[i + 1, 1], c["r"]))
+            segs.append((P[i, 0], P[i, 1], P[i + 1, 0], P[i + 1, 1], c["r"], 1.0 if c.get("bridges") else 0.0))
     S = np.array(segs)
-    def inside(x, z):
-        ax, az, bx, bz, rr = S.T
+    from scipy.spatial import cKDTree as _KD
+    _mid = _KD(np.column_stack([(S[:, 0] + S[:, 2]) / 2, (S[:, 1] + S[:, 3]) / 2]))
+    _half = float(np.max(np.hypot(S[:, 2] - S[:, 0], S[:, 3] - S[:, 1]))) / 2 + float(S[:, 4].max())
+    def inside(x, z, bridge=False):
+        near = _mid.query_ball_point([x, z], _half)
+        if not near: return False
+        ax, az, bx, bz, rr, br = S[near].T
+        if bridge:            # bridges keep their old decks (barriers, piers) unless a road was built over that one
+            m = br > 0.5
+            if not m.any(): return False
+            ax, az, bx, bz, rr = ax[m], az[m], bx[m], bz[m], rr[m]
         dx, dz = bx - ax, bz - az
         L2 = dx * dx + dz * dz + 1e-9
         t = np.clip(((x - ax) * dx + (z - az) * dz) / L2, 0, 1)
@@ -245,7 +254,7 @@ if os.path.exists(CUT):
     cut_pts = 0
     for r in roads:
         P = r["P"]
-        keep = np.array([not inside(P[i, 0], P[i, 1]) for i in range(len(P))])
+        keep = np.array([not inside(P[i, 0], P[i, 1], r["b"]) for i in range(len(P))])
         cut_pts += int((~keep).sum())
         i = 0
         while i < len(P):

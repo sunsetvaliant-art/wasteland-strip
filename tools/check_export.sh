@@ -35,5 +35,5 @@ cp addons/terrain_3d/bin/libterrain.linux.*.so $W/game/addons/terrain_3d/bin/
 cd $W/game
 WASTELAND_NO_UPDATE=1 WASTELAND_AUTOPLAY=1 VEG_OFF=1 timeout 1500 xvfb-run -a -s "-screen 0 960x540x24" $G --path . \
   --rendering-driver opengl3 --rendering-method gl_compatibility --resolution 960x540 --windowed --quit-after 400 > $W/run.log 2>&1 || true
-grep -E "SCRIPT ERROR|Parse Error|Compile Error|Failed to load|Failed loading|not found|Can't load|ROADPILOT|LAUNCHER" $W/run.log | grep -v "libterrain.linux.debug" | sort | uniq -c | head -30
-if grep -q "ROADPILOT" $W/run.log && ! grep -qE "SCRIPT ERROR|Failed to load script" $W/run.log; then echo "EXPORT OK"; else echo "EXPORT BROKEN (log: $W/run.log)"; fi
+grep -E "SCRIPT ERROR|Parse Error|Compile Error|Failed to load|Failed loading|not found|Can't load|ROADPILOT|RGROADS|LANDMARKS|LAUNCHER" $W/run.log | grep -v "libterrain.linux.debug" | sort | uniq -c | head -30
+if grep -qE "ROADPILOT|RGROADS" $W/run.log && ! grep -qE "SCRIPT ERROR|Failed to load script" $W/run.log; then echo "EXPORT OK"; else echo "EXPORT BROKEN (log: $W/run.log)"; fi

@@ -87,10 +87,12 @@ func apply(main: Node) -> void:
 	env.glow_enabled = v.glow
 	env.volumetric_fog_enabled = v.volumetric_fog
 	env.tonemap_exposure = float(v.brightness)
-	env.fog_depth_end = float(v.view_distance)
+	# haze thick enough to fade the map's own far edge, thin enough that the ranges past it (the backdrop, out to
+	# ~45 km) still stand up on the skyline the way they do on a clear day
+	env.fog_depth_end = max(float(v.view_distance) * 2.2, 30000.0)
 	main.sun.directional_shadow_max_distance = float(v.shadow_distance)
 	main.veg.set_ranges(float(v.tree_distance), float(v.grass_distance), float(v.grass_density))
 	for c in main.get_tree().get_nodes_in_group("cameras"):
-		(c as Camera3D).far = float(v.view_distance) + 2000.0
+		(c as Camera3D).far = max(float(v.view_distance) + 2000.0, 48000.0)      # the backdrop's skyline is always in view
 		if not c.has_meta("fixed_fov"):
 			(c as Camera3D).fov = float(v.fov)
