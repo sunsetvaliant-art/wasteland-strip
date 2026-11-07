@@ -276,12 +276,48 @@ if os.path.exists(CUT):
     log("pilot cut: points removed", cut_pts, "roads", len(roads), "->", len(pieces))
     roads = pieces
 
+# ------------------------------------------------------------------ flush roads: a skin lying on the carved ground
+# (FLUSH=1): no kerbs, shoulders or batters; every vertex sits on the height map, a little proud; finer along the road
+# so it follows the ground; bridge decks kept but brought down at their ends onto the (sunk) approaches. Bridge decks
+# go in their own surface ("deck") so they alone get collision; everything else you drive on is the terrain.
+FLUSH = os.environ.get("FLUSH", "") != ""
+if FLUSH:
+    HF = np.fromfile(f"{GAME}/data/height_roads.r16", "<u2").reshape(T, T).astype(np.float32) / 65535 * HR + HMIN
+    def hgt(x, z):
+        fx = (np.asarray(x) - X0) / SP; fz = (np.asarray(z) - Z0) / SP
+        i0 = np.clip(np.floor(fx).astype(int), 0, T - 2); j0 = np.clip(np.floor(fz).astype(int), 0, T - 2)
+        a_ = np.clip(fx - i0, 0, 1); b_ = np.clip(fz - j0, 0, 1)
+        return (HF[j0, i0] * (1 - a_) * (1 - b_) + HF[j0, i0 + 1] * a_ * (1 - b_) + HF[j0 + 1, i0] * (1 - a_) * b_ + HF[j0 + 1, i0 + 1] * a_ * b_)
+    _out = []
+    for r in roads:
+        d = r["along"] - r["along"][0]
+        if r["b"]:
+            P = r["P"].copy(); L = d[-1]
+            P[:, 2] -= SINK * np.clip(1 - np.minimum(d, L - d) / 10.0, 0, 1)
+            r["P"] = P
+        else:
+            m = max(2, int(math.ceil(d[-1] / 4.0)) + 1)
+            sx = np.linspace(0, d[-1], m)
+            q = dict(r)
+            q["P"] = np.stack([np.interp(sx, d, r["P"][:, c]) for c in range(8)], 1)
+            for k in ("tx", "tz", "curve", "endf"):
+                q[k] = np.interp(sx, d, r[k])
+            tl = np.hypot(q["tx"], q["tz"]); tl[tl == 0] = 1; q["tx"] = q["tx"] / tl; q["tz"] = q["tz"] / tl
+            q["along"] = sx + r["along"][0]
+            r = q
+        _out.append(r)
+    roads = _out
+    log("flush: roads resampled", len(roads))
+
 # ------------------------------------------------------------------ road meshes
 def section(r):
     """cross-section stations for this road: list of (offset_m, kind) where kind picks height rule and surface"""
     hs, verge, kerb = r["hs"], r["verge"], r["kerb"]
     if r["b"]:   # bridge deck: seal edge to edge, the barriers are separate
         return [(-hs - 0.25, "deck"), (-hs, "seal"), (-hs / 2, "seal"), (0, "seal"), (hs / 2, "seal"), (hs, "seal"), (hs + 0.25, "deck")]
+    if FLUSH:
+        n = max(2, int(math.ceil(2 * hs / 1.6)))
+        return [(-hs - 0.9, "edge")] + [(-hs + 2 * hs * i / n, "seal") for i in range(n + 1)] + [(hs + 0.9, "edge")]
     if kerb:
         st = [(-hs - 2.6, "batter"), (-hs - 1.8, "path"), (-hs - 0.05, "kerbtop"), (-hs, "seal"), (-hs / 2, "seal"), (0, "seal"),
               (hs / 2, "seal"), (hs, "seal"), (hs + 0.05, "kerbtop"), (hs + 1.8, "path"), (hs + 2.6, "batter")]
@@ -291,7 +327,7 @@ def section(r):
               (hs, "seal"), (hs + v, "shoulder"), (hs + v + 1.2, "batter")]
     return st
 
-SURF = {"seal": 0.0, "shoulder": 0.5, "batter": 0.75, "path": 1.0, "kerbtop": 1.0, "deck": 1.0}
+SURF = {"seal": 0.0, "shoulder": 0.5, "batter": 0.75, "path": 1.0, "kerbtop": 1.0, "deck": 1.0, "edge": 0.5}
 
 class Builder:
     def __init__(self):
@@ -323,6 +359,8 @@ class Builder:
             self.ccount += 4
 
 tiles = {}
+decks = {}
+lines = {}     # FLUSH: tile -> [(hs, surf, mark, wild, pts (n x 5: x, z, along, endf, curve))] built in the game
 names = {}
 def tile_of(x, z):
     return (int((x - X0) // TILE), int((z - Z0) // TILE))
@@ -345,6 +383,8 @@ for r in roads:
         elif kd == "kerbtop": y = y_edge + 0.15
         elif kd == "path": y = y_edge + 0.17
         else: y = y_edge - 0.75                      # batter: down into the ground under the verge
+        if FLUSH and not r["b"]:
+            y = hgt(rows[:, j, 0], rows[:, j, 2]) + (0.045 if kd == "seal" else 0.02)
         rows[:, j, 1] = y
         uvs[:, j, 0] = o; uvs[:, j, 1] = r["along"]
         uv2[:, j, 0] = hs; uv2[:, j, 1] = r["endf"]
@@ -359,7 +399,12 @@ for r in roads:
         tkey = mid_t[i0]; i1 = i0
         while i1 + 1 < n - 1 and mid_t[i1 + 1] == tkey: i1 += 1
         B = tiles.setdefault(tkey, Builder())
-        B.strip(rows[i0:i1 + 2], uvs[i0:i1 + 2], uv2[i0:i1 + 2], col[i0:i1 + 2])
+        if FLUSH and not r["b"]:
+            sl = slice(i0, i1 + 2)
+            pts = np.column_stack([P[sl, 0], P[sl, 1], r["along"][sl], r["endf"][sl], r["curve"][sl]])
+            lines.setdefault(tkey, []).append((hs, 0.5 if r["k"] == "service" else 0.0, MARK.get(r["k"], 0.0), WILD[r["rank"]], pts))
+        else:
+            (decks.setdefault(tkey, Builder()) if FLUSH else B).strip(rows[i0:i1 + 2], uvs[i0:i1 + 2], uv2[i0:i1 + 2], col[i0:i1 + 2])
         if r["n"]: names.setdefault(tkey, set()).add(r["n"])
         if r["b"]:   # bridge: barriers, underside, piers
             q = []
@@ -395,7 +440,7 @@ for r in roads:
         i0 = i1 + 1
 
 # ------------------------------------------------------------------ glTF out
-def write_glb(path, B, origin):
+def write_glb(path, B, origin, BD=None):
     parts, views, acc = [], [], []
     off = 0
     def add(buf, target=None):
@@ -411,14 +456,15 @@ def write_glb(path, B, origin):
             a["min"] = arr.min(0).tolist(); a["max"] = arr.max(0).tolist()
         acc.append(a); return len(acc) - 1
     prims = []
-    mats = [{"name": "road"}, {"name": "concrete"}]
-    if B.count:
-        P = (np.concatenate(B.p) - origin).astype(np.float32)
-        prims.append({"attributes": {"POSITION": accessor(P, "VEC3"), "NORMAL": accessor(np.concatenate(B.n).astype(np.float32), "VEC3"),
-                                     "TEXCOORD_0": accessor(np.concatenate(B.uv).astype(np.float32), "VEC2"),
-                                     "TEXCOORD_1": accessor(np.concatenate(B.uv2).astype(np.float32), "VEC2"),
-                                     "COLOR_0": accessor((np.clip(np.concatenate(B.c), 0, 1) * 255 + 0.5).astype(np.uint8), "VEC4", 5121, normalized=True)},
-                      "indices": accessor(np.concatenate(B.i).astype(np.uint32), "SCALAR", 5125, 34963), "material": 0})
+    mats = [{"name": "road"}, {"name": "concrete"}, {"name": "deck"}]
+    for BB, mi_ in ((B, 0), (BD, 2)):
+        if BB is None or not BB.count: continue
+        P = (np.concatenate(BB.p) - origin).astype(np.float32)
+        prims.append({"attributes": {"POSITION": accessor(P, "VEC3"), "NORMAL": accessor(np.concatenate(BB.n).astype(np.float32), "VEC3"),
+                                     "TEXCOORD_0": accessor(np.concatenate(BB.uv).astype(np.float32), "VEC2"),
+                                     "TEXCOORD_1": accessor(np.concatenate(BB.uv2).astype(np.float32), "VEC2"),
+                                     "COLOR_0": accessor((np.clip(np.concatenate(BB.c), 0, 1) * 255 + 0.5).astype(np.uint8), "VEC4", 5121, normalized=True)},
+                      "indices": accessor(np.concatenate(BB.i).astype(np.uint32), "SCALAR", 5125, 34963), "material": mi_})
     if B.ccount:
         CP = (np.array(B.cp) - origin).astype(np.float32)
         prims.append({"attributes": {"POSITION": accessor(CP, "VEC3"), "NORMAL": accessor(np.array(B.cn, np.float32), "VEC3")},
@@ -439,10 +485,28 @@ for f in os.listdir(od):
     if f.endswith(".glb"): os.remove(os.path.join(od, f))      # .import files stay: they hold the tiles' import options
 index = []
 tot = 0
+for k_ in decks:
+    tiles.setdefault(k_, Builder())
+if FLUSH:
+    # the centrelines for the game to lay the road skin from, tile by tile
+    with open(f"{od}/lines.bin", "wb") as f:
+        f.write(struct.pack("<I", len(lines)))
+        for (tx_, tz_), pcs in sorted(lines.items()):
+            f.write(struct.pack("<iiI", tx_, tz_, len(pcs)))
+            for hs_, sf_, mk_, wl_, pts in pcs:
+                f.write(struct.pack("<ffffI", hs_, sf_, mk_, wl_, len(pts)))
+                f.write(pts.astype("<f4").tobytes())
+    log("lines.bin MB", round(os.path.getsize(f"{od}/lines.bin") / 1e6, 1), "tiles", len(lines))
+    # tiles with nothing baked (no bridges) still need a place in the index for their names
+    for k_ in lines:
+        tiles.setdefault(k_, Builder())
 for (tx, tz), B in sorted(tiles.items()):
     origin = np.array([X0 + tx * TILE + TILE / 2, 0.0, Z0 + tz * TILE + TILE / 2])
     fn = f"road_{tx}_{tz}.glb"
-    write_glb(f"{od}/{fn}", B, origin)
+    if not B.count and not B.ccount and not decks.get((tx, tz)):
+        index.append({"file": "", "x": float(origin[0]), "z": float(origin[2]), "names": sorted(names.get((tx, tz), []))})
+        continue
+    write_glb(f"{od}/{fn}", B, origin, decks.get((tx, tz)))
     index.append({"file": fn, "x": float(origin[0]), "z": float(origin[2]), "names": sorted(names.get((tx, tz), []))})
     tot += os.path.getsize(f"{od}/{fn}")
 json.dump({"tile": TILE, "tiles": index}, open(f"{od}/index.json", "w"))

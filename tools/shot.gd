@@ -207,6 +207,79 @@ func _ready():
 			fc.look_at_from_position(Vector3(float(a[2]), ty + float(a[6]), float(a[3])), Vector3(tx, ty, tz), Vector3.UP)
 			fc.current = true
 			for _i in 20: await get_tree().process_frame
+		elif mode == "cam2":
+			# camera a[6] m above its own ground at (a[2], a[3]) looking at a point 1 m above the ground at (a[4], a[5])
+			p.global_position = Vector3(float(a[2]), main.height_at(float(a[2]), float(a[3])) + 1.0, float(a[3])) + Vector3(0, 0, 6)
+			for _i in 90: await get_tree().physics_frame
+			var fc5 := Camera3D.new(); fc5.far = 48000.0; main.add_child(fc5)
+			var cx := float(a[2]); var cz := float(a[3]); var tx2 := float(a[4]); var tz2 := float(a[5])
+			fc5.look_at_from_position(Vector3(cx, main.height_at(cx, cz) + float(a[6]), cz), Vector3(tx2, main.height_at(tx2, tz2) + 1.0, tz2), Vector3.UP)
+			fc5.current = true
+			for _i in 30: await get_tree().process_frame
+		elif mode == "env":
+			# a[2] time of day, a[3] weather: set at once
+			main.sky.tod = float(a[2])
+			main.sky.set_weather(a[3], 900.0)
+			main.sky.cloud = main.sky._target_cloud(); main.sky.rain = main.sky._target_rain(); main.sky.fogd = main.sky._target_fog()
+			for _i in 30: await get_tree().process_frame
+			continue
+		elif mode == "servo":
+			var L = main.landmarks
+			var best = null
+			for sp in L.spots:
+				if sp.kind == "ampol_servo" and (best == null or Vector2(sp.x, sp.z).distance_to(Vector2(main.PUB.x, main.PUB.z)) < Vector2(best.x, best.z).distance_to(Vector2(main.PUB.x, main.PUB.z))): best = sp
+			var sxf := Transform3D(Basis(Vector3.UP, float(best.yaw)), Vector3(float(best.x), 0, float(best.z)))
+			var fp: Vector3 = sxf * Vector3(0, 0, 22)
+			p.global_position = Vector3(fp.x, main.height_at(fp.x, fp.z) + 1.0, fp.z)
+			for _i in 300:
+				await get_tree().physics_frame
+				if best.node != null: break
+			for _i in 200: await get_tree().physics_frame
+			sxf = best.node.global_transform
+			var fc4 := Camera3D.new(); fc4.far = 48000.0; fc4.fov = 72; main.add_child(fc4)
+			print("SHOT servo at ", best.x, ",", best.z, " node ", best.node)
+			if a[2] == "out": fc4.look_at_from_position(sxf * Vector3(6, 3, 18), sxf * Vector3(0, 2, 0), Vector3.UP)
+			elif a[2] == "shop": fc4.look_at_from_position(sxf * Vector3(-0.6, 1.7, 1.2), sxf * Vector3(-6, 0.8, -4.5), Vector3.UP)
+			else: fc4.look_at_from_position(sxf * Vector3(2.0, 1.8, 1.0), sxf * Vector3(6, 0.6, -4.5), Vector3.UP)
+			fc4.current = true
+			for _i in 30: await get_tree().process_frame
+		elif mode == "bld":
+			# a generated building of kind a[2] (nth nearest the pub: a[4]); view a[3] = out | in | far
+			var B = main.buildings
+			var cands := []
+			for i in B.lots.size():
+				if a[2] == "" or B.lots[i][0] == a[2]:
+					cands.append([Vector2(float(B.lots[i][1]) - main.PUB.x, float(B.lots[i][2]) - main.PUB.z).length(), i])
+			cands.sort()
+			var bi: int = cands[int(a[4]) if a.size() > 4 else 0][1]
+			var bp: Dictionary = B._plan(bi)
+			var bxf: Transform3D = B._xf(bi, bp)
+			var outp: Vector3 = bxf * Vector3(0, 0, float(bp.d) / 2 + 14.0)
+			p.global_position = Vector3(outp.x, main.height_at(outp.x, outp.z) + 1.0, outp.z)
+			for _i in 400:
+				await get_tree().physics_frame
+				if B.full.has(bi): break
+			for _i in 60: await get_tree().physics_frame
+			print("SHOT bld ", bi, " ", B.lots[bi], " full=", B.full.has(bi), " fulls=", B.full.size(), " lods=", B.lod.size())
+			var fc3 := Camera3D.new()
+			fc3.far = 48000.0
+			fc3.fov = 72
+			main.add_child(fc3)
+			var big: float = maxf(float(bp.w), float(bp.d))
+			if a[3] == "out":
+				fc3.look_at_from_position(bxf * Vector3(big * 0.7, 3.0, big * 1.1), bxf * Vector3(0, 2.0, 0), Vector3.UP)
+			elif a[3] == "far":
+				fc3.look_at_from_position(bxf * Vector3(big * 3, 40.0, big * 9), bxf * Vector3(0, 0, 0), Vector3.UP)
+			else:
+				var rr: Dictionary = {}
+				for r in bp.floors[0].rooms:
+					if r.type in ["lounge", "kitchen", "shed", "workshop", "warehouse", "milking"]: rr = r; break
+				if rr.is_empty(): rr = bp.floors[0].rooms[0]
+				var eye := Vector3(float(rr.x0) + 0.4, 1.6, float(rr.z1) - 0.4)
+				var at := Vector3(float(rr.x1) - 0.4, 0.8, float(rr.z0) + 0.4)
+				fc3.look_at_from_position(bxf * eye, bxf * at, Vector3.UP)
+			fc3.current = true
+			for _i in 30: await get_tree().process_frame
 		elif mode == "campcam":
 			# a camera over the nearest scav camp (a[6] = height), once it's been built
 			p.global_position = main.camps.sites[0].pos + Vector3(30, 2, 0)

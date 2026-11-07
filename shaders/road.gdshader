@@ -28,7 +28,14 @@ float fbm(vec2 p) { return vn(p) * 0.5 + vn(p * 2.03 + 17.1) * 0.27 + vn(p * 4.1
 
 float band(float x, float c, float w, float aa) { return 1.0 - smoothstep(w * 0.5 - aa, w * 0.5 + aa, abs(x - c)); }
 
-void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+uniform float pull = 0.03;          // drawn this much nearer the camera (+ a bit per metre away) so the ground can't swallow it
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	vec4 vp = MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
+	float d = max(-vp.z, 0.01);
+	vp.xyz *= max(d - (pull + d * 0.0012), 0.01) / d;
+	POSITION = PROJECTION_MATRIX * vp;
+}
 
 void fragment() {
 	float off = UV.x, along = UV.y, hs = UV2.x, endf = UV2.y;

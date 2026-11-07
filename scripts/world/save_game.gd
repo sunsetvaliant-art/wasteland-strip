@@ -1,0 +1,101 @@
+class_name SaveGame
+extends Node
+## Saves as you go (every minute, and when you quit):
+##   user://world.save      the world: time of day, weather, what's been taken out of which cupboards. Only the
+##                          machine running the world writes it (on a LAN game, the host: it's the host's world).
+##   user://character.save  you: where you are, health, what you're carrying and wearing. Everyone keeps their own.
+## Both come back next time you start.
+
+const WORLD := "user://world.save"
+const CHAR := "user://character.save"
+const EVERY := 60.0
+var main
+var _t := EVERY
+
+func setup(m) -> void:
+	main = m
+	get_tree().auto_accept_quit = false
+	load_world()
+	load_character()
+
+func _process(dt: float) -> void:
+	_t -= dt
+	if _t <= 0.0:
+		_t = EVERY
+		save_all()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_all()
+		get_tree().quit()
+
+func save_all() -> void:
+	if OS.get_environment("NO_SAVE") != "":
+		return
+	if main.net == null or main.net.runs_world():
+		_write(WORLD, world_state())
+	_write(CHAR, char_state())
+
+func world_state() -> Dictionary:
+	var d := {"ver": 1, "saved": Time.get_unix_time_from_system()}
+	if SkyCycle.inst:
+		d["sky"] = SkyCycle.inst.state()
+	if main.buildings:
+		d["buildings"] = main.buildings.save_state()
+	return d
+
+func char_state() -> Dictionary:
+	var p = main.player
+	if p == null:
+		return {}
+	return {"ver": 1, "pos": p.global_position, "yaw": p.rotation.y, "hp": p.hp, "dead": p.dead,
+		"hands": p.inv.hands, "equip": p.inv.equip, "creative": Settings.creative()}
+
+func load_world() -> void:
+	var d := _read(WORLD)
+	if d.is_empty() or OS.get_environment("NO_LOAD") != "":
+		return
+	if d.has("sky") and SkyCycle.inst:
+		SkyCycle.inst.take_state(d.sky)
+	if d.has("buildings") and main.buildings:
+		main.buildings.load_state(d.buildings)
+	print("SAVE world loaded")
+
+func load_character() -> void:
+	var d := _read(CHAR)
+	if d.is_empty() or OS.get_environment("NO_LOAD") != "":
+		return
+	if bool(d.get("creative", false)) != Settings.creative():
+		return          # a different mode's kit: start fresh
+	var p = main.player
+	if d.get("dead", false):
+		return
+	var pos: Vector3 = d.get("pos", p.global_position)
+	if pos.length() > 1.0 and absf(pos.x) < 30000.0 and absf(pos.z) < 30000.0:
+		if main.buildings: main.buildings.build_near_now(pos, 30.0)    # so there's a floor under you if you were indoors
+		p.global_position = pos + Vector3.UP * 0.3
+		p.rotation.y = float(d.get("yaw", 0.0))
+	p.hp = float(d.get("hp", 100.0))
+	if d.has("hands"):
+		p.inv.hands = d.hands
+		p.inv.equip = d.get("equip", {})
+		p.inv.sync_guns()
+		p.inv.changed.emit()
+	print("SAVE character loaded at ", p.global_position.round())
+
+func _write(path: String, d: Dictionary) -> void:
+	var f := FileAccess.open(path + ".tmp", FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_var(d, false)
+	f.close()
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(path + ".tmp"), ProjectSettings.globalize_path(path))
+
+func _read(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return {}
+	var v = f.get_var(false)
+	return v if typeof(v) == TYPE_DICTIONARY else {}

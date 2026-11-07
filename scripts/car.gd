@@ -452,16 +452,17 @@ func _read_controls(dt: float) -> void:
 
 ## Grip by ground: [peak mu, sliding / peak, rolling resistance, kind]. Terrain by its texture slot (main.GROUND).
 ## Loose stuff grips a lot less than bitumen and gives up more once the tyre's spinning (grass polishes, mud smears).
+# [peak grip, share of it left when sliding, rolling drag, kind]: grass grips (it's slower, not ice)
 const TERRAIN_SURF := [
-	[0.5, 0.55, 0.06, "grass"],    # pasture
-	[0.55, 0.7, 0.06, "dirt"],     # forest floor
-	[0.5, 0.66, 0.06, "dirt"],     # cane trash
-	[0.6, 0.75, 0.07, "dirt"],     # farm soil
-	[0.45, 0.8, 0.12, "sand"],     # sand
-	[0.62, 0.62, 0.02, "rock"],    # mossy rock
+	[0.8, 0.8, 0.085, "grass"],    # pasture
+	[0.78, 0.8, 0.08, "dirt"],     # forest floor
+	[0.74, 0.78, 0.08, "dirt"],    # cane trash
+	[0.76, 0.8, 0.09, "dirt"],     # farm soil
+	[0.6, 0.82, 0.13, "sand"],     # sand
+	[0.7, 0.72, 0.02, "rock"],     # mossy rock
 	[0.88, 0.85, 0.013, "seal"],   # concrete
-	[0.3, 0.6, 0.12, "mud"],       # river mud
-	[0.5, 0.55, 0.05, "grass"],    # rough grass
+	[0.45, 0.68, 0.14, "mud"],     # river mud
+	[0.78, 0.8, 0.08, "grass"],    # rough grass
 ]
 var _terrain: Terrain3D
 
@@ -480,6 +481,10 @@ func _surface(w: Dictionary) -> void:
 			if not is_nan(t.x):
 				id = int(t.y) if t.z > 0.5 else int(t.x)
 		surf = TERRAIN_SURF[clampi(id, 0, TERRAIN_SURF.size() - 1)]
+		# the road skin has no collision: on the seal if the road mask says so
+		var m2 = get_tree().current_scene
+		if m2 and m2.get("roads") and m2.roads.has_method("on_road") and m2.roads.on_road(w.point.x, w.point.z):
+			surf = [0.95, 0.85, 0.013, "seal"]
 	elif c and (c.is_in_group("corpses") or c is PhysicalBone3D or (c is RigidBody3D and (c as RigidBody3D).mass < 120.0)):
 		surf = [0.35, 0.6, 0.02, "flesh"]
 	# tyre pressure: soft tyres bag out and grip loose ground better, roll heavier; hard ones skate on it
@@ -487,6 +492,8 @@ func _surface(w: Dictionary) -> void:
 	var soft: float = clamp((32.0 - psi) / 20.0, -1.0, 1.0)
 	var loose: bool = surf[3] in ["grass", "dirt", "sand", "mud"]
 	w.mu = float(surf[0]) * (1.0 + (0.22 * soft if loose else -0.06 * abs(soft)))
+	if SkyCycle.inst and SkyCycle.inst.wet > 0.0:
+		w.mu *= 1.0 - SkyCycle.inst.wet * (0.18 if loose else 0.12)      # wet seal and wet grass both give less
 	w.slide = float(surf[1])
 	w.crr = float(surf[2]) * (1.0 + 0.5 * max(soft, 0.0))
 	w.kind = surf[3]

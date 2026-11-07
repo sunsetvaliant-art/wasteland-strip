@@ -78,10 +78,16 @@ static func box_grid(box: Node) -> Dictionary:
 	var c: Array = Items.CONTAINERS.get(key, ["crate", [5, 4]])
 	var g := Items.new_grid(c[1][0], c[1][1])
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(Vector3i(box.global_position.round()))
+	rng.seed = int(box.get_meta("loot_seed")) if box.has_meta("loot_seed") else hash(Vector3i(box.global_position.round()))
 	if not box.get_meta("empty", false):
 		for s in Items.roll_loot(c[0], rng):
 			Inventory.add(g, s)
+		# out in the dangerous country, now and then something better tucked away
+		var bonus := float(box.get_meta("loot_bonus", 0.0))
+		if bonus > 0.0 and rng.randf() < 0.3 * bonus:
+			var extra := Items.roll_loot("military", rng)
+			if not extra.is_empty():
+				Inventory.add(g, extra[rng.randi() % extra.size()])
 	box.set_meta("inv", g)
 	return g
 

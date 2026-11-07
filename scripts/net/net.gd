@@ -157,6 +157,10 @@ func _process(dt: float) -> void:
 		if _world_t <= 0.0:
 			_world_t = 0.1
 			_send_world()
+		_env_t -= dt
+		if _env_t <= 0.0 and SkyCycle.inst:
+			_env_t = 5.0
+			rpc("env_state", SkyCycle.inst.state())
 
 # ---------------------------------------------------------------- players
 func _on_peer_connected(id: int) -> void:
@@ -307,6 +311,13 @@ func _send_world() -> void:
 		if not is_instance_valid(npcs[id]):
 			npcs.erase(id)
 	rpc("world_state", ids, data, meta)
+
+var _env_t := 0.0
+
+## The host's clock and weather
+@rpc("authority", "reliable")
+func env_state(st: Array) -> void:
+	if SkyCycle.inst: SkyCycle.inst.take_state(st)
 
 @rpc("authority", "unreliable_ordered")
 func world_state(ids: PackedInt32Array, data: PackedFloat32Array, meta: Array) -> void:

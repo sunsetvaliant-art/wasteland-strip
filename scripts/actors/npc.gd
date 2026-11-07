@@ -469,6 +469,11 @@ func _move(dt: float) -> void:
 		if not is_on_floor():
 			velocity.y -= 9.8 * dt
 		move_and_slide()
+		# leaning on a shut door pushes it open
+		for ci in get_slide_collision_count():
+			var col := get_slide_collision(ci).get_collider()
+			if col is BuildDoor:
+				(col as BuildDoor).push_open(global_position)
 	if face_dir.length() > 0.1:
 		var yaw := atan2(-face_dir.x, -face_dir.z)
 		rotation.y = lerp_angle(rotation.y, yaw, clamp(dt * 6.0, 0.0, 1.0))

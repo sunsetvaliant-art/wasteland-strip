@@ -331,7 +331,7 @@ func _look_target() -> Node:
 	var n: Node = h.collider
 	for _i in 4:
 		if n == null: break
-		if InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
+		if n is BuildDoor or InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
 		n = n.get_parent()
 	return null
 
@@ -348,6 +348,9 @@ func _update_interact() -> void:
 				break
 	if t:
 		interact_target = t
+		if t is BuildDoor:
+			interact_hint = (t as BuildDoor).hint()
+			return
 		if InventoryUI.is_container(t):
 			var nm := "box"
 			if t.has_meta("forge"): nm = str(t.get_meta("forge").get("name", "box")).replace(" (old scan)", "")
@@ -365,6 +368,9 @@ func _interact() -> void:
 	var t := interact_target
 	var ui = get_tree().current_scene.get("inv_ui")
 	if t and is_instance_valid(t):
+		if t is BuildDoor:
+			(t as BuildDoor).toggle(global_position)
+			return
 		if InventoryUI.is_container(t):
 			if ui: ui.show_with(t)
 			return

@@ -293,6 +293,8 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			var clear := road_clearance(x, z)
 			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2, "scan": 0.3}[layer]:
 				continue
+			if Buildings.blocked(x, z, {"tree": 3.0, "small": 0.8, "grass": 0.0, "scan": 0.0}[layer]):
+				continue
 			var h := _height(x, z)
 			if is_nan(h):
 				continue

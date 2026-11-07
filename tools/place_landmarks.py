@@ -53,43 +53,15 @@ for f in fuel:
     if d > 60: continue                                    # nowhere near a road we've got
     nx, nz = -tz, tx
     if (x - px) * nx + (z - pz) * nz < 0: nx, nz = -nx, -nz   # the side of the road the station's on
-    back = SPEC_hs = 0
-    cx, cz = px + nx * (d + 0), pz + nz * (d + 0)
-    # canopy 10.5 x 7.4 m: its long side along the road, its near edge 6 m off the seal
-    hsd = float(np.interp(0, [0], [0]))
-    off = 6.0 + 3.7
     road_hs = float(hs[int(np.argmin(np.hypot(ax - px, az - pz)))])
+    # the Ampol: 16 x 12 m, its front apron (+z) to the road, a metre off the seal
+    off = 1.0 + 6.0
     cx, cz = px + nx * (road_hs + off), pz + nz * (road_hs + off)
-    if not clear(cx, cz, 4.5): continue
-    ok, h = flat(cx, cz, 5.0, 2.5)
-    yaw = math.atan2(-tz, tx)                             # model +X along the road
-    out.append({"kind": "servo_canopy", "name": f.get("name") or "Service station", "x": round(cx, 2), "z": round(cz, 2), "y": round(h, 2), "yaw": round(yaw, 4)})
-# ---- houses
-rng = np.random.default_rng(1902)
-cands = []
-for r in roads:
-    if r["k"] not in ("residential", "tertiary", "unclassified", "living_street"): continue
-    P = r["P"]; hsr = SPEC[r["k"]][0]
-    d = np.r_[0, np.cumsum(np.hypot(np.diff(P[:, 0]), np.diff(P[:, 1])))]
-    for s in np.arange(30, d[-1] - 30, 60):
-        x = np.interp(s, d, P[:, 0]); z = np.interp(s, d, P[:, 1])
-        i = min(np.searchsorted(d, s), len(P) - 1); j = max(i - 1, 0)
-        tx, tz = P[i, 0] - P[j, 0], P[i, 1] - P[j, 1]; L = math.hypot(tx, tz) or 1; tx /= L; tz /= L
-        side = 1 if rng.random() < 0.5 else -1
-        nx, nz = -tz * side, tx * side
-        cx, cz = x + nx * (hsr + 14.0), z + nz * (hsr + 14.0)    # set back off the street on its block
-        cands.append((cx, cz, nx, nz, r["k"]))
-rng.shuffle(cands)
-houses = []
-for cx, cz, nx, nz, k in cands:
-    if len(houses) >= 40: break
-    if not clear(cx, cz, 8.5): continue
-    if any(math.hypot(cx - hx, cz - hz) < 350 for hx, hz in houses): continue
-    if any(math.hypot(cx - o["x"], cz - o["z"]) < 120 for o in out): continue
-    ok, h = flat(cx, cz, 8.0, 2.0)
-    if not ok or h < 2.0: continue
-    houses.append((cx, cz))
-    yaw = math.atan2(-nx, -nz)                             # model +Z (its front) to the street
-    out.append({"kind": "village_hq", "name": "Old house", "x": round(cx, 2), "z": round(cz, 2), "y": round(h, 2), "yaw": round(yaw, 4)})
+    if not clear(cx, cz, 6.0): continue
+    if any(math.hypot(cx - o["x"], cz - o["z"]) < 40 for o in out): continue
+    ok, h = flat(cx, cz, 7.0, 3.0)
+    if h < 1.0: continue
+    yaw = math.atan2(-nx, -nz)                             # model +Z (its front) to the road
+    out.append({"kind": "ampol_servo", "name": f.get("name") or "Service station", "x": round(cx, 2), "z": round(cz, 2), "y": round(h, 2), "yaw": round(yaw, 4)})
 json.dump({"landmarks": out}, open(f"{GAME}/assets/world/landmarks.json", "w"), indent=0)
-print("servos", sum(1 for o in out if o["kind"] == "servo_canopy"), "houses", len(houses))
+print("servos", len(out))

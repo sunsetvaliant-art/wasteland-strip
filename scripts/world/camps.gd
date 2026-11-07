@@ -57,6 +57,8 @@ func _good_site(p: Vector3) -> bool:
 		spread = max(spread, abs(main.height_at(p.x + o.x, p.z + o.z) - h))
 	if spread > 3.0:
 		return false                       # too steep to camp on
+	if Buildings.near_any(p.x, p.z, 45.0):
+		return false                       # someone's house
 	if main.veg == null:
 		return true
 	# not on the road, but a road within a couple of minutes' walk (the clearance map only reads ~16 m out)

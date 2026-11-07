@@ -1,524 +1,164 @@
 {
 "landmarks": [
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Shell",
-"x": 13680.83,
-"z": -17095.26,
-"y": 0.0,
-"yaw": 0.7818
+"x": 13573.8,
+"z": -14821.53,
+"y": 1.19,
+"yaw": -0.16
 },
 {
-"kind": "servo_canopy",
-"name": "Astron",
-"x": 13655.56,
-"z": -17297.81,
-"y": 0.0,
-"yaw": 2.4285
-},
-{
-"kind": "servo_canopy",
-"name": "Shell",
-"x": 13574.23,
-"z": -14824.19,
-"y": 1.49,
-"yaw": 2.9816
-},
-{
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Ampol Foodary Tweed Heads West",
-"x": 11718.1,
-"z": -15640.71,
-"y": 2.31,
+"x": 11715.58,
+"z": -15639.74,
+"y": 1.69,
 "yaw": -1.202
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "United Tweed Heads South",
-"x": 13746.98,
-"z": -14639.56,
-"y": 1.46,
+"x": 13744.3,
+"z": -14639.25,
+"y": 1.31,
 "yaw": -1.457
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "EG Ampol",
-"x": 13848.42,
-"z": -13677.13,
-"y": 1.83,
+"x": 13845.73,
+"z": -13676.87,
+"y": 1.55,
 "yaw": -1.4737
 },
 {
-"kind": "servo_canopy",
-"name": "BP",
-"x": 12007.33,
-"z": -15769.13,
-"y": 0.93,
-"yaw": 2.8384
-},
-{
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "BP Connect Chinderah",
-"x": 15100.16,
-"z": -9381.17,
-"y": 3.03,
-"yaw": 2.6403
+"x": 15098.86,
+"z": -9378.8,
+"y": 2.87,
+"yaw": -0.5013
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Freedom",
-"x": 16846.22,
-"z": -8037.49,
+"x": 16848.05,
+"z": -8039.48,
 "y": 2.6,
 "yaw": 2.3964
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Ampol",
-"x": 13544.28,
-"z": -12658.95,
-"y": 2.27,
-"yaw": -0.1578
+"x": 13544.7,
+"z": -12661.61,
+"y": 2.08,
+"yaw": 2.9838
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Ampol",
-"x": 12157.43,
-"z": -7866.57,
-"y": 0.76,
-"yaw": -2.4538
-},
-{
-"kind": "servo_canopy",
-"name": "Ampol Chinderah Northbound",
-"x": 12180.86,
-"z": -7849.24,
-"y": 0.92,
-"yaw": 3.0375
-},
-{
-"kind": "servo_canopy",
-"name": "Ampol",
-"x": 559.69,
-"z": -205.11,
+"x": 558.22,
+"z": -207.37,
 "y": 4.65,
-"yaw": 0.5766
+"yaw": -2.5649
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Uki Service Station",
-"x": -7079.64,
-"z": 9460.51,
-"y": 16.44,
-"yaw": -0.144
+"x": -7079.26,
+"z": 9457.84,
+"y": 16.29,
+"yaw": 2.9976
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "All Mechanical Repairs",
-"x": -2802.36,
-"z": 1370.74,
-"y": 14.23,
-"yaw": 0.6777
+"x": -2804.05,
+"z": 1368.64,
+"y": 13.95,
+"yaw": -2.4639
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Caltex",
-"x": 651.1,
-"z": -259.85,
-"y": 4.57,
-"yaw": 0.5396
+"x": 649.71,
+"z": -262.17,
+"y": 4.55,
+"yaw": -2.602
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Liberty",
-"x": -166.3,
-"z": 225.11,
-"y": 4.83,
+"x": -163.83,
+"z": 226.22,
+"y": 4.78,
 "yaw": 1.1476
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Service station",
-"x": -6727.1,
-"z": 9449.88,
-"y": 23.31,
-"yaw": -2.9794
+"x": -6726.66,
+"z": 9452.54,
+"y": 23.14,
+"yaw": 0.1622
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Taylors Corner",
-"x": -813.84,
-"z": -495.1,
-"y": 3.1,
-"yaw": -2.6524
+"x": -812.57,
+"z": -492.71,
+"y": 2.62,
+"yaw": 0.4892
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Shell",
-"x": -119.42,
-"z": 77.61,
-"y": 3.04,
-"yaw": -1.5313
+"x": -116.72,
+"z": 77.51,
+"y": 3.0,
+"yaw": 1.6102
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Service station",
-"x": 9063.98,
-"z": 14141.64,
-"y": 11.93,
-"yaw": 2.91
+"x": 9063.36,
+"z": 14144.27,
+"y": 11.69,
+"yaw": -0.2316
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "BP",
-"x": 475.81,
-"z": -146.55,
-"y": 4.6,
-"yaw": 0.6014
+"x": 474.28,
+"z": -148.78,
+"y": 4.48,
+"yaw": -2.5401
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Moo Moo Roadhouse",
-"x": 8630.03,
-"z": 12500.88,
-"y": 11.61,
+"x": 8629.63,
+"z": 12503.55,
+"y": 11.3,
 "yaw": -0.1479
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "Shell",
-"x": 16571.01,
-"z": 4493.71,
-"y": 6.27,
+"x": 16573.22,
+"z": 4495.26,
+"y": 6.11,
 "yaw": 0.9603
 },
 {
-"kind": "servo_canopy",
+"kind": "ampol_servo",
 "name": "BP Hastings Point",
-"x": 16598.65,
-"z": 2979.35,
-"y": 1.76,
+"x": 16601.31,
+"z": 2979.79,
+"y": 1.58,
 "yaw": 1.4072
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -6175.66,
-"z": 11968.49,
-"y": 27.61,
-"yaw": -2.7788
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 1477.25,
-"z": 8616.57,
-"y": 28.9,
-"yaw": -0.2092
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 10848.62,
-"z": 7494.63,
-"y": 15.49,
-"yaw": -0.3218
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -2624.55,
-"z": -16718.68,
-"y": 42.04,
-"yaw": 1.7706
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 16912.36,
-"z": -6053.47,
-"y": 5.72,
-"yaw": -1.1092
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -873.45,
-"z": -13700.67,
-"y": 45.9,
-"yaw": -0.2527
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -675.0,
-"z": 704.81,
-"y": 4.21,
-"yaw": -0.1475
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 15652.13,
-"z": -9908.53,
-"y": 3.4,
-"yaw": 3.0001
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -3348.39,
-"z": -5287.06,
-"y": 14.72,
-"yaw": 2.8292
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 12565.89,
-"z": 7633.37,
-"y": 17.6,
-"yaw": 2.6122
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 15052.38,
-"z": -3847.96,
-"y": 5.62,
-"yaw": 0.2294
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 16529.4,
-"z": 842.35,
-"y": 5.5,
-"yaw": -1.7252
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 9245.88,
-"z": 296.07,
-"y": 20.22,
-"yaw": 1.4455
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 12225.08,
-"z": -1716.43,
-"y": 61.05,
-"yaw": -0.9497
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 12177.84,
-"z": -11512.83,
-"y": 38.76,
-"yaw": -0.9148
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 11670.78,
-"z": 10739.84,
-"y": 5.38,
-"yaw": 1.2403
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 15298.18,
-"z": -10128.14,
-"y": 2.35,
-"yaw": -1.7227
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 1029.47,
-"z": -15354.03,
-"y": 21.31,
-"yaw": -1.3924
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -1342.37,
-"z": 4396.21,
-"y": 2.12,
-"yaw": -1.1843
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 16234.43,
-"z": 5913.76,
-"y": 4.46,
-"yaw": -1.7739
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -6524.0,
-"z": 11229.36,
-"y": 25.97,
-"yaw": 1.8139
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 3070.07,
-"z": 3085.23,
-"y": 8.06,
-"yaw": 0.9974
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 15496.35,
-"z": 7337.4,
-"y": 2.59,
-"yaw": -1.7241
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 12244.82,
-"z": 597.72,
-"y": 2.16,
-"yaw": -0.4167
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 15906.68,
-"z": -9233.02,
-"y": 2.03,
-"yaw": 1.4515
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 8566.38,
-"z": 14115.69,
-"y": 13.85,
-"yaw": 0.214
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 12672.49,
-"z": -11718.54,
-"y": 35.6,
-"yaw": -0.1725
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -381.68,
-"z": 1070.03,
-"y": 4.95,
-"yaw": 1.5135
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 12401.25,
-"z": -2625.08,
-"y": 48.73,
-"yaw": 3.0565
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 15872.27,
-"z": -14023.23,
-"y": 6.71,
-"yaw": -0.1237
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 13571.24,
-"z": -10131.21,
-"y": 2.95,
-"yaw": 2.3545
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -4296.55,
-"z": 9801.51,
-"y": 34.77,
-"yaw": -0.2323
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 10369.98,
-"z": 7311.32,
-"y": 16.87,
-"yaw": -2.6881
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -5197.49,
-"z": 1636.2,
-"y": 8.47,
-"yaw": 3.0039
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -2628.05,
-"z": 10329.53,
-"y": 40.32,
-"yaw": 2.6256
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": -1735.88,
-"z": 6657.89,
-"y": 32.55,
-"yaw": 0.633
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 4995.61,
-"z": 12354.08,
-"y": 29.29,
-"yaw": 0.2972
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 4056.48,
-"z": -14955.61,
-"y": 11.09,
-"yaw": -0.0898
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 5852.15,
-"z": 12057.05,
-"y": 24.46,
-"yaw": 0.5589
-},
-{
-"kind": "village_hq",
-"name": "Old house",
-"x": 16171.38,
-"z": -7976.02,
-"y": 3.2,
-"yaw": 1.9382
 }
 ]
 }

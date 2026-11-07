@@ -40,8 +40,9 @@ func _process(dt: float) -> void:
 			n.free_body()
 		elif not n.dead:
 			alive += 1
-	# fewer in survival's first minutes, more at night would go here
-	if alive >= target_count * who.size():
+	# more of them about at night
+	var want := target_count * (1.0 + 1.2 * (SkyCycle.inst.night if SkyCycle.inst else 0.0))
+	if alive >= int(want) * who.size():
 		return
 	var cam: Camera3D = get_viewport().get_camera_3d()
 	for attempt in 12:
@@ -53,6 +54,7 @@ func _process(dt: float) -> void:
 		var group := rng.randi_range(1, 3)
 		for i in group:
 			var q := p + Vector3(rng.randf_range(-4, 4), 0, rng.randf_range(-4, 4))
+			if Buildings.blocked(q.x, q.z, 0.5): q = p
 			q.y = main.ground_at(q.x, q.z) + 0.1
 			var z := NPC.new()
 			z.kind = "zombie"
@@ -68,6 +70,8 @@ func _good(p: Vector3, cam: Camera3D) -> bool:
 	var h: float = main.height_at(p.x, p.z)
 	if h < 1.5:
 		return false
+	if Buildings.blocked(p.x, p.z, 4.5):
+		return false                       # not in someone's walls
 	# along the roads mostly, sometimes out in the scrub
 	var rc: float = main.veg.road_clearance(p.x, p.z) if main.veg else 10.0
 	if rc > 12.0 and rng.randf() < 0.7:

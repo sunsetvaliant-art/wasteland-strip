@@ -24,6 +24,9 @@ var forge: Forge
 var combat_hud: CombatHUD
 var garage: Garage
 var camps: ScavCamps
+var buildings: Buildings
+var sky: SkyCycle
+var saves: SaveGame
 var landmarks: Landmarks
 var net: Net
 var rg_roads: RgRoads
@@ -34,6 +37,10 @@ var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon
 func _ready() -> void:
 	InputSetup.ensure()
 	_build_environment()
+	sky = SkyCycle.new()
+	sky.name = "SkyCycle"
+	add_child(sky)
+	sky.setup(self)
 	_build_terrain()
 	if OS.get_environment("WATER_OFF") == "":
 		_build_water()
@@ -42,12 +49,12 @@ func _ready() -> void:
 	roads.name = "Roads"
 	add_child(roads)
 	roads.setup(self)
-	if OS.get_environment("NO_ROAD_PILOT") == "" and RgRoads.available():
+	if OS.get_environment("RG_ROADS") != "" and RgRoads.available():      # the Road Generator roads (raised, with edges) only on request now
 		rg_roads = RgRoads.new()
 		rg_roads.name = "RgRoads"
 		add_child(rg_roads)
 		rg_roads.setup(self)
-	elif OS.get_environment("NO_ROAD_PILOT") == "":
+	elif OS.get_environment("ROAD_PILOT") != "":
 		var rps: Script = load("res://scripts/world/road_pilot.gd")
 		if rps != null and rps.can_instantiate():
 			road_pilot = rps.new()
@@ -56,6 +63,11 @@ func _ready() -> void:
 			road_pilot.call("setup")
 		else:
 			push_error("Road pilot didn't load; carrying on without it")
+	if Buildings.available():
+		buildings = Buildings.new()
+		buildings.name = "Buildings"
+		add_child(buildings)
+		buildings.setup(self)
 	veg = Vegetation.new()
 	veg.name = "Vegetation"
 	add_child(veg)
@@ -112,6 +124,10 @@ func _ready() -> void:
 	zombies.name = "ZombieDirector"
 	add_child(zombies)
 	zombies.setup(self)
+	saves = SaveGame.new()
+	saves.name = "SaveGame"
+	add_child(saves)
+	saves.setup(self)
 
 func spawn_vehicle(kind: String, pos: Vector3, yaw := 0.0, design := {}) -> Car:
 	var c := Car.new()
@@ -432,6 +448,11 @@ func _process(_dt: float) -> void:
 		var tgt: Node3D = forge.cam if forge.active else (player.vehicle if player.vehicle else player)
 		collision_centre = tgt.global_position
 	var s := "WASTELAND  v%s  ·  %s" % [Boot.version, "creative" if Settings.creative() else "survival"]
+	if sky:
+		s += "  ·  %s %s" % [sky.clock(), sky.weather if sky.weather != "clear" else ""]
+	if buildings and player:
+		var tn: String = buildings.town_at(player.global_position.x, player.global_position.z, 1600.0)
+		if tn != "": s += "  ·  " + tn
 	if Boot.patches_loaded.size():
 		s += "  ·  patches: " + ", ".join(Boot.patches_loaded)
 	if player.vehicle:
