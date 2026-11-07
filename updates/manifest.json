@@ -127,6 +127,18 @@
     "patch_0.2.0_0015.pck.p00",
     "patch_0.2.0_0015.pck.p01"
    ]
+  },
+  {
+   "file": "patch_0.2.0_0016.pck",
+   "version": "0.2.16",
+   "date": "2026-11-08",
+   "notes": "0.3 update, part 1: the world. Towns and farms are full of buildings now (about 20,000, made by a new house generator: Queenslanders, fibro cottages, brick houses, two-storeys, sheds, machinery sheds, dairies, workshops, warehouses), and you can walk into every one. Rooms are furnished for what they are and the cupboards, fridges, wardrobes and shelves have loot that fits the room; loot comes back if you stay away half an hour, and further from town the odd better find turns up. Doors open and close (F); zombies push them open. The Ampol servo is back at the real fuel stations, shop and workshop fitted out. Roads now lie flat on the ground (no more edges catching the wheels) and grass grips like grass. Day and night (an hour a day, 15 minutes of night, more zombies after dark), rain, storms with lightning, morning fog. The game saves itself: the host keeps the world, everyone keeps their own character.",
+   "size": 212062848,
+   "parts": [
+    "patch_0.2.0_0016.pck.p00",
+    "patch_0.2.0_0016.pck.p01",
+    "patch_0.2.0_0016.pck.p02"
+   ]
   }
  ],
  "full": {
