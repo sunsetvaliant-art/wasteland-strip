@@ -102,6 +102,13 @@
    "date": "2026-11-07",
    "notes": "Fixes the crash on Play from 0.2.11 (a road texture was missing from the build). The game now also starts without the new roads if they ever fail to load.",
    "size": 1901992
+  },
+  {
+   "file": "patch_0.2.0_0013.pck",
+   "version": "0.2.13",
+   "date": "2026-11-07",
+   "notes": "Zombies now move on the Hollow Walker's animations: walkers that break into a run when close, shamblers with an unsteady drag, and lurchers that charge head-down; they scream when they spot you. The Hollow Walker is a zombie too. Cars: the auto box holds each gear instead of flicking to third in half a second, tyres keep their grip when they spin instead of doing endless burnouts, sharper steering at speed, the handbrake holds a parked car on slopes, and the speedo reads wheel speed. Roundabout grass is finer and matte. New Forge props: two-storey house, servo canopy, blown V8, 426 Hemi, 1979 pickup V8, oil cans, .45 revolver and scoped rifle. F9 reports now say what's under your crosshair and the state of the nearest car.",
+   "size": 56117808
   }
  ],
  "full": {
