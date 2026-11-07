@@ -26,7 +26,7 @@ var garage: Garage
 var camps: ScavCamps
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
-var road_pilot: RoadPilot
+var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon can't stop the game starting
 
 func _ready() -> void:
 	InputSetup.ensure()
@@ -39,10 +39,14 @@ func _ready() -> void:
 	add_child(roads)
 	roads.setup(self)
 	if OS.get_environment("NO_ROAD_PILOT") == "":
-		road_pilot = RoadPilot.new()
-		road_pilot.name = "RoadPilot"
-		add_child(road_pilot)
-		road_pilot.setup()
+		var rps: Script = load("res://scripts/world/road_pilot.gd")
+		if rps != null and rps.can_instantiate():
+			road_pilot = rps.new()
+			road_pilot.name = "RoadPilot"
+			add_child(road_pilot)
+			road_pilot.call("setup")
+		else:
+			push_error("Road pilot didn't load; carrying on without it")
 	veg = Vegetation.new()
 	veg.name = "Vegetation"
 	add_child(veg)

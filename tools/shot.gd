@@ -240,8 +240,8 @@ func _ready():
 							break
 				print("VEG ", ln, " cells ", main.veg.layers[ln].cells.size(), " inst ", cnt, " r ", main.veg.layers[ln].r)
 		print("WHEELS ", main.car.wheels.map(func(w): return [w.kind, snappedf(w.mu, 0.01), snappedf(w.slipv, 0.1), snappedf(w.defl, 0.001)]))
-		if main.road_pilot and main.road_pilot.container:
-			var ms: Array = main.road_pilot.container.find_children("*", "MeshInstance3D", true, false)
+		if main.road_pilot and main.road_pilot.get("container"):
+			var ms: Array = (main.road_pilot.get("container") as Node).find_children("*", "MeshInstance3D", true, false)
 			var cam4 := get_viewport().get_camera_3d()
 			var near_d := 1e9
 			var near_aabb := AABB()
