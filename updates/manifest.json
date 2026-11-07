@@ -109,6 +109,13 @@
    "date": "2026-11-07",
    "notes": "Zombies now move on the Hollow Walker's animations: walkers that break into a run when close, shamblers with an unsteady drag, and lurchers that charge head-down; they scream when they spot you. The Hollow Walker is a zombie too. Cars: the auto box holds each gear instead of flicking to third in half a second, tyres keep their grip when they spin instead of doing endless burnouts, sharper steering at speed, the handbrake holds a parked car on slopes, and the speedo reads wheel speed. Roundabout grass is finer and matte. New Forge props: two-storey house, servo canopy, blown V8, 426 Hemi, 1979 pickup V8, oil cans, .45 revolver and scoped rifle. F9 reports now say what's under your crosshair and the state of the nearest car.",
    "size": 56117808
+  },
+  {
+   "file": "patch_0.2.0_0014.pck",
+   "version": "0.2.14",
+   "date": "2026-11-07",
+   "notes": "Two new guns you can find, pick up and fire: a scoped .308 hunting rifle (5-round bolt action, takes 7.62 rounds) and a .45 Magnum revolver (new .45 ammo); they turn up in military crates, ordinary crates and scav camps, and creative mode starts with both. Three new garage engines, each with its own Engine Simulator sound: a Ford 400 V8 out of a '79 pickup, a Chrysler 426 Hemi with its 4-speed, and a blown big-block with twin superchargers (with blower whine). Bridges: the ends of the decks now meet the road at the right height (most were sitting low, some stopped short), and the bridge sides and undersides are no longer drawn near-black. Gun pictures in the inventory now fill their space properly.",
+   "size": 47859844
   }
  ],
  "full": {
