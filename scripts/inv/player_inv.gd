@@ -153,11 +153,11 @@ func loadout(creative: bool) -> void:
 		equip["bottom"] = Items.fresh("pants_cargo")
 		equip["back"] = Items.fresh("pack_large")
 		for k in ["enfield", "python"]: equip["primary" if k == "enfield" else "secondary"].data.ammo = int(Gun.DEFS[k].mag)
-		for id in ["gun_slr", "gun_rem870", "gun_dbshotgun", "gun_sawnoff"]:
+		for id in ["gun_slr", "gun_rem870", "gun_dbshotgun", "gun_sawnoff", "gun_hunter", "gun_magnum45"]:
 			var s := Items.fresh(id)
 			s.data.ammo = int(Gun.DEFS[Items.def(id).gun].mag)
 			Inventory.add(equip.back.data.grid, s)
-		for a in [["ammo_303", 60], ["ammo_762", 80], ["ammo_357", 36], ["ammo_12g", 40], ["bandage", 10], ["medkit", 1], ["food_can", 4]]:
+		for a in [["ammo_303", 60], ["ammo_762", 80], ["ammo_357", 36], ["ammo_45", 36], ["ammo_12g", 40], ["bandage", 10], ["medkit", 1], ["food_can", 4]]:
 			add(Items.fresh(a[0], a[1]))
 	else:
 		equip["secondary"] = Items.fresh("gun_python")

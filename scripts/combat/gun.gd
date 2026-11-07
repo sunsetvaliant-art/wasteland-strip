@@ -21,11 +21,19 @@ const DEFS := {
 	"sawnoff": {"grip_y": -0.04, "fore_y": -0.035, "sight": 0.04, "name": "Sawn-off 12 gauge", "len": 0.6, "flip": false, "action": "break", "dmg": 14.0, "pellets": 10, "spread": 0.085,
 		"interval": 0.2, "mag": 2, "reload": 2.3, "recoil": 0.17, "vel": 380.0, "range": 45.0, "loud": 300.0, "sound": "shot_sawn",
 		"grip": 0.14, "fore": 0.55, "drop_y": -0.04, "kick": 0.12, "force": 4.5, "pistol": true},
+	# a scoped bolt-action deer rifle in .308 (made in Meshy): the scope is part of the model, so none is built for it
+	"hunter": {"scope": 6.0, "model_scope": true, "grip_y": -0.035, "fore_y": -0.03, "sight": 0.07, "name": "Scoped hunting rifle (.308)", "len": 1.15, "flip": true,
+		"action": "bolt", "dmg": 105.0, "pellets": 1, "spread": 0.0008, "interval": 1.1, "mag": 5, "reload": 3.0, "recoil": 0.07, "vel": 820.0, "range": 1000.0,
+		"loud": 330.0, "sound": "shot_slr", "grip": 0.28, "fore": 0.56, "drop_y": -0.035, "kick": 0.085, "force": 8.5},
+	# a big rusty double-action .45 (made in Meshy)
+	"magnum45": {"grip_y": -0.06, "fore_y": -0.06, "sight": 0.055, "name": ".45 Magnum revolver", "len": 0.3, "flip": true, "action": "revolver", "dmg": 74.0, "pellets": 1,
+		"spread": 0.0045, "interval": 0.34, "mag": 6, "reload": 3.4, "recoil": 0.11, "vel": 400.0, "range": 230.0, "loud": 235.0, "sound": "shot_357",
+		"grip": 0.13, "fore": 0.1, "drop_y": -0.06, "kick": 0.065, "force": 6.0, "pistol": true},
 	"rem870": {"grip_y": -0.035, "fore_y": -0.04, "sight": 0.035, "name": "Remington 870 pump (12 gauge)", "len": 1.0, "flip": false, "action": "pump", "dmg": 14.0, "pellets": 8, "spread": 0.045,
 		"interval": 0.85, "mag": 5, "reload": 0.55, "recoil": 0.12, "vel": 400.0, "range": 80.0, "loud": 280.0, "sound": "shot_12g",
 		"grip": 0.27, "fore": 0.63, "drop_y": -0.025, "kick": 0.1, "force": 4.0},
 }
-const ORDER := ["python", "sawnoff", "dbshotgun", "rem870", "slr", "enfield"]
+const ORDER := ["python", "magnum45", "sawnoff", "dbshotgun", "rem870", "slr", "enfield", "hunter"]
 const BODY_MULT := {"head": 3.6, "chest": 1.0, "pelvis": 0.9, "l_upperarm": 0.55, "r_upperarm": 0.55, "l_forearm": 0.45, "r_forearm": 0.45,
 	"l_thigh": 0.65, "r_thigh": 0.65, "l_shin": 0.5, "r_shin": 0.5}
 const MASK := 1 | (1 << 2) | (1 << 3)       # world, actors, ragdolls
@@ -63,7 +71,9 @@ func setup(k: String, who: Node) -> void:
 	def = DEFS[k]
 	shooter = who
 	ammo = int(def.mag)
-	var ps: PackedScene = load("res://assets/guns/%s/scene.gltf" % k)
+	var gp := "res://assets/guns/%s/scene.gltf" % k
+	if not ResourceLoader.exists(gp): gp = "res://assets/guns/%s/scene.glb" % k
+	var ps: PackedScene = load(gp)
 	var raw: Node3D = ps.instantiate()
 	for h in def.get("hide", []):
 		var n := raw.find_child(h, true, false)
@@ -96,7 +106,7 @@ func setup(k: String, who: Node) -> void:
 	grip_l = _marker(Vector3(0.0, float(def.get("fore_y", -0.035)), half - float(def.fore) * float(def.len)))
 	sight_h = float(def.get("sight", 0.05))
 	_measure_sights(raw, half)
-	if float(def.get("scope", 0.0)) > 0.0:
+	if float(def.get("scope", 0.0)) > 0.0 and not def.get("model_scope", false):
 		_build_scope(half)
 	flash = OmniLight3D.new()
 	flash.light_color = Color(1.0, 0.72, 0.38)
@@ -162,6 +172,18 @@ func _measure_sights(raw: Node3D, half: float) -> void:
 	if float(def.get("scope", 0.0)) <= 0.0:
 		sight_h = front_top + 0.003
 	sight_rear_z = rear
+	if def.get("model_scope", false):
+		# the model's own scope: the top of the tube over the middle of the gun, less the tube's radius, is the line
+		var top := -1.0
+		for q in pts:
+			if abs(q.z) < float(def.len) * 0.12 and abs(q.x) < 0.04:
+				top = max(top, q.y)
+		if top > 0.02 and top < 0.2:
+			sight_h = top - 0.019
+			var back := -half
+			for q in pts:
+				if q.y > sight_h - 0.01 and abs(q.x) < 0.04: back = max(back, q.z)
+			sight_rear_z = back
 
 ## A period telescopic sight on low rings over the receiver: tube, objective bell, eyepiece, turrets
 func _build_scope(half: float) -> void:

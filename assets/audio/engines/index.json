@@ -38,5 +38,35 @@
    5000.0
   ],
   "source": "Engine Simulator (ange-yaghi/engine-sim, MIT) recordings"
+ },
+ "v8_pickup": {
+  "rpms": [
+   800.0,
+   1500.0,
+   2500.0,
+   3600.0,
+   5000.0
+  ],
+  "source": "Engine Simulator (ange-yaghi/engine-sim, MIT) recordings"
+ },
+ "v8_hemi": {
+  "rpms": [
+   800.0,
+   1500.0,
+   2500.0,
+   3600.0,
+   5000.0
+  ],
+  "source": "Engine Simulator (ange-yaghi/engine-sim, MIT) recordings"
+ },
+ "v8_blown": {
+  "rpms": [
+   800.0,
+   1500.0,
+   2500.0,
+   3600.0,
+   5000.0
+  ],
+  "source": "Engine Simulator (ange-yaghi/engine-sim, MIT) recordings"
  }
 }

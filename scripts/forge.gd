@@ -445,7 +445,8 @@ func _pretty(id: String) -> String:
 	var fixed := {"bolt_action_rifle_7_62": "Bolt-action rifle .303 (7.62)", "service_pistol": "Service pistol", "stick_grenade": "Stick grenade",
 		"picke_dirty_01": "Pick", "old_military_crate": "Military crate", "wooden_military_crate": "Military crate (wood)",
 		"engine_holden_202": "Engine: Holden 202 red six", "engine_toyota_22r": "Engine: Toyota 22R", "engine_ford_351": "Engine: Ford 351 Cleveland V8",
-		"engine_jeep_40": "Engine: Jeep 4.0 six", "alternator_202": "Alternator (Holden)", "alternator_22r": "Alternator (Toyota)",
+		"engine_jeep_40": "Engine: Jeep 4.0 six", "engine_blown_v8": "Engine: blown big-block V8", "engine_hemi_426": "Engine: 426 Hemi and 4-speed",
+		"engine_pickup_v8": "Engine: Ford 400 V8 ('79 pickup)", "alternator_202": "Alternator (Holden)", "alternator_22r": "Alternator (Toyota)",
 		"alternator_351": "Alternator (Ford)", "alternator_40": "Alternator (Jeep)", "aircleaner_202": "Air cleaner (Holden)",
 		"old_tyre": "Old tyre", "covered_car": "Car under a tarp", "Lantern_01": "Lantern", "Barrel_01": "Barrel", "Barrel_02": "Barrel (rusty)",
 		"Sofa_01": "Sofa", "Television_01": "Old telly", "overhead_crane": "Engine crane", "tire_pump": "Tyre pump"}
@@ -810,11 +811,9 @@ func _build_ui() -> void:
 		if fn.ends_with(".glb") and not groups["Car parts"].any(func(x): return x.key == fn.get_basename()):
 			groups["Car parts"].append({"type": "prop", "key": fn.get_basename(), "name": _pretty(fn.get_basename()), "path": "res://assets/engines/" + fn})
 	# models made in Meshy (assets/meshy, put at real size by tools/glb_place.py)
-	const MESHY_TAB := {"blown_v8": "Car parts", "hemi_426_engine": "Car parts", "pickup_v8_1979": "Car parts", "oil_cans": "Car parts",
-		"village_hq": "World", "servo_canopy": "World", "revolver_45": "Weapons", "scoped_rifle": "Weapons"}
-	const MESHY_NAME := {"blown_v8": "Blown V8 (twin superchargers)", "hemi_426_engine": "426 Hemi and gearbox", "pickup_v8_1979": "1979 pickup V8",
-		"oil_cans": "Vintage oil cans", "village_hq": "Old two-storey house", "servo_canopy": "Servo canopy and pumps", "revolver_45": ".45 Magnum revolver (prop)",
-		"scoped_rifle": "Scoped hunting rifle (prop)"}
+	# (the Meshy engines live in assets/engines and the guns in assets/guns, so they show up there)
+	const MESHY_TAB := {"oil_cans": "Car parts", "village_hq": "World", "servo_canopy": "World"}
+	const MESHY_NAME := {"oil_cans": "Vintage oil cans", "village_hq": "Old two-storey house", "servo_canopy": "Servo canopy and pumps"}
 	for f in DirAccess.get_files_at("res://assets/meshy"):
 		var fn := f.trim_suffix(".import").trim_suffix(".remap")
 		if not fn.ends_with(".glb"): continue

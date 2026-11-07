@@ -12,7 +12,11 @@ def wr(p, x):
     w = wave.open(p, 'wb'); w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
     w.writeframes((np.clip(x, -1, 1) * 32767).astype('<i2').tobytes()); w.close()
 RPMS = [800, 1500, 2500, 3600, 5000]
-for key in ['v8_351', 'i6_202', 'i6_40', 'i4_22r']:
+KEYS = sys.argv[3].split(',') if len(sys.argv) > 3 else ['v8_351', 'i6_202', 'i6_40', 'i4_22r', 'v8_pickup', 'v8_hemi', 'v8_blown']
+# Engine Simulator has no superchargers: the blown motor gets its blowers' whine laid over (rotor lobes go past 7 and 14 times a
+# crank turn; whole numbers, so the whine repeats with the loop), louder with revs and on boost
+WHINE = {'v8_blown': [(7, 0.05), (14, 0.035), (21, 0.015)]}
+for key in KEYS:
     clips = {}
     for r in RPMS:
         for l in ['on', 'off']:
@@ -26,6 +30,11 @@ for key in ['v8_351', 'i6_202', 'i6_40', 'i4_22r']:
                 c = np.dot(head, x[e:e + W]) / (np.linalg.norm(head) * np.linalg.norm(x[e:e + W]) + 1e-9)
                 if c > best[1]: best = (d, c)
             L += best[0]
+            if key in WHINE:
+                t = np.arange(len(x)) / SR
+                amp = (0.35 + 0.65 * min(r / 5000.0, 1.0)) * (1.0 if l == 'on' else 0.45)
+                for k, a in WHINE[key]:
+                    x = x + amp * a * np.abs(x).max() / 0.3 * np.sin(2 * np.pi * r / 60.0 * k * t) * (1.0 + 0.15 * np.sin(2 * np.pi * r / 120.0 * t))
             seg = x[s0:s0 + L].copy(); X = int(0.025 * SR); f = np.linspace(0, 1, X)
             seg[:X] = seg[:X] * f + x[s0 + L:s0 + L + X] * (1 - f)
             clips[(r, l)] = seg

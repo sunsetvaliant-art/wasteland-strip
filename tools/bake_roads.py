@@ -90,6 +90,53 @@ for r in roads:
 roads = kept
 log("kept", len(roads), "points", sum(len(r["P"]) for r in roads))
 
+# ------------------------------------------------------------------ bridge ends meet the road
+# The survey's bridge decks have their own height profiles, smoothed separately from the roads either side: most
+# ends came out below the road they join (median 0.3 m, up to 2 m), and about a quarter stop 3-8 m short of it.
+# Each end is pulled across to the nearest road's centreline and up (or down) to that road's height there; the
+# correction fades out over 40 m (the whole span for a short bridge), so the middle keeps its own line.
+def _bridge_ends():
+    segs = []
+    for r in roads:
+        if r["b"]: continue
+        P = r["P"]
+        for i in range(len(P) - 1): segs.append((P[i, 0], P[i, 1], P[i, 2], P[i + 1, 0], P[i + 1, 1], P[i + 1, 2]))
+    S = np.array(segs)
+    ax, az, ay, bx, bz, by = S.T
+    dx, dz = bx - ax, bz - az; L2 = dx * dx + dz * dz + 1e-9
+    def closest(x, z):
+        t = np.clip(((x - ax) * dx + (z - az) * dz) / L2, 0, 1)
+        px, pz = ax + dx * t, az + dz * t; d = np.hypot(px - x, pz - z)
+        k = int(np.argmin(d)); return d[k], px[k], pz[k], ay[k] + (by[k] - ay[k]) * t[k]
+    moved = joined = 0
+    for r in roads:
+        if not r["b"]: continue
+        P = r["P"]
+        delta = [0.0, 0.0]
+        for e, i in ((0, 0), (1, len(P) - 1)):
+            d, px, pz, py = closest(P[i, 0], P[i, 1])
+            if d > 8.0:
+                continue
+            if d > 0.75:                              # stops short: carry the deck on to the road
+                q = P[i].copy(); q[0], q[1], q[2] = px, pz, P[i, 2]; q[3] = 0.0
+                P = np.vstack([q[None], P]) if e == 0 else np.vstack([P, q[None]])
+                joined += 1
+            delta[e] = py - (P[0, 2] if e == 0 else P[-1, 2])
+        if abs(delta[0]) + abs(delta[1]) < 0.02:
+            r["P"] = P; continue
+        s = np.zeros(len(P)); s[1:] = np.cumsum(np.hypot(np.diff(P[:, 0]), np.diff(P[:, 1])))
+        Ln = max(s[-1], 1e-3)
+        if Ln <= 80.0:
+            corr = delta[0] + (delta[1] - delta[0]) * (s / Ln)
+        else:
+            ua = np.clip(1.0 - s / 40.0, 0, 1); ub = np.clip(1.0 - (Ln - s) / 40.0, 0, 1)
+            corr = delta[0] * ua * ua * (3 - 2 * ua) + delta[1] * ub * ub * (3 - 2 * ub)
+        P = P.copy(); P[:, 2] += corr
+        r["P"] = P
+        moved += 1
+    log("bridges: ends levelled on", moved, "decks, carried on to the road at", joined, "ends")
+_bridge_ends()
+
 # ------------------------------------------------------------------ per-point derived data
 for r in roads:
     P = r["P"]; n = len(P)
@@ -262,7 +309,8 @@ class Builder:
             nrm = np.cross(np.subtract(b, a), np.subtract(c, a)); l = np.linalg.norm(nrm) or 1; nrm = nrm / l
             base = self.ccount
             self.cp += [a, b, c, d]; self.cn += [nrm] * 4
-            self.ci += [base, base + 2, base + 1, base + 1, base + 2, base + 3]
+            # wound so the face the normal points out of is the front (the other way round, both sides lit dark)
+            self.ci += [base, base + 1, base + 2, base + 1, base + 3, base + 2]
             self.ccount += 4
 
 tiles = {}
@@ -379,7 +427,7 @@ def write_glb(path, B, origin):
 od = f"{GAME}/assets/roads"
 os.makedirs(od, exist_ok=True)
 for f in os.listdir(od):
-    if f.endswith(".glb") or f.endswith(".import"): os.remove(os.path.join(od, f))
+    if f.endswith(".glb"): os.remove(os.path.join(od, f))      # .import files stay: they hold the tiles' import options
 index = []
 tot = 0
 for (tx, tz), B in sorted(tiles.items()):

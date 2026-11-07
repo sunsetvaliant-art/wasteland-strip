@@ -12,7 +12,7 @@ const BARRICADE := ["props:barrier", "props:tyre", "props:drum1", "props:drum2",
 const CLUTTER := ["props:crate", "props:jerry", "props:boxes", "props:propane", "ph:wooden_crate_01", "ph:wooden_crate_02", "ph:plastic_crate_01",
 	"ph:trashbag", "ph:Sofa_01", "ph:old_bed_frame", "ph:plastic_monobloc_chair_01", "ph:wooden_picnic_table", "ph:worn_metal_rack",
 	"ph:barrel_stove", "ph:cardboard_box_01", "props:tyre", "props:stove", "ph:steel_frame_shelves_01"]
-const LOOT := ["slr", "enfield", "rem870", "dbshotgun", "python", "sawnoff"]
+const LOOT := ["slr", "enfield", "rem870", "dbshotgun", "python", "sawnoff", "hunter", "magnum45"]
 
 var main
 var sites: Array = []                  # [{pos, seed, built: Node3D or null, scavs: Array, cleared: bool}]

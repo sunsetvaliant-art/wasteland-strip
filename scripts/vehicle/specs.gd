@@ -13,6 +13,13 @@ const ENGINES := {
 		"curve": [[0, 220], [800, 330], [1600, 420], [2600, 474], [3200, 480], [4000, 452], [5000, 395], [5800, 330]], "inertia": 0.24, "friction": 24.0, "kg": 285, "len": 0.74},
 	"40": {"name": "Jeep 4.0 six", "glb": "engine_jeep_40", "cyl": 6, "sound": "i6_40", "idle": 700, "redline": 5000, "limiter": 5300,
 		"curve": [[0, 170], [800, 250], [1600, 298], [2800, 314], [3600, 300], [4500, 268], [5300, 228]], "inertia": 0.19, "friction": 18.0, "kg": 230, "len": 0.82},
+	# made in Meshy; sounds recorded in Engine Simulator from engines built to their specs
+	"400": {"name": "Ford 400 V8 ('79 pickup)", "glb": "engine_pickup_v8", "cyl": 8, "sound": "v8_pickup", "idle": 650, "redline": 4400, "limiter": 4800,
+		"curve": [[0, 260], [800, 380], [1600, 450], [2200, 465], [3000, 440], [3800, 390], [4600, 320]], "inertia": 0.27, "friction": 24.0, "kg": 300, "len": 0.75},
+	"426": {"name": "Chrysler 426 Hemi (with its 4-speed)", "glb": "engine_hemi_426", "cyl": 8, "sound": "v8_hemi", "idle": 850, "redline": 6000, "limiter": 6500,
+		"curve": [[0, 260], [1000, 420], [2000, 560], [3000, 630], [4000, 664], [5000, 640], [6000, 575], [6600, 500]], "inertia": 0.28, "friction": 28.0, "kg": 350, "len": 1.0},
+	"blown": {"name": "Blown big-block V8 (twin superchargers)", "glb": "engine_blown_v8", "cyl": 8, "sound": "v8_blown", "idle": 1000, "redline": 7000, "limiter": 7400,
+		"curve": [[0, 300], [1000, 520], [2000, 760], [3000, 900], [4000, 980], [5000, 990], [6000, 930], [7000, 820], [7600, 700]], "inertia": 0.32, "friction": 34.0, "kg": 380, "len": 0.8},
 }
 const GEARBOXES := {
 	"auto3": {"name": "3-speed auto (Trimatic / C4)", "auto": true, "ratios": [2.45, 1.45, 1.0], "reverse": 2.2, "shift_time": 0.45},

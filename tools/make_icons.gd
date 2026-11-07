@@ -51,6 +51,7 @@ func _init() -> void:
 			spin.add_child(g)
 			g.setup(d.gun, null)
 			g.set_process(false)
+			if g.flash_mesh: g.flash_mesh.free()     # the hidden muzzle-flash card would pad the framing (a lot, on a pistol)
 			g.rotation.y = PI * 0.5        # side on, barrel to the right
 			vis = g
 		elif d.has("model"):

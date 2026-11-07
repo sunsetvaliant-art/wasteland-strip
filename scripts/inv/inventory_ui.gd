@@ -461,7 +461,7 @@ func _draw_item(s: Dictionary, rect: Rect2, alpha: float, ok: bool, fit := false
 		if rr.size.x < C * 1.5 and nm.length() > 7: nm = nm.substr(0, 6) + "…"
 		_text(rr.position + Vector2(3, fs + 1), nm, fs, Color(1, 1, 1, 0.9 * alpha))
 	if d.kind == "ammo":
-		_text(rr.position + Vector2(2, 10), {"ammo_303": ".303", "ammo_762": "7.62", "ammo_357": ".357", "ammo_12g": "12g"}.get(s.id, ""), 10, Color(1, 1, 1, 0.95 * alpha))
+		_text(rr.position + Vector2(2, 10), {"ammo_303": ".303", "ammo_762": "7.62", "ammo_357": ".357", "ammo_45": ".45", "ammo_12g": "12g"}.get(s.id, ""), 10, Color(1, 1, 1, 0.95 * alpha))
 	if s.n > 1:
 		_text(rr.end - Vector2(4, 4), "%d" % s.n, 13, Color(1, 0.92, 0.6, alpha), true)
 	if d.kind == "gun":

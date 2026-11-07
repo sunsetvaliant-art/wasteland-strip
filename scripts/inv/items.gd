@@ -11,11 +11,14 @@ const DEFS := {
 	"gun_rem870": {"name": "Remington 870", "w": 3, "h": 1, "stack": 1, "kind": "gun", "gun": "rem870", "slot": "primary"},
 	"gun_dbshotgun": {"name": "Side-by-side 12g", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "dbshotgun", "slot": "primary"},
 	"gun_sawnoff": {"name": "Sawn-off 12g", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "sawnoff", "slot": "secondary"},
+	"gun_hunter": {"name": "Scoped .308 rifle", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "hunter", "slot": "primary"},
+	"gun_magnum45": {"name": ".45 Magnum", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "magnum45", "slot": "secondary"},
 	"gun_python": {"name": "Colt Python .357", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "python", "slot": "secondary"},
 	# rounds, loose: one cell holds a box's worth
 	"ammo_303": {"name": ".303 rounds", "w": 1, "h": 1, "stack": 30, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_762": {"name": "7.62 NATO rounds", "w": 1, "h": 1, "stack": 40, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_357": {"name": ".357 Magnum rounds", "w": 1, "h": 1, "stack": 36, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
+	"ammo_45": {"name": ".45 rounds", "w": 1, "h": 1, "stack": 36, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_12g": {"name": "12 gauge shells", "w": 1, "h": 1, "stack": 20, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	# medical and food
 	"bandage": {"name": "Bandage", "w": 1, "h": 1, "stack": 10, "kind": "med", "heal": 15.0, "use_time": 2.5},
@@ -43,19 +46,19 @@ const DEFS := {
 	"oil_can": {"name": "Engine oil", "w": 1, "h": 2, "stack": 2, "kind": "misc", "model": "res://assets/ph/carparts/small_oil_can_01/small_oil_can_01.gltf"},
 }
 
-const GUN_AMMO := {"enfield": "ammo_303", "slr": "ammo_762", "python": "ammo_357", "sawnoff": "ammo_12g", "dbshotgun": "ammo_12g", "rem870": "ammo_12g"}
+const GUN_AMMO := {"enfield": "ammo_303", "slr": "ammo_762", "python": "ammo_357", "sawnoff": "ammo_12g", "dbshotgun": "ammo_12g", "rem870": "ammo_12g", "hunter": "ammo_762", "magnum45": "ammo_45"}
 const KIND_COL := {"gun": Color(0.32, 0.3, 0.26), "ammo": Color(0.55, 0.45, 0.18), "med": Color(0.6, 0.18, 0.16), "food": Color(0.35, 0.45, 0.2),
 	"clothing": Color(0.22, 0.32, 0.45), "pack": Color(0.3, 0.36, 0.22), "misc": Color(0.36, 0.33, 0.3)}
 
 # what's in each kind of container prop (keys are Forge prop keys); [item, chance, min, max]
 const LOOT := {
-	"ammo": [["ammo_303", 0.6, 10, 30], ["ammo_762", 0.5, 10, 40], ["ammo_357", 0.5, 6, 36], ["ammo_12g", 0.6, 6, 20], ["ammo_12g", 0.3, 4, 12]],
+	"ammo": [["ammo_303", 0.6, 10, 30], ["ammo_762", 0.5, 10, 40], ["ammo_357", 0.5, 6, 36], ["ammo_45", 0.4, 6, 30], ["ammo_12g", 0.6, 6, 20], ["ammo_12g", 0.3, 4, 12]],
 	"medical": [["bandage", 0.95, 2, 8], ["bandage", 0.4, 1, 5], ["medkit", 0.35, 1, 1]],
 	"food": [["food_can", 0.8, 1, 4], ["long_life", 0.5, 1, 2], ["thermos", 0.25, 1, 1]],
 	"tools": [["wrench", 0.6, 1, 1], ["oil_can", 0.5, 1, 2], ["torch", 0.3, 1, 1], ["radio", 0.15, 1, 1]],
-	"crate": [["food_can", 0.5, 1, 4], ["bandage", 0.4, 1, 4], ["ammo_12g", 0.3, 4, 12], ["ammo_303", 0.25, 5, 20], ["shirt_flanno", 0.2, 1, 1],
+	"crate": [["food_can", 0.5, 1, 4], ["bandage", 0.4, 1, 4], ["ammo_12g", 0.3, 4, 12], ["ammo_303", 0.25, 5, 20], ["ammo_45", 0.15, 4, 12], ["gun_magnum45", 0.03, 1, 1], ["shirt_flanno", 0.2, 1, 1],
 		["pants_cargo", 0.15, 1, 1], ["jacket_army", 0.08, 1, 1], ["pack_small", 0.1, 1, 1], ["binoculars", 0.08, 1, 1], ["torch", 0.15, 1, 1]],
-	"military": [["ammo_762", 0.7, 15, 40], ["ammo_303", 0.5, 10, 30], ["gun_slr", 0.12, 1, 1], ["gun_enfield", 0.12, 1, 1], ["jacket_army", 0.3, 1, 1],
+	"military": [["ammo_762", 0.7, 15, 40], ["ammo_303", 0.5, 10, 30], ["gun_slr", 0.12, 1, 1], ["gun_enfield", 0.12, 1, 1], ["gun_hunter", 0.08, 1, 1], ["jacket_army", 0.3, 1, 1],
 		["pack_large", 0.12, 1, 1], ["medkit", 0.25, 1, 1], ["long_life", 0.5, 1, 2], ["gas_mask", 0.2, 1, 1]],
 	"fuel": [["jerry_fuel", 0.9, 1, 1]],
 }

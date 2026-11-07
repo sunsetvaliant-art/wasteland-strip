@@ -11,7 +11,7 @@ extends CharacterBody3D
 const ZOMBIE_MODELS := ["zombie_hazmat", "zombie_runner", "zombie_mx", "zombie_soldier", "zombie_female", "zombie_hollow", "zombie_hollow"]
 const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
 const SCAV_MODELS := ["scav_hooded", "scav_2"]
-const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff"]
+const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff", "hunter", "magnum45"]
 const LAYER := 1 << 2
 
 var kind := "zombie"

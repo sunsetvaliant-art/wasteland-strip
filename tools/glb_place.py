@@ -2,12 +2,13 @@
 """Puts a GLB at real size with its origin on the ground: wraps the scene in one node that scales it so its
 biggest dimension (or its height, --by h) is the given metres, centred over the origin, bottom at y = 0.
 usage: glb_place.py in.glb out.glb --size 0.95 [--by max|h|x|z] [--name key]"""
-import json, struct, argparse
+import json, struct, argparse, math
 import numpy as np
 
 ap = argparse.ArgumentParser()
 ap.add_argument("src"); ap.add_argument("dst"); ap.add_argument("--size", type=float, required=True)
 ap.add_argument("--by", default="max"); ap.add_argument("--name", default="")
+ap.add_argument("--yaw", type=float, default=0.0); ap.add_argument("--shift_x", type=float, default=0.0)
 a = ap.parse_args()
 f = open(a.src, "rb"); f.read(12)
 L, t = struct.unpack("<II", f.read(8)); j = json.loads(f.read(L))
@@ -34,12 +35,15 @@ def walk(i, P):
                 q = (M @ p)[:3]; lo = np.minimum(lo, q); hi = np.maximum(hi, q)
     for c in n.get("children", []): walk(c, M)
 sc = j["scenes"][j.get("scene", 0)]
-for r in sc["nodes"]: walk(r, np.eye(4))
+ya = math.radians(a.yaw)
+RY = np.eye(4); RY[0, 0] = math.cos(ya); RY[0, 2] = math.sin(ya); RY[2, 0] = -math.sin(ya); RY[2, 2] = math.cos(ya)
+for r in sc["nodes"]: walk(r, RY)
 size = hi - lo
 ref = {"max": size.max(), "h": size[1], "x": size[0], "z": size[2]}[a.by]
 s = a.size / ref
 cen = (lo + hi) / 2
-root = {"name": a.name or "root", "scale": [s, s, s], "translation": [-cen[0] * s, -lo[1] * s, -cen[2] * s], "children": list(sc["nodes"])}
+root = {"name": a.name or "root", "scale": [s, s, s], "rotation": [0.0, math.sin(ya / 2), 0.0, math.cos(ya / 2)],
+        "translation": [-cen[0] * s + a.shift_x, -lo[1] * s, -cen[2] * s], "children": list(sc["nodes"])}
 j["nodes"].append(root); sc["nodes"] = [len(j["nodes"]) - 1]
 js = json.dumps(j, separators=(",", ":")).encode(); js += b" " * (-len(js) % 4)
 with open(a.dst, "wb") as o:
