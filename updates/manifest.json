@@ -116,6 +116,17 @@
    "date": "2026-11-07",
    "notes": "Two new guns you can find, pick up and fire: a scoped .308 hunting rifle (5-round bolt action, takes 7.62 rounds) and a .45 Magnum revolver (new .45 ammo); they turn up in military crates, ordinary crates and scav camps, and creative mode starts with both. Three new garage engines, each with its own Engine Simulator sound: a Ford 400 V8 out of a '79 pickup, a Chrysler 426 Hemi with its 4-speed, and a blown big-block with twin superchargers (with blower whine). Bridges: the ends of the decks now meet the road at the right height (most were sitting low, some stopped short), and the bridge sides and undersides are no longer drawn near-black. Gun pictures in the inventory now fill their space properly.",
    "size": 47859844
+  },
+  {
+   "file": "patch_0.2.0_0015.pck",
+   "version": "0.2.15",
+   "date": "2026-11-07",
+   "notes": "The whole map's roads rebuilt with the road generator from OpenStreetMap: proper junctions, roundabouts with kerbed islands, lane markings and the motorway (bridges keep their decks). Wollumbin / Mt Warning and the ranges round the map are now on the skyline, at their real heights; the haze is lighter so you can see them. Servo canopies on the real service stations and old two-storey houses along the streets. Scav camps laid out like someone lives there: a proper wall, seats round the fire, a store, a tip and a workshop. LAN multiplayer: Pause > Multiplayer to host or join a game on your network.",
+   "size": 102646232,
+   "parts": [
+    "patch_0.2.0_0015.pck.p00",
+    "patch_0.2.0_0015.pck.p01"
+   ]
   }
  ],
  "full": {
