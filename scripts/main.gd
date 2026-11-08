@@ -36,6 +36,14 @@ var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon
 
 func _ready() -> void:
 	InputSetup.ensure()
+	# keys added in updates: InputSetup may be the copy Boot loaded from the original install (scripts already in memory
+	# aren't replaced when an update's pack is mounted), so register them here too
+	for e in [["torch", KEY_T], ["board", KEY_G], ["work_on_car", KEY_K], ["inventory", KEY_I], ["heal", KEY_B]]:
+		if not InputMap.has_action(e[0]):
+			InputMap.add_action(e[0])
+			var ev := InputEventKey.new()
+			ev.physical_keycode = e[1]
+			InputMap.action_add_event(e[0], ev)
 	_build_environment()
 	sky = SkyCycle.new()
 	sky.name = "SkyCycle"

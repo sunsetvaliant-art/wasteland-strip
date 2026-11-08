@@ -74,3 +74,19 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
      police, post office, caravan park cabins, Condong sugar mill. Each with a sensible floor plan for its type.
 - 4. Extend the map north to the border/Coolangatta; high-rises with enterable ground floors (upper floors sealed).
 - 7. Houses: orient and nudge so none overlap a road or each other (user saw overlaps in game).
+- 8. HARD CRASH: pressing I (inventory) near a car cab/shell (user, 0.2.23). Ask for the crash log from %APPDATA%\Godot\app_userdata\Wasteland\logs\.
+- 9. Crash log: on start, if last session did not close cleanly, zip its log next to the F9 reports and tell the player.
+
+## Also outstanding (from earlier sessions)
+- Check in game (never seen): Sunnyvale's 6.5 m ceilings and polished floors (0.2.22/23), the horde and zombies following up the ramp, the T/G/K key fix (0.2.24).
+- Waiting on the user: car files Bare_Bones_Muscle and Rustbound_Chevy_Relic, for the detail fix.
+- LAN: doors, windows, boards (and now mall shutters/hordes) aren't synced between players.
+- Cars have no damage model yet, so the spanner's "repairs" have nothing to fix.
+- Sliding shed doors (only roller doors exist).
+- A verandah deck rendered too dark in one shot.
+- Performance: ~36k buildings now; ask how Tweed Heads runs; shorten the full-build radius if it stutters.
+- ~10% of real buildings are left out where OSM roads and satellite outlines disagree (they'd sit on a road).
+- Kingscliff, Banora and Cabarita shopping centres are plain shop rows: give them small single-level centres.
+- Tweed Heads high-rises (inside the map) with enterable ground floors.
+- Half 2 (the big one): base building, crafting, survival needs, scavs, traders; open design questions Q1-8, 10, 11,
+  17-21, 23, 32, 34-37, 39-46 (start kit knife + water), 48 (creative as a host toggle). See docs/DESIGN_0.3.md.
