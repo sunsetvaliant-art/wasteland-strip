@@ -160,6 +160,13 @@
    "date": "2026-11-08",
    "notes": "The real valley: every house, shed, farmhouse and shop is now where it really is. Buildings come from the real map (OpenStreetMap plus building outlines traced from satellite photos), at their real size and angle, facing their street: about 36,000 of them, up from 21,000 mostly made-up ones. Farmhouses sit out on the farms with their sheds, hillside houses are up on stumps, tall houses are two storeys, backyard sheds are where they really are. Queenslander front stairs now always reach the ground: on a steep block they turn at a landing and run down along the verandah. Small garden sheds have a door instead of a roller door. Note: the town layout changed again, so cupboards and boarded-up doors start fresh.",
    "size": 2106312
+  },
+  {
+   "file": "patch_0.2.0_0020.pck",
+   "version": "0.2.20",
+   "date": "2026-11-08",
+   "notes": "Malls, part 1: Sunnyvale Mall in Mount Ruin (the real Sunnyside). Drive in under it from the street: the car park is the ground floor, with wrecks left in the bays and the loading dock out the back. Along the street front: cafes, a bank, the bottle shop and other shops, and the entry lobby where a ramp wide enough for four trolleys climbs, turns 180 degrees and comes up onto the first floor (or take the stairs in the core). Upstairs: the concourse under a skylight (watch the missing panes), a supermarket with aisles, checkouts, chillers and a stockroom, a big furniture and electrical store, shop units behind roller shutters with stockrooms, the food court and its kitchens, toilets, the security office. Mall props: trolleys you can push about, checkouts, planters with dead palms, benches, bins, ATMs, the directory board, kiosks, clothes racks, mannequins. And about two dozen of the dead wandering the place: clear them out and they stay gone a couple of hours. Note: the town layout changed slightly, so cupboards and boarded-up doors start fresh.",
+   "size": 2285888
   }
  ],
  "full": {
