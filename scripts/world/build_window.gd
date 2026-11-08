@@ -13,18 +13,25 @@ var _lower: Node3D
 var _upper: Node3D
 var _shape: CollisionShape3D
 var _box: BoxShape3D
+var fixed := false               # a shop window: one big pane that doesn't open (but breaks)
 
-func setup(width: float, height: float, broken := false) -> void:
+func setup(width: float, height: float, broken := false, fixed_pane := false) -> void:
+	fixed = fixed_pane
 	w = width
 	h = height
 	add_to_group("windows")
 	collision_layer = 1
 	var glass: Material = BuildGen.mat("glass")
 	var frame: Material = BuildGen.mat("trim")
-	_upper = _sash(glass, frame, 0.012)
-	_upper.position = Vector3(0, h * 0.25, 0.012)
-	_lower = _sash(glass, frame, -0.012)
-	_lower.position = Vector3(0, -h * 0.25, -0.012)
+	if fixed:
+		_upper = _pane(glass)
+		_lower = Node3D.new()
+		add_child(_lower)
+	else:
+		_upper = _sash(glass, frame, 0.012)
+		_upper.position = Vector3(0, h * 0.25, 0.012)
+		_lower = _sash(glass, frame, -0.012)
+		_lower.position = Vector3(0, -h * 0.25, -0.012)
 	_shape = CollisionShape3D.new()
 	_box = BoxShape3D.new()
 	_box.size = Vector3(w, h, 0.05)
@@ -32,6 +39,17 @@ func setup(width: float, height: float, broken := false) -> void:
 	add_child(_shape)
 	if broken:
 		_smash(false, false)
+
+func _pane(glass: Material) -> Node3D:
+	var n := Node3D.new()
+	add_child(n)
+	var g := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(w - 0.02, h - 0.02, 0.008)
+	g.mesh = bm
+	g.material_override = glass
+	n.add_child(g)
+	return n
 
 func _sash(glass: Material, frame: Material, _z: float) -> Node3D:
 	var n := Node3D.new()
@@ -58,10 +76,10 @@ func hint() -> String:
 	match state:
 		"broken": return "Space  climb through"
 		"open": return "F  close window   ·   Space  climb through"
-	return "F  open window"
+	return "" if fixed else "F  open window"
 
 func toggle() -> void:
-	if boards or state == "broken":
+	if boards or state == "broken" or fixed:
 		return
 	state = "open" if state == "closed" else "closed"
 	var tw := create_tween()

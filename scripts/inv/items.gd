@@ -85,6 +85,19 @@ const LOOT := {
 	"workbench": [["tape", 0.35, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.35, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
 	"laundry": [["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
 	"servo_shelf": [["tape", 0.2, 1, 1], ["torch", 0.1, 1, 1], ["food_can", 0.6, 1, 4], ["long_life", 0.35, 1, 2], ["oil_can", 0.5, 1, 2], ["torch", 0.15, 1, 1], ["bandage", 0.25, 1, 3], ["jerry_fuel", 0.1, 1, 1], ["thermos", 0.1, 1, 1]],
+	# main-street shops
+	"chemist": [["bandage", 0.9, 2, 8], ["bandage", 0.5, 1, 5], ["medkit", 0.3, 1, 1], ["thermos", 0.05, 1, 1]],
+	"hardware": [["tape", 0.5, 1, 2], ["hammer", 0.35, 1, 1], ["nails", 0.55, 1, 3], ["plank", 0.35, 1, 4], ["wrench", 0.35, 1, 1], ["torch", 0.3, 1, 1], ["oil_can", 0.3, 1, 2], ["jerry_fuel", 0.08, 1, 1]],
+	"grocer": [["food_can", 0.9, 1, 4], ["long_life", 0.5, 1, 2], ["food_can", 0.4, 1, 3], ["thermos", 0.1, 1, 1]],
+	"newsagent": [["radio", 0.2, 1, 1], ["torch", 0.3, 1, 1], ["tape", 0.3, 1, 1], ["binoculars", 0.08, 1, 1], ["thermos", 0.1, 1, 1]],
+	"clothes": [["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.45, 1, 1], ["shirt_work", 0.35, 1, 1], ["pants_cargo", 0.3, 1, 1], ["jacket_army", 0.12, 1, 1],
+		["boots_rubber", 0.25, 1, 1], ["pack_small", 0.15, 1, 1], ["gas_mask", 0.03, 1, 1]],
+	"sports": [["ammo_12g", 0.55, 6, 20], ["ammo_303", 0.3, 5, 20], ["ammo_762", 0.15, 5, 20], ["binoculars", 0.25, 1, 1], ["pack_small", 0.3, 1, 1], ["pack_large", 0.06, 1, 1],
+		["torch", 0.3, 1, 1], ["boots_rubber", 0.2, 1, 1], ["gun_rem870", 0.04, 1, 1], ["gun_hunter", 0.03, 1, 1]],
+	"general": [["food_can", 0.6, 1, 3], ["tape", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["bandage", 0.3, 1, 3], ["oil_can", 0.2, 1, 1], ["long_life", 0.25, 1, 1], ["nails", 0.1, 1, 1]],
+	"pub": [["food_can", 0.4, 1, 2], ["thermos", 0.2, 1, 1], ["long_life", 0.2, 1, 1], ["ammo_12g", 0.08, 4, 10]],
+	"till": [["bandage", 0.2, 1, 2], ["torch", 0.2, 1, 1], ["tape", 0.15, 1, 1], ["radio", 0.06, 1, 1], ["ammo_45", 0.04, 4, 10]],
+	"bank": [["ammo_45", 0.4, 6, 24], ["ammo_357", 0.35, 6, 24], ["gun_python", 0.12, 1, 1], ["gun_magnum45", 0.1, 1, 1], ["radio", 0.2, 1, 1], ["torch", 0.2, 1, 1]],
 	"rack": [["food_can", 0.4, 1, 4], ["long_life", 0.3, 1, 2], ["ammo_762", 0.08, 10, 30], ["jerry_fuel", 0.12, 1, 1], ["pack_small", 0.06, 1, 1], ["oil_can", 0.3, 1, 2]],
 }
 # which Forge props are containers, the loot table, and the grid size inside
@@ -102,6 +115,9 @@ const CONTAINERS := {
 	"bathroom": ["bathroom", [4, 3]], "wardrobe": ["wardrobe", [6, 6]], "drawers": ["drawers", [5, 4]], "nightstand": ["nightstand", [3, 2]],
 	"bookshelf": ["bookshelf", [6, 3]], "office": ["office", [5, 3]], "shed_shelf": ["shed_shelf", [7, 4]], "workbench": ["workbench", [6, 2]],
 	"laundry": ["laundry", [4, 3]], "rack": ["rack", [8, 5]], "servo_shelf": ["servo_shelf", [7, 4]], "planks": ["planks", [8, 3]],
+	"chemist": ["chemist", [7, 4]], "hardware": ["hardware", [8, 4]], "grocer": ["grocer", [7, 4]], "newsagent": ["newsagent", [6, 4]],
+	"clothes": ["clothes", [7, 5]], "sports": ["sports", [8, 4]], "general": ["general", [7, 4]], "pub": ["pub", [6, 3]], "till": ["till", [4, 2]],
+	"bank": ["bank", [5, 4]],
 	"car_boot": ["none", [7, 4]], "car_wagon": ["none", [8, 5]], "car_tray": ["none", [10, 5]],
 }
 # small enough to pick up and carry (middle mouse) in survival, by Forge key prefix match or mass

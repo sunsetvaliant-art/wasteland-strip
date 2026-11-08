@@ -70,12 +70,27 @@ const CAT := {
 	"servo_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "servo_shelf", true],
 	"servo_shelf": [PH + "interior/steel_frame_shelves_02/steel_frame_shelves_02.gltf", 2.0, "servo_shelf", true],
 	"counter": [PH + "world/metal_office_desk/metal_office_desk.gltf", 0.9, "office", true],
+	# shop shelving: the same shelves, what's on them depends on the shop
+	"chem_shelf": [PH + "interior/steel_frame_shelves_02/steel_frame_shelves_02.gltf", 2.0, "chemist", true],
+	"hw_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "hardware", true],
+	"hw_shelf": [PH + "world/steel_frame_shelves_01/steel_frame_shelves_01.gltf", 2.0, "hardware", true],
+	"grocer_shelf": [PH + "interior/steel_frame_shelves_02/steel_frame_shelves_02.gltf", 2.0, "grocer", true],
+	"grocer_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "grocer", true],
+	"news_shelf": [PH + "interior/wooden_bookshelf_worn/wooden_bookshelf_worn.gltf", 1.95, "newsagent", true],
+	"clothes_shelf": [PH + "interior/painted_wooden_shelves/painted_wooden_shelves.gltf", 1.6, "clothes", true],
+	"clothes_cab": [PH + "interior/painted_wooden_cabinet_02/painted_wooden_cabinet_02.gltf", 2.0, "clothes", true],
+	"sports_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "sports", true],
+	"gen_shelf": [PH + "world/steel_frame_shelves_01/steel_frame_shelves_01.gltf", 2.0, "general", true],
+	"bar_shelf": [PH + "interior/painted_wooden_shelves/painted_wooden_shelves.gltf", 1.6, "pub", true],
+	"shop_counter": [PH + "world/metal_office_desk/metal_office_desk.gltf", 0.95, "till", true],
+	"bank_desk": [PH + "world/metal_office_desk/metal_office_desk.gltf", 0.77, "office", true],
 }
 # built here, not models: [width, depth, height, container]
 const FIX := {
 	"fridge": [0.72, 0.7, 1.75, "fridge"], "bath": [1.7, 0.76, 0.55, ""], "toilet": [0.42, 0.7, 0.8, ""],
 	"vanity": [0.8, 0.48, 0.86, "bathroom"], "ltub": [0.62, 0.56, 0.9, ""], "wbench": [2.0, 0.75, 0.9, "workbench"],
 	"pallet_rack": [2.7, 1.0, 3.6, "rack"], "vat": [2.4, 1.3, 1.5, ""], "bench_low": [1.6, 0.6, 0.9, "kitchen"],
+	"safe": [0.75, 0.7, 1.1, "bank"], "bar": [3.2, 0.7, 1.05, "pub"], "drinks_fridge": [0.9, 0.7, 1.95, "grocer"],
 }
 
 # what goes in each kind of room: [key (a|b = one of), where, chance]
@@ -166,6 +181,30 @@ class Room:
 				return false
 		return true
 
+## What a shop's got in it, by what kind of shop it is: the shelving's loot is that shop's
+const SHOP_SHELF := {"chemist": "chem_shelf", "hardware": "hw_rack|hw_shelf", "grocer": "grocer_shelf|grocer_rack", "cafe": "grocer_shelf",
+	"newsagent": "news_shelf|gen_shelf", "clothes": "clothes_shelf|clothes_cab", "sports": "sports_rack", "general": "gen_shelf|grocer_shelf", "pub": "bar_shelf", "bank": "bank_desk"}
+
+static func _rules(p: Dictionary, r: Dictionary) -> Array:
+	if r.type != "shop":
+		return RULES.get(r.type, [])
+	var sub: String = p.get("sub", "general")
+	var sh: String = SHOP_SHELF.get(sub, "gen_shelf")
+	match sub:
+		"pub":
+			return [["bar", "wall", 1.0], [sh, "wall", 1.0], [sh, "wall", 0.8], ["dtable|ktable", "center", 1.0], ["dchair|pchair", "chairs:dtable|ktable", 1.0],
+				["ktable", "center", 0.7], ["pchair|stool", "chairs:ktable", 0.9], ["stool", "front:bar", 1.0], ["fridge", "wall", 0.8], ["fan", "ceiling", 0.9],
+				["picture", "high", 0.7], ["clock", "high", 0.6], ["trashbag", "corner", 0.4]]
+		"cafe":
+			return [["shop_counter", "wall", 1.0], ["drinks_fridge", "wall", 1.0], [sh, "wall", 0.8], ["ktable", "center", 1.0], ["pchair|dchair|monobloc", "chairs:ktable", 1.0],
+				["dtable", "center", 0.7], ["pchair|monobloc", "chairs:dtable", 0.9], ["fan", "ceiling", 0.8], ["clock", "high", 0.5], ["trashbag", "corner", 0.5]]
+		"bank":
+			return [["shop_counter", "wall", 1.0], ["bank_desk", "wall", 1.0], ["schoolchair", "front:bank_desk", 0.9], ["safe", "corner", 1.0], ["drawers", "wall", 0.6],
+				["fluoro", "ceiling", 1.0], ["clock", "high", 0.8], ["picture", "high", 0.5]]
+	return [["shop_counter", "wall", 1.0], [sh, "wall", 1.0], [sh, "wall", 1.0], [sh, "wall", 0.9], [sh, "center", 0.8], [sh, "center", 0.6],
+		["drinks_fridge" if sub in ["grocer", "general"] else "cardboard", "wall", 0.8], ["cardboard", "corner", 0.6], ["trashbag", "corner", 0.4],
+		["fluoro", "ceiling", 1.0], ["fan", "ceiling", 0.4], ["clock", "high", 0.4]]
+
 static func furnish(p: Dictionary, root: Node3D, rng: RandomNumberGenerator) -> Array:
 	var holder := Node3D.new()
 	holder.name = "Props"
@@ -175,7 +214,7 @@ static func furnish(p: Dictionary, root: Node3D, rng: RandomNumberGenerator) -> 
 		for r in f.rooms:
 			if r.type in ["void", "stair"]: continue
 			var rm := _room(r, float(f.y))
-			for rule in RULES.get(r.type, []):
+			for rule in _rules(p, r):
 				if rng.randf() > float(rule[2]): continue
 				var keys: Array = str(rule[0]).split("|")
 				_place(rm, keys[rng.randi() % keys.size()], str(rule[1]), holder, rng, boxes, p)
@@ -207,7 +246,7 @@ static func _room(r: Dictionary, fy: float) -> Room:
 	for side in ["N", "S", "W", "E"]:
 		for op in r.ops[side]:
 			if op.kind in ["window"]: continue
-			var dep := 1.0 if op.kind in ["door", "doorx"] else 0.8
+			var dep := 1.0 if op.kind in ["door", "doorx"] else (float(op.get("recess", 0.0)) + 1.1 if op.kind == "bay" else 0.8)
 			var a := float(op.a) - 0.12
 			var b := float(op.b) + 0.12
 			match side:
@@ -503,7 +542,9 @@ static func _nice(key: String) -> String:
 		"drawers": "chest of drawers", "drawers2": "chest of drawers", "shelf": "shelves", "shelf_wide": "shelves", "rack": "rack",
 		"toolcart": "tool cart", "toolchest": "tool chest", "scart": "trolley", "tub_box": "tub", "desk": "desk", "crate": "crate", "crate_s": "crate",
 		"jerry": "jerry can", "trashbag": "rubbish bag", "cardboard": "box", "mil_crate": "army crate", "stove": "stove", "bookshelf": "bookshelf",
-		"fridge": "fridge", "vanity": "bathroom cabinet", "wbench": "workbench", "pallet_rack": "pallet rack", "bench_low": "cupboard", "bench": "kitchen cupboards"}
+		"fridge": "fridge", "vanity": "bathroom cabinet", "safe": "safe", "bar": "bar", "drinks_fridge": "drinks fridge", "shop_counter": "counter",
+		"chem_shelf": "shelves", "hw_rack": "rack", "hw_shelf": "shelves", "grocer_shelf": "shelves", "grocer_rack": "rack", "news_shelf": "shelves",
+		"clothes_shelf": "shelves", "clothes_cab": "cupboard", "sports_rack": "rack", "gen_shelf": "shelves", "bar_shelf": "shelves", "bank_desk": "desk", "wbench": "workbench", "pallet_rack": "pallet rack", "bench_low": "cupboard", "bench": "kitchen cupboards"}
 	return N.get(key, key)
 
 # ------------------------------------------------------------------------------------------------ built-in fixtures
@@ -526,6 +567,28 @@ static func _fixture(key: String, p: Dictionary) -> Node3D:
 			g.aabb("dark", Vector3(-hw + 0.03, 0.0, -hd + 0.03), Vector3(hw - 0.03, 0.05, hd - 0.06), false)
 		"bench_low":
 			_cupboards(g, -hw, hw, -hd, hd, h, false)
+		"safe":
+			g.aabb("steel", Vector3(-hw, 0, -hd), Vector3(hw, h, hd - 0.04), false)
+			g.aabb("dark", Vector3(-hw + 0.04, 0.04, hd - 0.04), Vector3(hw - 0.04, h - 0.04, hd), false)
+			g.aabb("steel", Vector3(-0.1, h * 0.55 - 0.1, hd), Vector3(0.1, h * 0.55 + 0.1, hd + 0.05), false)
+			g.aabb("steel", Vector3(hw - 0.14, h * 0.3, hd), Vector3(hw - 0.1, h * 0.75, hd + 0.04), false)
+		"bar":
+			g.aabb("timber", Vector3(-hw, 0, -hd + 0.06), Vector3(hw, h - 0.05, hd - 0.04), false)
+			g.aabb("door:dark", Vector3(-hw - 0.04, h - 0.05, -hd), Vector3(hw + 0.04, h, hd + 0.04), false)
+			g.aabb("steel", Vector3(-hw, 0.12, hd - 0.04), Vector3(hw, 0.16, hd + 0.06), false)
+			for k in 3:
+				var tx := -hw + 0.5 + k * 0.18
+				g.aabb("steel", Vector3(tx - 0.02, h, -0.05), Vector3(tx + 0.02, h + 0.32, -0.01), false)
+		"drinks_fridge":
+			g.aabb("enamel:white", Vector3(-hw, 0, -hd), Vector3(hw, h, hd - 0.03), false)
+			g.aabb("glass", Vector3(-hw + 0.05, 0.25, hd - 0.03), Vector3(hw - 0.05, h - 0.2, hd), false)
+			for k in 4:
+				var sy := 0.35 + k * 0.38
+				g.aabb("steel", Vector3(-hw + 0.06, sy, -hd + 0.05), Vector3(hw - 0.06, sy + 0.02, hd - 0.06), false)
+				for j in 5:
+					var cx := -hw + 0.12 + j * 0.16
+					g.aabb("enamel:" + ["pink", "teal", "yellow", "green", "blue"][(j + k) % 5], Vector3(cx - 0.035, sy + 0.02, 0.0), Vector3(cx + 0.035, sy + 0.2, 0.12), false)
+			g.aabb("enamel:pink", Vector3(-hw, h - 0.2, hd - 0.03), Vector3(hw, h, hd + 0.01), false)
 		"bath":
 			var t := 0.06
 			g.aabb("enamel", Vector3(-hw, 0, -hd), Vector3(hw, 0.08, hd), false)

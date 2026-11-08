@@ -15,7 +15,7 @@ const DOOR_W := 0.86
 const DOOR_H := 2.05
 const RISE := 0.18           # stair rise and going
 const GOING := 0.27
-const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse"]
+const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop"]
 
 # ------------------------------------------------------------------------------------------------ materials
 # key: [texture id, metres the texture covers, roughness scale]
@@ -32,6 +32,10 @@ const TINTS := {
 	"cream": Color(1.0, 0.95, 0.82), "white": Color(1, 1, 1), "green": Color(0.78, 0.9, 0.78), "blue": Color(0.78, 0.86, 0.95),
 	"yellow": Color(1.0, 0.93, 0.7), "pink": Color(1.0, 0.86, 0.82), "grey": Color(0.82, 0.82, 0.82), "teal": Color(0.72, 0.88, 0.86),
 	"tan": Color(0.9, 0.82, 0.68), "dark": Color(0.6, 0.6, 0.6),
+	# main-street paint
+	"sage": Color(0.74, 0.82, 0.68), "terracotta": Color(0.86, 0.58, 0.46), "mustard": Color(0.93, 0.8, 0.46), "pale_blue": Color(0.74, 0.84, 0.92),
+	"heritage": Color(0.42, 0.56, 0.44), "maroon": Color(0.56, 0.26, 0.24), "navy": Color(0.3, 0.37, 0.52), "charcoal": Color(0.34, 0.34, 0.36),
+	"sand": Color(0.92, 0.84, 0.7), "black": Color(0.22, 0.23, 0.25),
 }
 static var _mats := {}
 
@@ -58,6 +62,13 @@ static func mat(key: String) -> Material:
 	var base := parts[0]
 	var tint: Color = TINTS.get(parts[1], Color.WHITE) if parts.size() > 1 else Color.WHITE
 	match base:
+		"glass_lead", "glass_lead2":
+			# highlight windows: patterned glass, a little colour in it
+			m.albedo_color = Color(0.32, 0.4, 0.36) if base == "glass_lead" else Color(0.45, 0.36, 0.26)
+			m.roughness = 0.35
+			m.metallic = 0.3
+			m.emission_enabled = true
+			m.emission = m.albedo_color * 0.15
 		"glass_dark":
 			m.albedo_color = Color(0.12, 0.14, 0.15)
 			m.roughness = 0.15
@@ -194,7 +205,7 @@ class Geo:
 
 # ------------------------------------------------------------------------------------------------ plans
 ## A plan for one building of `kind` on a w x d footprint (metres, before verandahs)
-static func plan(kind: String, w: float, d: float, seed: int) -> Dictionary:
+static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var p := {"kind": kind, "w": w, "d": d, "seed": seed, "floors": [], "verandah": null, "roof": {}, "raised": 0.3,
@@ -278,6 +289,8 @@ static func plan(kind: String, w: float, d: float, seed: int) -> Dictionary:
 			if x < w / 2 - 0.5:
 				rooms.append({"x0": x, "z0": d / 2 - od, "x1": w / 2, "z1": d / 2, "type": "warehouse" if big else "workshop"})
 			p.floors.append({"y": 0.0, "h": p.h, "rooms": rooms})
+		"shop":
+			ShopGen.plan_into(p, w, d, rng, sub)
 	var fi := 0
 	for f in p.floors:
 		var i := 0
@@ -380,9 +393,10 @@ const PREF := {
 	"bed": {"hall": 6, "lounge": 4, "dining": 3, "bed": 1},
 	"laundry": {"kitchen": 6, "hall": 5, "bath": 3, "dining": 2},
 	"kitchen": {"lounge": 6, "dining": 6, "hall": 5},
-	"store": {"shed": 6}, "office": {"workshop": 5, "warehouse": 5, "milking": 4, "lunch": 3},
-	"lunch": {"workshop": 6, "office": 4}, "toilet": {"workshop": 5, "warehouse": 5, "lunch": 4, "office": 3},
+	"store": {"shed": 6, "shop": 6, "lobby": 5, "hall": 3}, "office": {"workshop": 5, "warehouse": 5, "milking": 4, "lunch": 3},
+	"lunch": {"workshop": 6, "office": 4}, "toilet": {"workshop": 5, "warehouse": 5, "lunch": 4, "office": 3, "lobby": 6, "hall": 5, "store": 4, "shop": 2},
 	"vat": {"milking": 6}, "milking": {"office": 2},
+	"lobby": {"shop": 6, "store": 4}, "hall": {"shop": 5, "hall": 4},
 }
 
 static func _pairs(rooms: Array) -> Array:
@@ -428,7 +442,9 @@ static func _connect(p: Dictionary, fl: int, rng: RandomNumberGenerator) -> void
 				comp[find.call(pr.a.id)] = find.call(pr.b.id)
 			"rail":
 				var hall: Dictionary = pr.a if pr.a.type == "hall" else pr.b
-				_add_op(hall, pr.sa if hall == pr.a else pr.sb, pr.lo, pr.hi, "rail")
+				var void_side: String = pr.sb if hall == pr.a else pr.sa
+				# the stair comes up at the stairwell's back (N) edge: leave that open, rail the rest
+				_add_op(hall, pr.sa if hall == pr.a else pr.sb, pr.lo, pr.hi, "open" if void_side == "N" else "rail")
 				comp[find.call(pr.a.id)] = find.call(pr.b.id)
 			"arch":
 				var wdt := minf(2.6, pr.hi - pr.lo - 0.5)
@@ -544,6 +560,8 @@ static func _ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
 				var op := _add_op(dr, "S", c, c + DOOR_W, "door", 0.0, DOOR_H)
 				op["leaf"] = true
 				op["ext"] = true
+		"shop":
+			ShopGen.ext_doors(p, rng)
 		"dairy":
 			for r in rooms:
 				if r.type == "milking":
@@ -568,6 +586,9 @@ static func _ext_side(p: Dictionary, r: Dictionary, side: String) -> bool:
 	return false
 
 static func _windows(p: Dictionary, rng: RandomNumberGenerator) -> void:
+	if p.kind == "shop":
+		ShopGen.windows(p, rng)
+		return
 	for f in p.floors:
 		for r in f.rooms:
 			if r.type in ["void", "stair"]: continue
@@ -624,7 +645,10 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 	_base(p, g, ground, lowest)
 	if p.verandah != null:
 		_verandah(p, g, ground)
-	if cut == INF:
+	if p.kind == "shop":
+		if cut == INF:
+			ShopGen.top(p, g, top_h, ground)
+	elif cut == INF:
 		_roof(p, g, top_h)
 	_ext_steps(p, g, ground)
 	# the mesh and its collision
@@ -657,7 +681,7 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		var leaf := BuildDoor.new()
 		leaf.key = "d%d" % di
 		pv.add_child(leaf)
-		leaf.setup(pv, DOOR_W - 0.04, DOOR_H - 0.03, mat("door:" + ("white" if dd.ext else "cream")))
+		leaf.setup(pv, DOOR_W - 0.04, DOOR_H - 0.03, mat("door:" + ("white" if dd.ext else "cream")), dd.get("glass", false))
 		di += 1
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(p.seed) + 77
@@ -667,13 +691,15 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		win.key = "w%d" % wi
 		win.transform = wd.xf
 		root.add_child(win)
-		win.setup(wd.w, wd.h, rng.randf() < 0.12)
+		win.setup(wd.w, wd.h, rng.randf() < (0.2 if wd.get("fixed", false) else 0.12), wd.get("fixed", false))
 	for ri in p._rollers.size():
 		var rd: Dictionary = p._rollers[ri]
 		var ro := BuildRoller.new()
 		ro.transform = rd.xf
 		root.add_child(ro)
 		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0)
+	if p.kind == "shop":
+		ShopGen.labels(p, root)
 	return root
 
 ## The outside only, cheaply, into a shared Geo (whose xf is this building's transform): cladding without openings,
@@ -706,7 +732,7 @@ static func build_lod(p: Dictionary, g: Geo, ground: Callable) -> void:
 						"W": si = {"axis": "z", "fixed": -w / 2, "inward": 1.0}
 						_: si = {"axis": "z", "fixed": w / 2, "inward": -1.0}
 					for op in r.ops[side]:
-						if op.kind in ["window", "door", "roller", "open"]:
+						if op.kind in ["window", "door", "roller", "open", "bay"]:
 							var mk := "glass_dark" if op.kind == "window" else ("door" if op.kind == "door" else "dark")
 							_wall_box(g, mk, si, float(op.a), float(op.b), float(f.y) + float(op.y0), float(f.y) + float(op.y1), -T_OUT - 0.02, -T_OUT + 0.01, false)
 	if p.stumps:
@@ -732,6 +758,9 @@ static func build_lod(p: Dictionary, g: Geo, ground: Callable) -> void:
 		g.aabb("trim", Vector3(-w / 2, 0.0, z1 - 0.1), Vector3(w / 2, 1.0, z1 - 0.05), false)
 		var rm: String = p.roof.mat + ":white:uv"
 		_roof_quad(g, rm, Vector3(-w / 2 - 0.35, h + 0.05, d / 2 + T_OUT), Vector3(w / 2 + 0.35, h + 0.05, d / 2 + T_OUT), Vector3(w / 2 + 0.35, h - 0.4, z1 + 0.35), Vector3(-w / 2 - 0.35, h - 0.4, z1 + 0.35))
+	if p.kind == "shop":
+		ShopGen.top(p, g, top_y, ground, true)
+		return
 	_roof(p, g, top_y)
 
 ## Edge geometry of a room side, in this frame: the line it runs along and how the skin box sits
@@ -772,12 +801,15 @@ static func _cut_wall(g: Geo, mk: String, si: Dictionary, a: float, b: float, ba
 
 const FLOOR_MAT := {"lounge": "timber_floor", "dining": "timber_floor", "hall": "timber_floor", "stair": "timber_floor", "kitchen": "lino",
 	"bed": "carpet", "bath": "tile", "laundry": "lino", "toilet": "tile", "shed": "concrete", "store": "concrete", "workshop": "concrete",
-	"warehouse": "concrete_worn", "office": "carpet", "lunch": "lino", "machinery": "dirt", "milking": "concrete_worn", "vat": "concrete", "study": "carpet"}
+	"warehouse": "concrete_worn", "office": "carpet", "lunch": "lino", "machinery": "dirt", "milking": "concrete_worn", "vat": "concrete", "study": "carpet",
+	"shop": "lino", "lobby": "lino"}
 
 static func _skin_mat(p: Dictionary, r: Dictionary) -> String:
 	if r.type in ["bath", "toilet"]: return "tile"
 	if r.type in ["shed", "machinery", "workshop", "warehouse", "store"]: return p.clad
 	if r.type in ["milking", "vat"]: return "plaster:white"
+	if r.type == "shop": return ["plaster:white", "plaster:cream", "plaster:sand", "plaster:pale_blue", "plaster:sage"][absi(int(p.seed)) % 5]
+	if r.type in ["store", "lobby"] and p.kind == "shop": return "plaster_worn:white"
 	var seed := int(p.seed) + hash(r.id)
 	return ["plaster:cream", "plaster:white", "plaster:green", "plaster:blue", "plaster:pink", "plaster:yellow", "plaster:tan"][absi(seed) % 7]
 
@@ -798,7 +830,7 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 	if r.type == "void":
 		return
 	if r.type == "stair":
-		_stair(g, r, fy, 2.9)
+		_stair(g, r, fy, float(p.get("stair_rise", 2.9)))
 		return
 	for side in ["N", "S", "W", "E"]:
 		var si := _side_info(r, side)
@@ -844,8 +876,13 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 					var glass_t := -T_OUT * 0.5 if _ext_side(p, r, side) else 0.0
 					# the window itself is its own node (BuildWindow): it opens, breaks and gets boarded
 					p["_windows"].append({"xf": _opening_xf(si, (float(op.a) + float(op.b)) * 0.5, fy + (float(op.y0) + float(op.y1)) * 0.5, glass_t),
-						"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0)})
+						"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0), "fixed": op.get("fixed", false)})
 					_frame(g, si, op, fy, -T_OUT, T_IN)
+					if op.get("display", false):
+						# a shopfront: on a stall board of dark glazed tiles
+						_wall_box(g, "tile:black", si, float(op.a) - 0.06, float(op.b) + 0.06, fy, fy + float(op.y0), -T_OUT - 0.07, -T_OUT + 0.01)
+				"bay":
+					ShopGen.bay(p, g, si, op, fy, doors)
 					# sill
 					_wall_box(g, "trim", si, float(op.a) - 0.05, float(op.b) + 0.05, fy + float(op.y0) - 0.04, fy + float(op.y0), -T_OUT - 0.04, T_IN + 0.03)
 				"arch":

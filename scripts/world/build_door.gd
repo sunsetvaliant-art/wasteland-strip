@@ -14,7 +14,7 @@ var _angle := 0.0
 var width := 0.82
 var _snd: AudioStreamPlayer3D
 
-func setup(p: Node3D, w: float, h: float, mat: Material) -> void:
+func setup(p: Node3D, w: float, h: float, mat: Material, glass := false) -> void:
 	pivot = p
 	width = w
 	leaf_w = w
@@ -28,6 +28,28 @@ func setup(p: Node3D, w: float, h: float, mat: Material) -> void:
 	mi.material_override = mat
 	mi.position = Vector3(w * 0.5, h * 0.5, 0)
 	add_child(mi)
+	if glass:
+		# a shop door: a timber frame round a big pane
+		bm.size = Vector3(w, h, 0.045)
+		mi.mesh = null
+		var fr := [[Vector3(w * 0.5, 0.18, 0), Vector3(w, 0.36, 0.045)], [Vector3(w * 0.5, h - 0.06, 0), Vector3(w, 0.12, 0.045)],
+			[Vector3(0.05, h * 0.5, 0), Vector3(0.1, h, 0.045)], [Vector3(w - 0.05, h * 0.5, 0), Vector3(0.1, h, 0.045)],
+			[Vector3(w * 0.5, 1.05, 0), Vector3(w, 0.06, 0.045)]]
+		for e in fr:
+			var fm := MeshInstance3D.new()
+			var fb := BoxMesh.new()
+			fb.size = e[1]
+			fm.mesh = fb
+			fm.material_override = mat
+			fm.position = e[0]
+			add_child(fm)
+		var gl := MeshInstance3D.new()
+		var gb := BoxMesh.new()
+		gb.size = Vector3(w - 0.2, h - 0.48, 0.008)
+		gl.mesh = gb
+		gl.material_override = BuildGen.mat("glass")
+		gl.position = Vector3(w * 0.5, 0.36 + (h - 0.48) * 0.5, 0)
+		add_child(gl)
 	var knob := MeshInstance3D.new()
 	var km := BoxMesh.new()
 	km.size = Vector3(0.05, 0.05, 0.14)

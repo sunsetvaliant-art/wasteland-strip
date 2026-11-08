@@ -26,10 +26,12 @@ PUB = (4.4, 3.3)
 
 # ---- roads as segments
 S = []
+SHOPPY = {"trunk": 3, "primary": 3, "secondary": 3, "tertiary": 3, "residential": 2, "unclassified": 2, "living_street": 2}
 for r in roads:
     P = r["P"]; hs = SPEC[r["k"]][0]
-    for i in range(len(P) - 1): S.append((P[i, 0], P[i, 1], P[i + 1, 0], P[i + 1, 1], hs))
+    for i in range(len(P) - 1): S.append((P[i, 0], P[i, 1], P[i + 1, 0], P[i + 1, 1], hs, SHOPPY.get(r["k"], 0)))
 S = np.array(S)
+SRANK = S[:, 5]; S = S[:, :5]
 ax, az, bx, bz, hs = S.T
 dx, dz = bx - ax, bz - az; L2 = dx * dx + dz * dz + 1e-9
 # a coarse grid of segment ids so "nearest road" doesn't scan 100k segments
@@ -55,6 +57,16 @@ def road_dist(x, z, r=120.0):
     d = np.hypot(px - x, pz - z) - hs[ids]
     k = int(np.argmin(d)); i = ids[k]; L = math.sqrt(L2[i])
     return float(d[k]), float(px[k]), float(pz[k]), float(dx[i] / L), float(dz[i] / L)
+
+def street_score(x, z, r=16.0):
+    """how good a street the point at (x, z) looks onto: the best (rank * 10 - distance) of the roads near it"""
+    ids = near_ids(x, z, r)
+    if len(ids) == 0: return -1e9
+    t = np.clip(((x - ax[ids]) * dx[ids] + (z - az[ids]) * dz[ids]) / L2[ids], 0, 1)
+    d = np.hypot(ax[ids] + dx[ids] * t - x, az[ids] + dz[ids] * t - z) - hs[ids]
+    ok = d < r
+    if not ok.any(): return -1e9
+    return float((SRANK[ids][ok] * 10 - d[ok]).max())
 
 # ---- land use polygons (point-in-polygon by matplotlib's Path)
 from matplotlib.path import Path
@@ -92,7 +104,7 @@ def overlaps(x, z, yaw, w, d, pad):
     return False
 def add(kind, x, z, yaw, w, d, tag=""):
     j = len(lots)
-    lots.append([kind, round(x, 2), round(z, 2), round(yaw, 4), round(w, 2), round(d, 2), int(rng.integers(1, 2**31 - 1))])
+    lots.append([kind, round(x, 2), round(z, 2), round(yaw, 4), round(w, 2), round(d, 2), int(rng.integers(1, 2**31 - 1))] + ([tag] if tag else []))
     r = math.hypot(w, d) / 2
     for gx in range(int((x - r - X0) // 50), int((x + r - X0) // 50) + 1):
         for gz in range(int((z - r - Z0) // 50), int((z + r - Z0) // 50) + 1):
@@ -111,6 +123,57 @@ def house_kind(area, rural=False):
     if rural: return "qlder" if r < 0.55 else ("cottage" if r < 0.85 else "brick")
     if area > 170 and r < 0.35: return "two_storey"
     return "qlder" if r < 0.33 else ("cottage" if r < 0.6 else ("brick" if r < 0.92 else "two_storey"))
+# ---- main-street shops: what kind of shop OSM says it is
+SHOP_SUB = {"pharmacy": "chemist", "chemist": "chemist", "hardware": "hardware", "paint": "hardware", "doityourself": "hardware", "tiles": "hardware",
+    "flooring": "hardware", "lighting": "hardware", "trade": "hardware", "agrarian": "hardware", "supermarket": "grocer", "convenience": "grocer",
+    "butcher": "grocer", "bakery": "grocer", "greengrocer": "grocer", "deli": "grocer", "health_food": "grocer", "cafe": "cafe", "fast_food": "cafe",
+    "restaurant": "cafe", "ice_cream": "cafe", "pub": "pub", "bar": "pub", "bank": "bank", "clothes": "clothes", "charity": "clothes",
+    "second_hand": "clothes", "variety_store": "general", "boutique": "clothes", "shoes": "clothes", "sports": "sports", "outdoor": "sports",
+    "fishing": "sports", "surf": "sports", "weapons": "sports", "newsagent": "newsagent", "stationery": "newsagent", "books": "newsagent",
+    "electronics": "newsagent", "gift": "newsagent", "jewelry": "newsagent", "antiques": "general", "houseware": "general", "pet": "general"}
+def shop_sub(b):
+    for k in (b.get("amenity", ""), b.get("shop", "")):
+        if k in SHOP_SUB: return SHOP_SUB[k]
+    if "hotel" in b.get("name", "").lower() or b["tag"] == "hotel": return "pub"
+    if "bank" in b.get("name", "").lower(): return "bank"
+    return ""
+def add_shops(b, cx, cz, front, w, d):
+    """A row of shopfronts on a building's frontage: big ones cut into 5-9 m shops (a pub or a supermarket keeps more
+    of it), set back to front onto the footpath, awnings sized to the room to the kerb"""
+    fx, fz = front
+    ax, az = fz, -fx                         # along the frontage (local +x)
+    sub = shop_sub(b)
+    lv = b.get("levels", "")
+    lv = int(lv) if str(lv).isdigit() else 0
+    # keep the front where it is and trim the depth
+    dd = min(max(d, 10.0), 30.0)
+    cx += -fx * (dd - d) / 2; cz += -fz * (dd - d) / 2
+    widths = []
+    rest = w
+    if sub == "pub": widths.append(min(rest, rng.uniform(15, 20))); rest -= widths[-1]
+    elif sub in ("grocer", "bank") and w < 26: widths.append(rest); rest = 0
+    while rest > 0.5:
+        if rest < 11: widths.append(rest); break
+        pw = rng.uniform(5.5, 9.0); widths.append(pw); rest -= pw
+    if not widths: return 0
+    yaw = math.atan2(fx, fz)
+    s0 = -w / 2; n = 0
+    for i, pw in enumerate(widths):
+        if pw < 4.0: s0 += pw; continue
+        mx = cx + ax * (s0 + pw / 2); mz = cz + az * (s0 + pw / 2)
+        s0 += pw
+        sb = sub if i == 0 else ""
+        if sb == "" and rng.random() < 0.012: sb = "bank"
+        # how far the front is off the road: the awning stops short of the kerb
+        fr = road_dist(mx + fx * dd / 2, mz + fz * dd / 2, 40.0)[0]
+        awn = 0.0 if fr < 1.6 else min(3.0, fr - 0.4)
+        levels = lv if lv in (1, 2) else 0
+        tag = "%s/%d/%.1f" % (sb, levels, awn)
+        if overlaps(mx, mz, yaw, pw, dd, -0.4): continue
+        if not site_ok(mx, mz, yaw, pw, dd, road_clear=0.0, max_spread=4.0, min_h=0.5): continue
+        add("shop", mx, mz, yaw, pw, dd, tag); n += 1
+    return n
+
 HOUSE_DIMS = {"qlder": ((10, 14), (9, 12)), "cottage": ((8, 10.5), (7, 9.5)), "brick": ((11, 15), (9, 12)), "two_storey": ((10, 13), (9.5, 11.5))}
 def clampdims(kind, w, d):
     if kind in HOUSE_DIMS:
@@ -148,6 +211,7 @@ def min_rect(pts):
             best = (area, ctr, a, mx[0] - mn[0], mx[1] - mn[1])
     return best
 n_osm = 0
+n_shop = 0
 for b in osm["b"]:
     tag = b["tag"]
     if tag in ("toilets", "garage", "carport", "hut", "greenhouse", "ruins", "construction", "bunker", "kiosk"): continue
@@ -165,6 +229,15 @@ for b in osm["b"]:
         front = (vx, vz) if fx * vx + fz * vz > 0 else (-vx, -vz); w, d = la, lb
     yaw = math.atan2(front[0], front[1])
     res = in_lu(cx, cz, ["residential"]); ind = in_lu(cx, cz, ["industrial"]); com = in_lu(cx, cz, ["retail", "commercial"])
+    if (com or tag in ("retail", "commercial", "hotel")) and area < 1600:
+        # a shop fronts the main street, not the lane out the back or the side street on the corner
+        best = None
+        for (sx, sz), half, ww, dd_ in (((ux, uz), la / 2, lb, la), ((-ux, -uz), la / 2, lb, la), ((vx, vz), lb / 2, la, lb), ((-vx, -vz), lb / 2, la, lb)):
+            sc = street_score(cx + sx * half, cz + sz * half)
+            if best is None or sc > best[0]: best = (sc, (sx, sz), ww, dd_)
+        if best[0] > -1e8:
+            front, w, d = best[1], best[2], best[3]
+            yaw = math.atan2(front[0], front[1])
     farm = in_lu(cx, cz, ["farmland", "farmyard", "orchard", "meadow"])
     if tag in ("house", "detached", "residential", "semidetached_house", "bungalow", "cabin", "terrace", "farm") or (tag == "yes" and res and area < 350):
         kind = house_kind(area, rural=farm)
@@ -174,9 +247,11 @@ for b in osm["b"]:
         kind = "machine_shed"
     elif tag in ("industrial", "warehouse", "manufacture") or ind:
         kind = "workshop" if area < 700 else "warehouse"
-    elif tag in ("retail", "commercial", "office", "supermarket", "service") or com:
-        kind = "brick" if area < 220 else ("workshop" if area < 900 else "warehouse")
-    elif tag in ("school", "church", "hospital", "fire_station", "public", "civic", "kindergarten", "motel", "apartments", "hotel", "train_station"):
+    elif tag in ("retail", "commercial", "office", "supermarket", "service", "hotel", "post_office") or com:
+        if area < 1600 and w >= 4.0 and d >= 6.0 and max(w, d) < 60:
+            n_shop += add_shops(b, cx, cz, front, w, d); continue
+        kind = "workshop" if area < 2500 else "warehouse"
+    elif tag in ("school", "church", "hospital", "fire_station", "public", "civic", "kindergarten", "motel", "apartments", "train_station"):
         kind = "brick" if area < 260 else "workshop"
     else:   # "yes" out in the country
         kind = "shed" if area < 70 else (house_kind(area, rural=True) if area < 260 else "machine_shed" if rng.random() < 0.4 else "shed")
@@ -184,7 +259,7 @@ for b in osm["b"]:
     if overlaps(cx, cz, yaw, w, d, 0.5): continue
     if not site_ok(cx, cz, yaw, w, d, road_clear=0.5, max_spread=5.0 if kind == "qlder" else 4.0, min_h=0.5): continue
     add(kind, cx, cz, yaw, w, d); n_osm += 1
-print("osm", n_osm)
+print("osm", n_osm, "shops", n_shop)
 
 # ---- 2. streets of houses in the residential land use, and workshops in the industrial
 TOWN_C = [((lon - 153.4035024) * 111320 * math.cos(math.radians(-28.3285718)), -(lat + 28.3285718) * 110574) for lat, lon in
@@ -296,4 +371,6 @@ for real, lat, lon, fake in TOWNS:
 import collections
 lots = [l for l in lots if not l[0].startswith("_")]
 print("total", len(lots), collections.Counter(l[0] for l in lots))
-json.dump({"lots": lots, "towns": towns}, open(f"{GAME}/assets/world/buildings.json", "w"), separators=(",", ":"))
+import hashlib
+ver = hashlib.md5(json.dumps(lots, separators=(",", ":")).encode()).hexdigest()[:12]      # saves know which town they were
+json.dump({"lots": lots, "towns": towns, "ver": ver}, open(f"{GAME}/assets/world/buildings.json", "w"), separators=(",", ":"))

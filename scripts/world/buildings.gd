@@ -19,6 +19,7 @@ static var inst: Buildings
 var main
 var lots: Array = []               # [kind, x, z, yaw, w, d, seed]
 var towns: Array = []
+var lots_ver := ""                 # which lot list this is: a save made on a different one doesn't apply
 var cells := {}                    # Vector2i -> [lot indices]
 var _q := {}                       # Vector2i (50 m) -> [lot indices] for blocked()
 var full := {}                     # lot index -> Node3D
@@ -29,7 +30,7 @@ var boards := {}                   # "lot:d3" / "lot:w2" -> {"n": planks, "side"
 var broken := {}                   # "lot:w2" -> true: windows someone's put through
 var cars_taken := {}               # lot -> true: its project car's been driven off (don't make another)
 var _lot_cars := {}                # lot -> [Node3D, spawn position]
-const PROJECT_CHANCE := {"qlder": 0.05, "cottage": 0.05, "brick": 0.04, "two_storey": 0.03, "shed": 0.15, "machine_shed": 0.22,
+const PROJECT_CHANCE := {"shop": 0.0, "qlder": 0.05, "cottage": 0.05, "brick": 0.04, "two_storey": 0.03, "shed": 0.15, "machine_shed": 0.22,
 	"workshop": 0.2, "dairy": 0.08, "warehouse": 0.05}
 var _dirty := {}                   # cells whose LOD mesh needs rebuilding
 var _t := 0.0
@@ -45,6 +46,7 @@ func setup(m) -> void:
 		return
 	lots = d.lots
 	towns = d.get("towns", [])
+	lots_ver = str(d.get("ver", ""))
 	for i in lots.size():
 		var l: Array = lots[i]
 		var c := Vector2i(floori(float(l[1]) / CELL), floori(float(l[2]) / CELL))
@@ -83,6 +85,7 @@ static func blocked(x: float, z: float, pad := 0.0) -> bool:
 		var hw := float(l[4]) * 0.5 + pad + 0.3
 		var hd := float(l[5]) * 0.5 + pad + 0.3
 		if l[0] == "qlder": hd += 3.0          # the verandah and its stairs
+		if l[0] == "shop": hd += 3.2           # the awning over the footpath
 		if absf(lx) < hw and absf(lz) < hd + 1.5:
 			return true
 	return false
@@ -101,7 +104,7 @@ static func near_any(x: float, z: float, r: float) -> bool:
 
 func _plan(i: int) -> Dictionary:
 	var l: Array = lots[i]
-	return BuildGen.plan(str(l[0]), float(l[4]), float(l[5]), int(l[6]))
+	return BuildGen.plan(str(l[0]), float(l[4]), float(l[5]), int(l[6]), str(l[7]) if l.size() > 7 else "")
 
 func _xf(i: int, p: Dictionary) -> Transform3D:
 	var l: Array = lots[i]
@@ -362,7 +365,7 @@ func _nav_of(i: int) -> Dictionary:
 		for r in p.floors[fi].rooms:
 			for side in ["N", "S", "W", "E"]:
 				for op in r.ops[side]:
-					if op.kind not in ["door", "open", "arch", "roller"]: continue
+					if op.kind not in ["door", "open", "arch", "roller", "bay"]: continue
 					var c := (float(op.a) + float(op.b)) * 0.5
 					var pt: Vector3
 					var outv: Vector3
@@ -371,10 +374,11 @@ func _nav_of(i: int) -> Dictionary:
 						"S": pt = Vector3(c, fy, float(r.z1)); outv = Vector3(0, 0, 1)
 						"W": pt = Vector3(float(r.x0), fy, c); outv = Vector3(-1, 0, 0)
 						_: pt = Vector3(float(r.x1), fy, c); outv = Vector3(1, 0, 0)
-					var inside := pt - outv * 0.6
+					var inside := pt - outv * (0.6 + float(op.get("recess", 0.0)))
 					if op.get("ext", false):
 						# out the door, and down the steps if there are any
 						var pts := [inside, pt, pt + outv * 0.7]
+						if op.kind == "bay": pts = [inside, pt - outv * (float(op.recess) - 0.2), pt, pt + outv * 0.7]
 						var best := {}
 						var bd := 3.4
 						for fl in flights:
@@ -549,9 +553,12 @@ func board(host: Node3D, side: int, n: int) -> Boards:
 func save_state() -> Dictionary:
 	for i in full:
 		_save_boxes(full[i])
-	return {"loot": loot_store, "boards": boards, "broken": broken, "cars_taken": cars_taken}
+	return {"loot": loot_store, "boards": boards, "broken": broken, "cars_taken": cars_taken, "lots_ver": lots_ver}
 
 func load_state(d: Dictionary) -> void:
+	if str(d.get("lots_ver", "")) != lots_ver:
+		print("SAVE buildings from a different town layout: cupboards and boards start fresh")
+		return
 	loot_store = d.get("loot", {})
 	boards = d.get("boards", {})
 	broken = d.get("broken", {})
