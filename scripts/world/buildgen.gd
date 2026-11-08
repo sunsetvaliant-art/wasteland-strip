@@ -243,11 +243,11 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			p.floors.append({"y": 2.9, "h": 2.6, "rooms": _hall_layout(w, d, 2.2, rng, true, true)})
 		"shed":
 			p.raised = 0.12
-			p.h = rng.randf_range(3.6, 4.4)
+			p.h = rng.randf_range(3.6, 4.4) if w * d > 30.0 else rng.randf_range(2.3, 2.7)     # a garden shed's just head height
 			p.clad = "tin" if rng.randf() < 0.6 else "tin_rust"
 			p.roof = {"type": "gable", "ridge": "z", "pitch": deg_to_rad(rng.randf_range(10, 16)), "mat": p.clad}
 			var rooms := [{"x0": -w / 2, "z0": -d / 2, "x1": w / 2, "z1": d / 2, "type": "shed"}]
-			if rng.randf() < 0.45 and w > 8:
+			if rng.randf() < 0.45 and w > 8 and d > 7.5:
 				# a lock-up store in a back corner
 				var sx := -w / 2 if rng.randf() < 0.5 else w / 2 - 3.2
 				rooms = [{"x0": -w / 2, "z0": -d / 2 + 3.2, "x1": w / 2, "z1": d / 2, "type": "shed"},
@@ -283,7 +283,9 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			var types := ["office", "lunch", "toilet"] if not big else ["office", "toilet"]
 			var x := -w / 2
 			for i in types.size():
+				if w / 2 - x < 1.6: break          # a narrow one: no room left for the rest
 				var x1: float = x + widths[i] if i < types.size() - 1 else min(x + widths[i], w / 2)
+				if w / 2 - x1 < 1.2: x1 = w / 2
 				rooms.append({"x0": x, "z0": d / 2 - od, "x1": x1, "z1": d / 2, "type": types[i], "h": 2.7})
 				x = x1
 			if x < w / 2 - 0.5:
@@ -535,12 +537,15 @@ static func _ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
 					if not on_edge: continue
 					var a := float(r.x0) if side == "S" else float(r.z0)
 					var b := float(r.x1) if side == "S" else float(r.z1)
-					var rw := 3.6 if p.kind == "shed" else 4.5
+					var rw := minf(3.6 if p.kind == "shed" else 4.5, b - a - 0.8)
+					if rw < 1.8: break          # too small for a roller door: the walk-in door'll do
 					var n := 1 if b - a < 9 else 2
 					for k in n:
 						var c := a + (b - a) * (k + 1) / (n + 1) - rw / 2
 						if _free_span(r, side, c, c + rw):
 							var op := _add_op(r, side, c, c + rw, "roller", 0.0, minf(float(r.h) - 0.4, 4.2 if p.kind != "shed" else 3.2))
+							if float(op.y1) < 2.1:
+								op.kind = "door"; op["leaf"] = true; op.b = op.a + DOOR_W; op.y1 = DOOR_H
 							op["ext"] = true
 							op["open_frac"] = rng.randf_range(0.4, 1.0)
 					break
@@ -1010,12 +1015,21 @@ static func _ramp(g: Geo, foot: Vector3, top: Vector3, width: float) -> void:
 ## Steps (a flight of them, as many as it takes) from the ground up to a door sill at `top`, going out along `out`
 static func _flight(g: Geo, top: Vector3, out: Vector3, width: float, ground: Callable, mk := "timber") -> void:
 	var gy: float = ground.call(top.x + out.x * 0.5, top.z + out.z * 0.5)
-	var rise_to := top.y - gy
-	if rise_to < 0.08:
+	if top.y - gy < 0.08:
 		return
-	var n := int(ceil(rise_to / RISE))
-	var rise := rise_to / n
-	gy = top.y - n * rise
+	# step down and out until the steps meet the ground where they are (ground falling away under a flight just
+	# makes it longer, so it never stops short in mid-air)
+	var rise := RISE
+	var n := 0
+	while n < 40:
+		var c := top + out * (GOING * (n + 0.5))
+		if top.y - (n + 1) * rise <= float(ground.call(c.x, c.z)) + 0.03:
+			break
+		n += 1
+	if n == 0:
+		n = 1
+	var rise_to := n * rise
+	gy = top.y - rise_to
 	var side := out.cross(Vector3.UP).normalized()
 	var yaw := atan2(out.x, out.z)
 	var basis := Basis(Vector3.UP, yaw)
@@ -1106,8 +1120,31 @@ static func _verandah(p: Dictionary, g: Geo, ground: Callable) -> void:
 	else:
 		rail.call(Vector3(x0 + 0.08, 0, z0 + 0.05), Vector3(x0 + 0.08, 0, zr))
 		rail.call(Vector3(x1 - 0.08, 0, z0 + 0.05), Vector3(x1 - 0.08, 0, zr))
-	# front stairs down to the yard
-	_flight(g, Vector3(stair_x, 0.0, z1), Vector3(0, 0, 1), 1.2, ground)
+	# front stairs down to the yard: straight out, or (a high-set house, now and then, or where straight out would
+	# run a long way) from a landing at the top, turned to run down along the front of the verandah
+	var srng := RandomNumberGenerator.new()
+	srng.seed = int(p.seed) + 5
+	var drop: float = -float(ground.call(stair_x, z1 + 2.0))
+	var turn: bool = p.kind == "qlder" and (srng.randf() < 0.35 or drop > 3.2)
+	if turn:
+		var lz0 := z1
+		var lz1 := z1 + 1.3
+		g.aabb("deck", Vector3(stair_x - 0.65, -0.1, lz0), Vector3(stair_x + 0.65, 0.0, lz1))
+		for px in [stair_x - 0.58, stair_x + 0.58]:
+			var gy0: float = ground.call(px, lz1 - 0.07)
+			g.aabb("timber", Vector3(px - 0.07, gy0 - 0.3, lz1 - 0.14), Vector3(px + 0.07, -0.1, lz1))
+			g.aabb("trim", Vector3(px - 0.04, 0.0, lz1 - 0.12), Vector3(px + 0.04, 1.0, lz1 - 0.02), false)
+		# down toward the lower end of the front (or the side with more room)
+		var left_h: float = ground.call(stair_x - 3.0, lz0 + 0.65)
+		var right_h: float = ground.call(stair_x + 3.0, lz0 + 0.65)
+		var dir := -1.0 if left_h < right_h - 0.2 else (1.0 if right_h < left_h - 0.2 else (-1.0 if stair_x > 0.0 else 1.0))
+		# a rail across the far side of the landing
+		g.aabb("trim", Vector3(stair_x - 0.65, 0.93, lz1 - 0.1), Vector3(stair_x + 0.65, 1.0, lz1 - 0.04))
+		var sx0 := stair_x - 0.65 * dir
+		g.aabb("trim", Vector3(minf(sx0, sx0 - 0.06 * dir), 0.93, lz0), Vector3(maxf(sx0, sx0 - 0.06 * dir), 1.0, lz1), true)
+		_flight(g, Vector3(stair_x + 0.65 * dir, 0.0, (lz0 + lz1) * 0.5 + 0.05), Vector3(dir, 0, 0), 1.0, ground)
+	else:
+		_flight(g, Vector3(stair_x, 0.0, z1), Vector3(0, 0, 1), 1.2, ground)
 	# skillion roof from the wall plate down to the posts
 	var ov := 0.35
 	var ya := h + 0.05

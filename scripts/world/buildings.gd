@@ -380,7 +380,7 @@ func _nav_of(i: int) -> Dictionary:
 						var pts := [inside, pt, pt + outv * 0.7]
 						if op.kind == "bay": pts = [inside, pt - outv * (float(op.recess) - 0.2), pt, pt + outv * 0.7]
 						var best := {}
-						var bd := 3.4
+						var bd := 4.4
 						for fl in flights:
 							var dd := Vector2(fl.top.x - pt.x, fl.top.z - pt.z).length()
 							if dd < bd and absf(float(fl.top.y) - fy) < 0.5:

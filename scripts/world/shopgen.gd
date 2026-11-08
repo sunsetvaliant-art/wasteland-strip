@@ -126,6 +126,7 @@ static func upper_rooms(w: float, d: float, rng: RandomNumberGenerator, flip: bo
 	var s0 := -d / 2 + 1.5
 	var s1 := s0 + ceil(UY / BuildGen.RISE) * BuildGen.GOING
 	var lz0 := maxf(s1, d / 2 - 4.5)
+	if lz0 - s1 < 0.9: lz0 = s1
 	rooms.append({"x0": sa, "z0": -d / 2, "x1": sb, "z1": s0, "type": "hall", "hub": true})
 	rooms.append({"x0": sa, "z0": s0, "x1": sb, "z1": s1, "type": "void"})
 	if lz0 > s1 + 0.05:

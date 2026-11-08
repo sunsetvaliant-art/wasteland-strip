@@ -326,7 +326,7 @@ func _build_credits() -> void:
 	if c is Dictionary:
 		for k in c:
 			s += "  • %s by %s\n" % [c[k].title, c[k].author]
-	s += "\nTextures, grass and props: Poly Haven (CC0).\nCharacters: Meshy, animated with Mixamo.\nEngine: Godot (MIT), terrain: Terrain3D (MIT), physics: Jolt (MIT).\nEngine, gun and creature sounds: synthesised for this game."
+	s += "\nTextures, grass and props: Poly Haven (CC0).\nCharacters: Meshy, animated with Mixamo.\nEngine: Godot (MIT), terrain: Terrain3D (MIT), physics: Jolt (MIT).\nEngine, gun and creature sounds: synthesised for this game.\n\nMap data: roads, towns and buildings © OpenStreetMap contributors (ODbL); building outlines from Microsoft Global ML Building Footprints (ODbL)."
 	t.text = s
 	credits_panel.add_child(t)
 

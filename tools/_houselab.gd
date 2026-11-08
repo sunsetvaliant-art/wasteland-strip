@@ -4,10 +4,10 @@ extends SceneTree
 const OUT := "/tmp/claude-0/houses/"
 const SIZES := {"qlder": [12.0, 10.5], "cottage": [9.0, 8.0], "brick": [13.0, 10.0], "two_storey": [11.0, 10.0], "shed": [10.0, 14.0],
 	"machine_shed": [15.0, 8.0], "dairy": [16.0, 9.0], "workshop": [16.0, 24.0], "warehouse": [24.0, 36.0]}
-var slope := 0.05
+var slope := float(OS.get_environment("SLOPE")) if OS.get_environment("SLOPE") != "" else 0.05
 
 func gh(x: float, z: float) -> float:
-	return x * slope + sin(z * 0.15) * 0.3
+	return x * slope + z * float(OS.get_environment("SLOPEZ") if OS.get_environment("SLOPEZ") != "" else "0") + sin(z * 0.15) * 0.3
 
 func _init() -> void:
 	await process_frame
