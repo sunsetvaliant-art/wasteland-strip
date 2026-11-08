@@ -153,6 +153,13 @@
    "date": "2026-11-08",
    "notes": "Shops! Main streets are now rows of shopfronts after Murwillumbah's: tall parapets with the building's name and year (stepped, curved, pediment, flat or 60s box), awnings on tie rods over the footpath, highlight windows, big display windows on tiled stall boards, recessed entries, posted verandahs and balconies on the pubs. Chemists, hardware, grocers, cafes, newsagents, clothes and op shops, sports stores, pubs and banks, each with their own shelves and loot (bandages at the chemist, nails and planks at the hardware, ammo at the sports store, a safe in the bank). Some have a flat upstairs with its own street door. Shop windows can be shot out and climbed through. Shops face the main street, not the lane. Fixed the rail across the top of upstairs stairs. Note: the town layout changed, so cupboards and boarded-up doors start fresh.",
    "size": 1475724
+  },
+  {
+   "file": "patch_0.2.0_0019.pck",
+   "version": "0.2.19",
+   "date": "2026-11-08",
+   "notes": "The real valley: every house, shed, farmhouse and shop is now where it really is. Buildings come from the real map (OpenStreetMap plus building outlines traced from satellite photos), at their real size and angle, facing their street: about 36,000 of them, up from 21,000 mostly made-up ones. Farmhouses sit out on the farms with their sheds, hillside houses are up on stumps, tall houses are two storeys, backyard sheds are where they really are. Queenslander front stairs now always reach the ground: on a steep block they turn at a landing and run down along the verandah. Small garden sheds have a door instead of a roller door. Note: the town layout changed again, so cupboards and boarded-up doors start fresh.",
+   "size": 2106312
   }
  ],
  "full": {
