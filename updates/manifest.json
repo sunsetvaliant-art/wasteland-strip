@@ -188,6 +188,13 @@
    "date": "2026-11-08",
    "notes": "Sunnyvale Mall: polished cream floors right through: the lobby, street shops, shop units, supermarket, furniture store and food court.",
    "size": 45372
+  },
+  {
+   "file": "patch_0.2.0_0024.pck",
+   "version": "0.2.24",
+   "date": "2026-11-08",
+   "notes": "Fixed: T (torch), G (board up) and K (work on car) did nothing and filled the log with errors on every key press. Keys added in updates weren't being registered.",
+   "size": 17328
   }
  ],
  "full": {
