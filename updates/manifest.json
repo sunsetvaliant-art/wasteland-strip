@@ -167,6 +167,13 @@
    "date": "2026-11-08",
    "notes": "Malls, part 1: Sunnyvale Mall in Mount Ruin (the real Sunnyside). Drive in under it from the street: the car park is the ground floor, with wrecks left in the bays and the loading dock out the back. Along the street front: cafes, a bank, the bottle shop and other shops, and the entry lobby where a ramp wide enough for four trolleys climbs, turns 180 degrees and comes up onto the first floor (or take the stairs in the core). Upstairs: the concourse under a skylight (watch the missing panes), a supermarket with aisles, checkouts, chillers and a stockroom, a big furniture and electrical store, shop units behind roller shutters with stockrooms, the food court and its kitchens, toilets, the security office. Mall props: trolleys you can push about, checkouts, planters with dead palms, benches, bins, ATMs, the directory board, kiosks, clothes racks, mannequins. And about two dozen of the dead wandering the place: clear them out and they stay gone a couple of hours. Note: the town layout changed slightly, so cupboards and boarded-up doors start fresh.",
    "size": 2285888
+  },
+  {
+   "file": "patch_0.2.0_0021.pck",
+   "version": "0.2.21",
+   "date": "2026-11-08",
+   "notes": "Fixed: invisible walls inside Sunnyvale Mall (and anywhere a zombie got blown apart) that stopped your shots. The gore copy of a zombie's model kept the model's hidden collision box. Zombies now all use the Meshy hollow walker.",
+   "size": 646608
   }
  ],
  "full": {
