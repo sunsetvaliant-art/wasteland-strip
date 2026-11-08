@@ -32,7 +32,16 @@ const DEFS := {
 	"rem870": {"grip_y": -0.035, "fore_y": -0.04, "sight": 0.035, "name": "Remington 870 pump (12 gauge)", "len": 1.0, "flip": false, "action": "pump", "dmg": 14.0, "pellets": 8, "spread": 0.045,
 		"interval": 0.85, "mag": 5, "reload": 0.55, "recoil": 0.12, "vel": 400.0, "range": 80.0, "loud": 280.0, "sound": "shot_12g",
 		"grip": 0.27, "fore": 0.63, "drop_y": -0.025, "kick": 0.1, "force": 4.0},
+	# not guns: things you hold up the same way
+	"binoculars": {"tool": "binoculars", "model": "res://assets/ph/survival/vintage_binocular/vintage_binocular.gltf", "scope": 7.0, "model_scope": true,
+		"grip_y": -0.02, "fore_y": -0.02, "sight": 0.0, "name": "Binoculars", "len": 0.2, "flip": false, "action": "none", "dmg": 0.0, "pellets": 0, "spread": 0.0,
+		"interval": 0.3, "mag": 0, "reload": 0.1, "recoil": 0.0, "vel": 1.0, "range": 1.0, "loud": 0.0, "sound": "", "grip": 0.7, "fore": 0.3, "drop_y": 0.0,
+		"kick": 0.0, "force": 0.0, "pistol": true},
+	"torch": {"tool": "torch", "model": "res://assets/ph/survival/small_plastic_torch/small_plastic_torch.gltf", "grip_y": -0.02, "fore_y": -0.02, "sight": 0.03,
+		"name": "Torch", "len": 0.23, "flip": false, "action": "none", "dmg": 0.0, "pellets": 0, "spread": 0.0, "interval": 0.25, "mag": 0, "reload": 0.1,
+		"recoil": 0.0, "vel": 1.0, "range": 1.0, "loud": 0.0, "sound": "", "grip": 0.35, "fore": 0.35, "drop_y": 0.0, "kick": 0.0, "force": 0.0, "pistol": true},
 }
+const TOOLS := ["binoculars", "torch"]
 const ORDER := ["python", "magnum45", "sawnoff", "dbshotgun", "rem870", "slr", "enfield", "hunter"]
 const BODY_MULT := {"head": 3.6, "chest": 1.0, "pelvis": 0.9, "l_upperarm": 0.55, "r_upperarm": 0.55, "l_forearm": 0.45, "r_forearm": 0.45,
 	"l_thigh": 0.65, "r_thigh": 0.65, "l_shin": 0.5, "r_shin": 0.5}
@@ -73,6 +82,7 @@ func setup(k: String, who: Node) -> void:
 	ammo = int(def.mag)
 	var gp := "res://assets/guns/%s/scene.gltf" % k
 	if not ResourceLoader.exists(gp): gp = "res://assets/guns/%s/scene.glb" % k
+	if def.has("model"): gp = def.model
 	var ps: PackedScene = load(gp)
 	var raw: Node3D = ps.instantiate()
 	for h in def.get("hide", []):
@@ -138,6 +148,71 @@ func setup(k: String, who: Node) -> void:
 	mech_audio = AudioStreamPlayer3D.new()
 	mech_audio.unit_size = 4.0
 	add_child(mech_audio)
+	if def.get("tool", "") == "torch":
+		_make_light(muzzle, Vector3(0, 0, -0.02))
+
+# ---------------------------------------------------------------- a torch: in your hand, or taped to the gun
+var light: SpotLight3D
+var taped: Node3D
+
+func _make_light(at: Node3D, pos: Vector3) -> void:
+	light = SpotLight3D.new()
+	light.light_color = Color(1.0, 0.93, 0.8)
+	light.light_energy = 4.0
+	light.spot_range = 40.0
+	light.spot_angle = 21.0
+	light.spot_angle_attenuation = 1.4
+	light.shadow_enabled = true
+	light.position = pos
+	light.visible = false
+	at.add_child(light)
+
+## Tape a torch along the side of the barrel (the stack remembers it: data.torch)
+func add_taped_torch() -> void:
+	if taped or def.has("tool"):
+		return
+	var raw: Node3D = (load("res://assets/ph/survival/small_plastic_torch/small_plastic_torch.gltf") as PackedScene).instantiate()
+	taped = Node3D.new()
+	add_child(taped)
+	taped.add_child(raw)
+	var bb := _aabb(raw)
+	var L := bb.size
+	var ax := 0 if (L.x >= L.y and L.x >= L.z) else (1 if L.y >= L.z else 2)
+	var b := Basis()
+	if ax == 1: b = Basis(Vector3.BACK, PI * 0.5)
+	elif ax == 2: b = Basis(Vector3.UP, -PI * 0.5)
+	b = Basis(Vector3.UP, PI * 0.5) * b
+	var sc: float = 0.2 / max(L[ax], 0.0001)
+	raw.basis = b.scaled(Vector3.ONE * sc)
+	raw.position = -(raw.basis * bb.get_center())
+	var half: float = float(def.len) * 0.5
+	taped.position = Vector3(0.045, -0.01, -half + 0.16 + float(def.len) * 0.08)
+	for mi in raw.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).layers = 2
+	# a couple of wraps of tape
+	for zz in [-0.05, 0.05]:
+		var wrap := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.03
+		cm.bottom_radius = 0.03
+		cm.height = 0.025
+		wrap.mesh = cm
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.6, 0.61, 0.63)
+		tm.roughness = 0.45
+		wrap.material_override = tm
+		wrap.rotation.x = PI * 0.5
+		wrap.position = Vector3(-0.02, 0, zz)
+		wrap.layers = 2
+		taped.add_child(wrap)
+	_make_light(taped, Vector3(0, 0, -0.11))
+
+func light_on() -> bool:
+	return light != null and light.visible
+
+func toggle_light() -> void:
+	if light:
+		light.visible = not light.visible
 
 ## Read the sights off the model itself: the front sight is the highest point in the front 12 % of the gun, so the
 ## line of sight runs at that height; and the rearmost part of the gun up near that line is what the eye has to stay
@@ -305,6 +380,11 @@ func ready_to_fire() -> bool:
 ## Pull the trigger. origin/dir: where the bullet starts and goes (the eye for the player, the muzzle for NPCs).
 ## extra_spread adds to the gun's own (moving, hip fire, a scav's nerves). Returns true if it went bang.
 func fire(origin: Vector3, dir: Vector3, extra_spread := 0.0) -> bool:
+	if def.has("tool"):
+		if def.tool == "torch" and cool <= 0.0:
+			toggle_light()
+			cool = float(def.interval)
+		return false
 	if not ready_to_fire():
 		return false
 	if ammo <= 0:
@@ -378,6 +458,13 @@ func _resolve(hit: Dictionary, d: Vector3, hits: Dictionary) -> void:
 	var c = hit.collider
 	var p: Vector3 = hit.position
 	var dmg: float = float(def.dmg)
+	if c and c.has_method("glass_hit"):
+		c.glass_hit(p, d)
+		return
+	if c and c is Boards:
+		(c as Boards).hit(dmg * 0.15)
+		_impact(p, hit.normal, false)
+		return
 	if c and c.has_method("take_hit"):
 		var part: String = c.rig.part_at(p, d) if "rig" in c and c.rig else "chest"
 		if not hits.has(c):
@@ -480,6 +567,8 @@ func _mech(n: String) -> void:
 	mech_audio.play()
 
 func start_reload() -> bool:
+	if def.has("tool"):
+		return false
 	if reloading > 0.0 or ammo >= int(def.mag) or reserve <= 0:
 		return false
 	reloading = float(def.reload)

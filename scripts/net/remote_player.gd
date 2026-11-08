@@ -182,11 +182,9 @@ func show_shot(origin: Vector3, dir: Vector3, gk: String) -> void:
 		gun_node.flash_mesh.visible = true
 		get_tree().create_timer(0.06).timeout.connect(func(): if is_instance_valid(gun_node): gun_node.flash_mesh.visible = false)
 
-## Hit by your bullets: their machine does the damage
-func take_hit(parts: Dictionary, dir: Vector3, point: Vector3, force: float, attacker: Node) -> void:
-	var total := 0.0
-	for k in parts: total += float(parts[k])
-	if net: net.hit_player(self, total, dir, point)
+## Hit by your bullets: nothing (LAN is co-op: no friendly fire)
+func take_hit(_parts: Dictionary, _dir: Vector3, _point: Vector3, _force: float, _attacker: Node) -> void:
+	pass
 
 ## Bitten or shot by an NPC that thinks on this machine (the host)
 func take_damage(amount: float, from: Vector3, impulse := Vector3.ZERO, point := Vector3.ZERO) -> void:

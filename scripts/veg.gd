@@ -77,7 +77,7 @@ func setup(t: Terrain3D) -> void:
 	layers = {
 		"tree": {"cell": 256.0, "r": TREE_R, "cells": {}},
 		"small": {"cell": 64.0, "r": UNDER_R, "cells": {}},
-		"grass": {"cell": 16.0, "r": GRASS_R, "cells": {}},
+		"grass": {"cell": 16.0, "r": GRASS_R + 8.0, "cells": {}},
 	}
 	if scan_meshes.size():
 		layers["scan"] = {"cell": 8.0, "r": SCAN_R, "cells": {}}
@@ -291,6 +291,8 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			if kind == "":
 				continue
 			var clear := road_clearance(x, z)
+			if clear < 6.0 and Roads.inst:
+				clear = Roads.inst.edge_dist(x, z)        # near a road: the exact distance from its seal
 			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2, "scan": 0.3}[layer]:
 				continue
 			if Buildings.blocked(x, z, {"tree": 3.0, "small": 0.8, "grass": 0.0, "scan": 0.0}[layer]):
@@ -320,12 +322,10 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 		mmi.visibility_range_end = layers[layer].r + 40.0
 		mmi.visibility_range_end_margin = 30.0
 		mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-		if layer == "grass":
+		if layer == "grass" or layer == "scan":
+			# no cell-by-cell cut-off (that made rings): the shaders thin the grass out clump by clump
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		if layer == "scan":
-			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			mmi.visibility_range_end = layers[layer].r + 6.0
-			mmi.visibility_range_end_margin = 6.0
+			mmi.visibility_range_end = 0.0
 		node.add_child(mmi)
 	# trunks you can't drive through: simple cylinders for the trees near the ground the player is on
 	if layer == "tree":

@@ -95,6 +95,8 @@ func sync_guns() -> void:
 		g.excludes = [player.get_rid()]
 		g.ammo = int(s.data.get("ammo", 0))
 		g.set_meta("stack", s)
+		if s.data.get("torch", false):
+			g.add_taped_torch()
 		var aid: String = Items.GUN_AMMO.get(g.key, "")
 		g.on_take = func(n): take(aid, n)
 		g.visible = false

@@ -58,6 +58,15 @@ static func catalog() -> Dictionary:
 		CATALOG = JSON.parse_string(FileAccess.get_file_as_string("res://assets/vehicles/catalog.json"))
 	return CATALOG
 
+## How much it carries: a tray (utes, pickups, trucks), a wagon's back, or a sedan's boot
+static func storage_key(d: Dictionary) -> String:
+	var n: String = str(d.get("name", "")).to_lower()
+	for w in ["ute", "pickup", "flatbed", "truck", "workhorse"]:
+		if n.contains(w): return "car_tray"
+	for w in ["wagon", "hearse"]:
+		if n.contains(w): return "car_wagon"
+	return "car_boot"
+
 func _ready() -> void:
 	add_to_group("vehicles")
 	add_to_group("physgun")
@@ -65,6 +74,11 @@ func _ready() -> void:
 		design = VehicleSpecs.default_design(kind)
 	kind = design.cab
 	def = catalog().get(kind, catalog()["vjwagon"])
+	# its storage (F at the back of it)
+	if not design.get("no_cab", false):
+		set_meta("container", storage_key(def))
+		set_meta("container_name", {"car_tray": "tray", "car_wagon": "back of the wagon", "car_boot": "boot"}[storage_key(def)])
+		set_meta("empty", true)
 	eng = VehicleSpecs.ENGINES[design.engine]
 	box = VehicleSpecs.GEARBOXES[design.gearbox]
 	mass = float(design.mass)
@@ -107,25 +121,28 @@ func _build_body() -> void:
 	holder.name = "Cab"
 	holder.position = Vector3(off[0], off[1], off[2])
 	add_child(holder)
-	var body: Node3D = load("res://assets/vehicles/%s.glb" % def.glb).instantiate()
-	body.rotation_degrees.y = -90      # the model's nose is +X; this car drives towards +Z
-	holder.add_child(body)
 	var mn: Array = def.min
+	var bare: bool = design.get("no_cab", false)          # a rolling chassis: no body on it yet
+	if not bare:
+		var body: Node3D = load("res://assets/vehicles/%s.glb" % def.glb).instantiate()
+		body.rotation_degrees.y = -90      # the model's nose is +X; this car drives towards +Z
+		holder.add_child(body)
 	var ext: Array = def.ext
 	var lo: float = float(mn[1]) + 0.12 + float(off[1])
 	var h: float = ext[1]
-	var cs := CollisionShape3D.new()
-	var b := BoxShape3D.new()
-	b.size = Vector3(ext[2] * 0.96, h * 0.55, ext[0] * 0.97)
-	cs.shape = b
-	cs.position = Vector3(off[0], lo + h * 0.275, float(mn[0]) + float(ext[0]) * 0.5 + float(off[2]))
-	add_child(cs)
-	var roof := CollisionShape3D.new()
-	var rb := BoxShape3D.new()
-	rb.size = Vector3(ext[2] * 0.82, h * 0.38, ext[0] * 0.5)
-	roof.shape = rb
-	roof.position = Vector3(off[0], lo + h * 0.66, float(mn[0]) + float(ext[0]) * 0.45 + float(off[2]))
-	add_child(roof)
+	if not bare:
+		var cs := CollisionShape3D.new()
+		var b := BoxShape3D.new()
+		b.size = Vector3(ext[2] * 0.96, h * 0.55, ext[0] * 0.97)
+		cs.shape = b
+		cs.position = Vector3(off[0], lo + h * 0.275, float(mn[0]) + float(ext[0]) * 0.5 + float(off[2]))
+		add_child(cs)
+		var roof := CollisionShape3D.new()
+		var rb := BoxShape3D.new()
+		rb.size = Vector3(ext[2] * 0.82, h * 0.38, ext[0] * 0.5)
+		roof.shape = rb
+		roof.position = Vector3(off[0], lo + h * 0.66, float(mn[0]) + float(ext[0]) * 0.45 + float(off[2]))
+		add_child(roof)
 	# the chassis rails, low and narrow, so a car with the cab lifted off still has something to land on
 	var fr: Dictionary = design.frame
 	var rail := CollisionShape3D.new()

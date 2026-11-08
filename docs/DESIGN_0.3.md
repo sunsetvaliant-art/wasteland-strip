@@ -48,3 +48,15 @@ Delivery: two halves. Half 1 = world + loot. Half 2 = base/crafting/scavs/trader
 - SkyCycle: 45/15 min day/night, weather (clear/cloudy/rain/storm/fog), rain fx + sounds, lightning, night zombies x2.2, wet grip; LAN host sync.
 - SaveGame: user://world.save (host), user://character.save (everyone), autosave 60 s + quit.
 - Not yet: doors/containers not synced over LAN; main-street shopfronts; danger-scaled loot.
+
+## 0.2.17 (bug round after half 1)
+- Step-up for everyone who walks (StepUp.slide); stair ramps run past the bottom tread; zombie model stray colliders stripped.
+- Zombies/scavs route through doors, openings and stairs (Buildings.route, a room graph per full building).
+- Roads painted into the terrain: road skins drawn top-down into 3 cascades (512 m / 2 km / 8 km, 2048 px), blended in Terrain3D's shader (override). Grass kept off the seal by exact centreline distance (Roads.edge_dist).
+- Grass: per-clump thinning/hand-over in the shaders, no per-cell visibility ranges.
+- Windows (BuildWindow): open (F), climb (Space), shoot to break, board up. Roller doors (BuildRoller): F; zombies can't. Boards: G with hammer + nails (3 jobs a box) + planks (2 window / 3 door); zombies beat them in; F with a hammer prises them off. Boards and broken windows saved.
+- Furniture: chairs, stools, side tables, small boxes etc. are carryable (frozen RigidBody until picked up).
+- Items: binoculars and torch are held tools (gun slots); T tapes a torch to the gun in hand (uses a torch + duct tape) and switches it; tape, hammer, nails, plank with models + icons; oil can 2x1.
+- Cars: rolling chassis and loose bodies at sheds/workshops/yards (Buildings._project_car); K with a shifter opens the garage on the car you're at (survival); "Body fitted" switch; boots/trays/wagon backs (F at the back); cars you've driven are saved with the world (with their boot).
+- 50-question audit fixes: LAN co-op has no friendly fire (Q24); survival starts with no car (Q47).
+- Still for half 2: Q1-8, 10, 11, 17-21, 23, 32, 34-37, 39-46, 48 (creative as a host toggle).

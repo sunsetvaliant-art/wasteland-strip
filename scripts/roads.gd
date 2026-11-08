@@ -16,8 +16,12 @@ var conc_mat: StandardMaterial3D
 var main
 var _t := 0.0
 
+static var inst: Roads
+var _seg := {}          # Vector2i (32 m) -> PackedFloat32Array of segments [x0, z0, x1, z1, half-width]
+
 func setup(m) -> void:
 	main = m
+	inst = self
 	road_mat = ShaderMaterial.new()
 	road_mat.shader = load("res://shaders/road.gdshader")
 	var P := "res://assets/ph/tex/"
@@ -40,12 +44,14 @@ func setup(m) -> void:
 	conc_mat.albedo_color = Color(0.82, 0.8, 0.76)
 	conc_mat.roughness = 0.9
 	conc_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_setup_overlay()
 	var idx = JSON.parse_string(FileAccess.get_file_as_string("res://assets/roads/index.json"))
 	if typeof(idx) != TYPE_DICTIONARY:
 		push_warning("no road index")
 		return
 	var lines := _read_lines()
 	print("ROADS flush tiles ", lines.size())
+	_index_segments(lines)
 	for t in idx.tiles:
 		var key := Vector2i(floori((float(t.x) - X0) / 1024.0), floori((float(t.z) - Z0) / 1024.0))
 		var td := {"pos": Vector3(t.x, 0, t.z), "mi": null, "mesh": null, "body": null, "names": t.names, "lines": lines.get(key, []), "flush": null}
@@ -144,13 +150,9 @@ func _flush_mesh(t: Dictionary) -> ArrayMesh:
 			for j in m:
 				var o := offs[j]
 				var p := Vector3(x + nx * o, 0.0, z + nz * o)
-				var h := data.get_height(p)
-				if is_nan(h): h = 0.0
 				var edge := j == 0 or j == m - 1
-				p.y = h + (0.02 if edge else 0.045)
 				vs.append(p - org)
-				var nn := data.get_normal(p)
-				ns.append(Vector3.UP if is_nan(nn.x) else nn)
+				ns.append(Vector3.UP)
 				uv.append(Vector2(o, pts[i * 5 + 2]))
 				uv2.append(Vector2(hs, pts[i * 5 + 3]))
 				cs.append(Color(0.5 if edge else float(pc.surf), float(pc.mark), pts[i * 5 + 4], float(pc.wild)))
@@ -170,12 +172,174 @@ func _flush_mesh(t: Dictionary) -> ArrayMesh:
 	arr[Mesh.ARRAY_INDEX] = idx
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	am.surface_set_material(0, road_mat)
+	am.surface_set_material(0, overlay_mat)
 	return am
+
+# ------------------------------------------------------------------ the roads, painted into the terrain
+# The road skins live in a world of their own and are drawn from straight above into three textures that follow
+# you (6 cm, 0.5 m and 4 m to a pixel); the terrain's shader blends them into the ground. One surface, so nothing to
+# flicker, and no edge to drive into.
+var overlay_world := World3D.new()
+var overlay_mat: ShaderMaterial
+var _cascades: Array = []         # [{vp, cam, size, px, centre: Vector2, dirty, step}]
+const CASCADES := [[256.0, 4096], [1024.0, 2048], [8192.0, 2048]]
+
+func _setup_overlay() -> void:
+	if OS.get_environment("ROAD_OVERLAY_OFF") != "":
+		return
+	var code: String = (road_mat.shader as Shader).code
+	code = code.replace("render_mode cull_back, diffuse_burley, specular_schlick_ggx;", "render_mode unshaded, cull_disabled, depth_draw_never, depth_test_disabled, blend_mix, fog_disabled;")
+	code = code.replace("\tPOSITION = PROJECTION_MATRIX * vp;", "")
+	code = code.replace("\tALBEDO = col;", "\tALBEDO = col;\n\tALPHA = 1.0 - smoothstep(hs, hs + 0.9, abs(off));")
+	var sh := Shader.new()
+	sh.code = code
+	overlay_mat = road_mat.duplicate()
+	overlay_mat.shader = sh
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	for i in CASCADES.size():
+		var vp := SubViewport.new()
+		vp.size = Vector2i(CASCADES[i][1], CASCADES[i][1])
+		vp.world_3d = overlay_world
+		vp.transparent_bg = true
+		vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		vp.msaa_3d = Viewport.MSAA_DISABLED
+		vp.positional_shadow_atlas_size = 0
+		add_child(vp)
+		var cam := Camera3D.new()
+		cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+		cam.size = CASCADES[i][0]
+		cam.near = 1.0
+		cam.far = 4000.0
+		cam.environment = env
+		vp.add_child(cam)
+		cam.current = true
+		_cascades.append({"vp": vp, "cam": cam, "size": float(CASCADES[i][0]), "centre": Vector2(INF, INF), "dirty": true, "step": float(CASCADES[i][0]) / 8.0})
+	# the terrain's own shader with the cascades blended in at the end
+	var tm: Terrain3DMaterial = main.terrain.material
+	tm.shader_override_enabled = true
+	var tsh: Shader = tm.shader_override
+	if tsh == null:
+		push_warning("no terrain shader to paint roads into")
+		return
+	var tc := tsh.code
+	if not tc.contains("road_paint"):
+		var funcs := """
+uniform sampler2D road_c0 : source_color, filter_linear, repeat_disable;
+uniform sampler2D road_c1 : source_color, filter_linear, repeat_disable;
+uniform sampler2D road_c2 : source_color, filter_linear, repeat_disable;
+uniform vec4 road_r0 = vec4(0.0, 0.0, -1.0, 0.0);
+uniform vec4 road_r1 = vec4(0.0, 0.0, -1.0, 0.0);
+uniform vec4 road_r2 = vec4(0.0, 0.0, -1.0, 0.0);
+vec4 road_cascade(sampler2D t, vec4 r, vec2 p, out float inside) {
+	vec2 uv = (p - r.xy) / max(r.z, 1.0);
+	vec2 e = min(uv, vec2(1.0) - uv);
+	inside = r.z > 0.0 ? clamp(min(e.x, e.y) * 16.0, 0.0, 1.0) : 0.0;
+	return texture(t, uv);
+}
+vec4 road_paint(vec2 p) {
+	float i0; float i1; float i2;
+	vec4 c2 = road_cascade(road_c2, road_r2, p, i2);
+	vec4 c1 = road_cascade(road_c1, road_r1, p, i1);
+	vec4 c0 = road_cascade(road_c0, road_r0, p, i0);
+	vec4 c = c2 * i2;
+	c = mix(c, c1, i1);
+	c = mix(c, c0, i0);
+	return c;
+}
+"""
+		var blend := """
+	vec4 rp = road_paint(v_vertex.xz);
+	if (rp.a > 0.003) {
+		vec3 rc = rp.rgb / max(rp.a, 0.003);
+		ALBEDO = mix(ALBEDO, rc, rp.a);
+		ROUGHNESS = mix(ROUGHNESS, 0.82, rp.a);
+		SPECULAR = mix(SPECULAR, 0.3, rp.a);
+		NORMAL_MAP = mix(NORMAL_MAP, vec3(0.5, 0.5, 1.0), rp.a * 0.85);
+		AO = mix(AO, 1.0, rp.a);
+	}
+"""
+		var fi := tc.find("void fragment()")
+		tc = tc.substr(0, fi) + funcs + tc.substr(fi)
+		var ai := tc.rfind("AO_LIGHT_AFFECT = mat.ao_affect;")
+		var nl := tc.find("\n", ai)
+		tc = tc.substr(0, nl + 1) + blend + tc.substr(nl + 1)
+		var nsh := Shader.new()
+		nsh.code = tc
+		tm.shader_override = nsh
+	for i in _cascades.size():
+		tm.set_shader_param("road_c%d" % i, (_cascades[i].vp as SubViewport).get_texture())
+	print("ROADS painted into the terrain")
+
+var _ov_t := 0.0
+func _update_overlay(me: Vector3) -> void:
+	if _cascades.is_empty():
+		return
+	_ov_t -= 0.1
+	if _ov_t > 0.0:
+		return
+	_ov_t = 0.5
+	var tm: Terrain3DMaterial = main.terrain.material
+	for i in _cascades.size():
+		var c: Dictionary = _cascades[i]
+		var step: float = c.step
+		var want := Vector2(roundf(me.x / step) * step, roundf(me.z / step) * step)
+		if want == c.centre and not c.dirty:
+			continue
+		c.centre = want
+		c.dirty = false
+		var cam: Camera3D = c.cam
+		cam.look_at_from_position(Vector3(want.x, 2000.0, want.y), Vector3(want.x, 0.0, want.y), Vector3(0, 0, -1))
+		(c.vp as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+		_set_rect.call_deferred(tm, i, want, float(c.size))
+
+func _set_rect(tm: Terrain3DMaterial, i: int, centre: Vector2, size: float) -> void:
+	await RenderingServer.frame_post_draw
+	tm.set_shader_param("road_r%d" % i, Vector4(centre.x - size * 0.5, centre.y - size * 0.5, size, 0.0))
+
+func _index_segments(lines: Dictionary) -> void:
+	for key in lines:
+		for pc in lines[key]:
+			var pts: PackedFloat32Array = pc.pts
+			var hs: float = pc.hs
+			for i in pts.size() / 5 - 1:
+				var ax := pts[i * 5]
+				var az := pts[i * 5 + 1]
+				var bx := pts[i * 5 + 5]
+				var bz := pts[i * 5 + 6]
+				var gx0 := floori((minf(ax, bx) - hs) / 32.0)
+				var gx1 := floori((maxf(ax, bx) + hs) / 32.0)
+				var gz0 := floori((minf(az, bz) - hs) / 32.0)
+				var gz1 := floori((maxf(az, bz) + hs) / 32.0)
+				for gx in range(gx0, gx1 + 1):
+					for gz in range(gz0, gz1 + 1):
+						var k := Vector2i(gx, gz)
+						if not _seg.has(k): _seg[k] = PackedFloat32Array()
+						_seg[k].append_array(PackedFloat32Array([ax, az, bx, bz, hs]))
+
+## Metres from (x, z) to the nearest road's seal edge (negative on the road); 30 if none near
+func edge_dist(x: float, z: float) -> float:
+	var best := 30.0
+	var c := Vector2i(floori(x / 32.0), floori(z / 32.0))
+	for gx in range(c.x - 1, c.x + 2):
+		for gz in range(c.y - 1, c.y + 2):
+			var a: PackedFloat32Array = _seg.get(Vector2i(gx, gz), PackedFloat32Array())
+			for i in range(0, a.size(), 5):
+				var dx := a[i + 2] - a[i]
+				var dz := a[i + 3] - a[i + 1]
+				var l2 := dx * dx + dz * dz + 0.000001
+				var t := clampf(((x - a[i]) * dx + (z - a[i + 1]) * dz) / l2, 0.0, 1.0)
+				var ex := a[i] + dx * t - x
+				var ez := a[i + 1] + dz * t - z
+				var d := sqrt(ex * ex + ez * ez) - a[i + 4]
+				if d < best: best = d
+	return best
 
 ## Is (x, z) on a road's seal? (for tyres; the road mask: metres from the outer edge, negative on the road)
 func on_road(x: float, z: float) -> bool:
-	return main.veg != null and main.veg.road_clearance(x, z) < -0.6
+	return edge_dist(x, z) < 0.1
 
 var _ft := 0.0
 
@@ -205,11 +369,12 @@ func _process(dt: float) -> void:
 		var mi := MeshInstance3D.new()
 		mi.mesh = am
 		mi.position = best.pos
-		mi.visibility_range_end = DRAW
-		mi.visibility_range_end_margin = 200.0
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		add_child(mi)
+		if _cascades.is_empty(): add_child(mi)
+		else: _cascades[0].vp.add_child(mi)          # drawn only into the overlay, never in the world
 		best.flush = mi
+		for c in _cascades: c.dirty = true
+	_update_overlay(me)
 
 func _physics_process(dt: float) -> void:
 	_t -= dt

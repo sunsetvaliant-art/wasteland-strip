@@ -1,0 +1,20 @@
+[gd_scene format=3]
+
+[ext_resource type="Texture2D" path="res://assets/ph/tex/weathered_brown_planks/weathered_brown_planks_diffuse.jpg" id="1_fia4f"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5at5p"]
+albedo_color = Color(1.1, 1, 0.9, 1)
+albedo_texture = ExtResource("1_fia4f")
+roughness = 0.85
+uv1_scale = Vector3(1.6, 1.6, 1.6)
+uv1_triplanar = true
+
+[sub_resource type="BoxMesh" id="BoxMesh_ofm3w"]
+size = Vector3(0.15, 0.025, 1.2)
+
+[node name="Plank" type="Node3D" unique_id=1223650333]
+
+[node name="@MeshInstance3D@22" type="MeshInstance3D" parent="." unique_id=1834140320]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.0125, 0)
+material_override = SubResource("StandardMaterial3D_5at5p")
+mesh = SubResource("BoxMesh_ofm3w")

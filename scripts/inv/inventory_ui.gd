@@ -470,7 +470,7 @@ func _draw_item(s: Dictionary, rect: Rect2, alpha: float, ok: bool, fit := false
 		_text(rr.position + Vector2(2, 10), {"ammo_303": ".303", "ammo_762": "7.62", "ammo_357": ".357", "ammo_45": ".45", "ammo_12g": "12g"}.get(s.id, ""), 10, Color(1, 1, 1, 0.95 * alpha))
 	if s.n > 1:
 		_text(rr.end - Vector2(4, 4), "%d" % s.n, 13, Color(1, 0.92, 0.6, alpha), true)
-	if d.kind == "gun":
+	if d.kind == "gun" and not d.has("tool"):
 		_text(rr.end - Vector2(4, 4), "%d/%d" % [int(s.data.get("ammo", 0)), int(Gun.DEFS[d.gun].mag)], 12, Color(1, 0.92, 0.6, alpha), true)
 
 func _tooltip(s: Dictionary) -> void:
@@ -479,7 +479,11 @@ func _tooltip(s: Dictionary) -> void:
 	match d.kind:
 		"gun":
 			var gd: Dictionary = Gun.DEFS[d.gun]
-			lines.append("%s · %d/%d loaded · takes %s" % [gd.name, int(s.data.get("ammo", 0)), int(gd.mag), Items.def(Items.GUN_AMMO[d.gun]).name])
+			if d.has("tool"):
+				lines.append("Hold it in a gun slot")
+			elif s.data.get("torch", false):
+				lines.append("Torch taped on (T)")
+			if not d.has("tool"): lines.append("%s · %d/%d loaded · takes %s" % [gd.name, int(s.data.get("ammo", 0)), int(gd.mag), Items.def(Items.GUN_AMMO[d.gun]).name])
 		"med", "food":
 			lines.append("Heals %d · right click to use" % int(d.get("heal", 0)))
 		"clothing", "pack":

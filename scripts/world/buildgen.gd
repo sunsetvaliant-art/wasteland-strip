@@ -601,6 +601,10 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Building"
 	var g := Geo.new()
+	p["flights"] = []
+	p["_windows"] = []
+	p["_rollers"] = []
+	g.set_meta("plan", p)
 	var w: float = p.w
 	var d: float = p.d
 	var lowest := 0.0
@@ -645,13 +649,31 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		cs.shape = cps
 		sb.add_child(cs)
 	root.add_child(sb)
+	var di := 0
 	for dd in doors:
 		var pv := Node3D.new()
 		pv.transform = dd.xf
 		root.add_child(pv)
 		var leaf := BuildDoor.new()
+		leaf.key = "d%d" % di
 		pv.add_child(leaf)
 		leaf.setup(pv, DOOR_W - 0.04, DOOR_H - 0.03, mat("door:" + ("white" if dd.ext else "cream")))
+		di += 1
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(p.seed) + 77
+	for wi in p._windows.size():
+		var wd: Dictionary = p._windows[wi]
+		var win := BuildWindow.new()
+		win.key = "w%d" % wi
+		win.transform = wd.xf
+		root.add_child(win)
+		win.setup(wd.w, wd.h, rng.randf() < 0.12)
+	for ri in p._rollers.size():
+		var rd: Dictionary = p._rollers[ri]
+		var ro := BuildRoller.new()
+		ro.transform = rd.xf
+		root.add_child(ro)
+		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0)
 	return root
 
 ## The outside only, cheaply, into a shared Geo (whose xf is this building's transform): cladding without openings,
@@ -820,12 +842,21 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 					_frame(g, si, op, fy, 0.0, T_IN)
 				"window":
 					var glass_t := -T_OUT * 0.5 if _ext_side(p, r, side) else 0.0
-					_wall_box(g, "glass", si, float(op.a), float(op.b), fy + float(op.y0), fy + float(op.y1), glass_t - 0.005, glass_t + 0.005, false)
+					# the window itself is its own node (BuildWindow): it opens, breaks and gets boarded
+					p["_windows"].append({"xf": _opening_xf(si, (float(op.a) + float(op.b)) * 0.5, fy + (float(op.y0) + float(op.y1)) * 0.5, glass_t),
+						"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0)})
 					_frame(g, si, op, fy, -T_OUT, T_IN)
 					# sill
 					_wall_box(g, "trim", si, float(op.a) - 0.05, float(op.b) + 0.05, fy + float(op.y0) - 0.04, fy + float(op.y0), -T_OUT - 0.04, T_IN + 0.03)
 				"arch":
 					_frame(g, si, op, fy, 0.0, T_IN)
+
+## Where an opening's own node sits: on the wall line (offset t toward the room), its +z pointing outside
+static func _opening_xf(si: Dictionary, along: float, y: float, t: float) -> Transform3D:
+	var off: float = si.fixed + si.inward * t
+	var pos := Vector3(along, y, off) if si.axis == "x" else Vector3(off, y, along)
+	var out := Vector3(0, 0, -si.inward) if si.axis == "x" else Vector3(-si.inward, 0, 0)
+	return Transform3D(Basis(Vector3.UP, atan2(out.x, out.z)), pos)
 
 ## White frame strips round an opening, between offsets t0..t1
 static func _frame(g: Geo, si: Dictionary, op: Dictionary, fy: float, t0: float, t1: float) -> void:
@@ -874,14 +905,13 @@ static func _outer_skin(p: Dictionary, g: Geo, _doors: Array) -> void:
 			var b := w / 2 + T_OUT if si.axis == "x" else d / 2
 			var shed: bool = p.kind in ["shed", "machine_shed", "workshop", "warehouse"]
 			_cut_wall(g, p.clad, si, a, b, bot, h + (fy - bot), ops, -T_OUT, 0.0 if not shed else 0.04)
-			# roller doors: a corrugated shutter rolled part way up
+			# roller doors: their own nodes (BuildRoller), a steel header over each
 			for op in ops:
 				if op.kind == "roller":
 					var top := bot + float(op.y1)
-					var down := (float(op.y1) - float(op.y0)) * (1.0 - float(op.get("open_frac", 1.0)))
-					if down > 0.05:
-						_wall_box(g, "tin:grey", si, float(op.a), float(op.b), top - down, top, -0.02, 0.02)
 					_wall_box(g, "steel", si, float(op.a) - 0.1, float(op.b) + 0.1, top, top + 0.35, -0.25, 0.05, false)
+					p["_rollers"].append({"xf": _opening_xf(si, (float(op.a) + float(op.b)) * 0.5, bot + float(op.y0), -T_OUT * 0.5),
+						"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0), "frac": float(op.get("open_frac", 1.0)) * 0.94})
 
 ## What it stands on: a slab with a plinth, or stumps (high ones for a Queenslander, with the space under it open)
 static func _base(p: Dictionary, g: Geo, ground: Callable, lowest: float) -> void:
@@ -923,7 +953,9 @@ static func _stair(g: Geo, r: Dictionary, fy: float, rise_to: float) -> void:
 		g.aabb("timber_floor", Vector3(float(r.x0) + 0.02, fy, zf - run), Vector3(float(r.x1) - 0.02, fy + (i + 1) * rise, zf), false)
 		if i > 0:   # solid under the ramp so nobody walks in under the stair
 			g.shapes.append([Transform3D(Basis(), Vector3((float(r.x0) + float(r.x1)) / 2, fy + i * rise * 0.5, zf - run / 2)), Vector3(float(r.x1) - float(r.x0) - 0.04, i * rise, run)])
-	_ramp(g, Vector3((float(r.x0) + float(r.x1)) / 2, fy, float(r.z1)), Vector3((float(r.x0) + float(r.x1)) / 2, fy + rise_to, float(r.z0)), float(r.x1) - float(r.x0) - 0.04)
+	var sf := Vector3((float(r.x0) + float(r.x1)) / 2, fy, float(r.z1))
+	var st := Vector3((float(r.x0) + float(r.x1)) / 2, fy + rise_to, float(r.z0))
+	_ramp(g, sf + (sf - st).normalized() * 0.5, st, float(r.x1) - float(r.x0) - 0.04)
 
 ## An invisible slope from foot to top for walking up steps
 static func _ramp(g: Geo, foot: Vector3, top: Vector3, width: float) -> void:
@@ -974,7 +1006,13 @@ static func _flight(g: Geo, top: Vector3, out: Vector3, width: float, ground: Ca
 			for k in np + 1:
 				var pp: Vector3 = a.lerp(b, float(k) / np)
 				g.aabb("timber", pp + Vector3(-0.03, -0.1, -0.03), pp + Vector3(0.03, 0.92, 0.03), false)
-	_ramp(g, top + out * (GOING * n) + Vector3(0, -rise_to, 0), top, width)
+	# the slope runs on past the bottom step into the ground, so there's no lip at the foot
+	var foot := top + out * (GOING * n) + Vector3(0, -rise_to, 0)
+	if g.has_meta("plan"):
+		var pl: Dictionary = g.get_meta("plan")
+		if not pl.has("flights"): pl["flights"] = []
+		pl.flights.append({"top": top, "foot": foot + (foot - top).normalized() * 0.5})
+	_ramp(g, foot + (foot - top).normalized() * 0.9, top, width)
 
 ## A front verandah (and sometimes down the sides) on posts, with a rail and its own skillion roof
 static func _verandah(p: Dictionary, g: Geo, ground: Callable) -> void:

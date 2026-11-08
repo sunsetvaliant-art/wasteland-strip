@@ -38,12 +38,19 @@ const DEFS := {
 	"pack_small": {"name": "Small backpack", "w": 3, "h": 3, "stack": 1, "kind": "pack", "slot": "back", "grid": [5, 10], "model": "res://assets/props/pack.glb"},
 	"pack_large": {"name": "Army pack", "w": 4, "h": 4, "stack": 1, "kind": "pack", "slot": "back", "grid": [8, 10], "model": "res://assets/props/pack.glb"},
 	# odds and ends
-	"binoculars": {"name": "Binoculars", "w": 2, "h": 1, "stack": 1, "kind": "misc", "model": "res://assets/ph/survival/vintage_binocular/vintage_binocular.gltf"},
-	"torch": {"name": "Torch", "w": 1, "h": 2, "stack": 1, "kind": "misc", "model": "res://assets/ph/survival/vintage_flashlight/vintage_flashlight.gltf"},
+	# held in your hands like a gun (primary or secondary): binoculars look (RMB), the torch lights the way (LMB)
+	"binoculars": {"name": "Binoculars", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "binoculars", "slot": "secondary", "tool": true,
+		"model": "res://assets/ph/survival/vintage_binocular/vintage_binocular.gltf"},
+	"torch": {"name": "Torch", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "torch", "slot": "secondary", "tool": true,
+		"model": "res://assets/ph/survival/small_plastic_torch/small_plastic_torch.gltf"},
+	"tape": {"name": "Duct tape", "w": 1, "h": 1, "stack": 3, "kind": "misc", "model": "res://assets/props/items/duct_tape.tscn"},
+	"hammer": {"name": "Hammer", "w": 2, "h": 1, "stack": 1, "kind": "misc", "model": "res://assets/ph/tools/cross_pein_hammer/cross_pein_hammer.gltf"},
+	"nails": {"name": "Box of nails", "w": 1, "h": 1, "stack": 5, "kind": "misc", "model": "res://assets/props/items/nails_box.tscn"},
+	"plank": {"name": "Timber plank", "w": 4, "h": 1, "stack": 6, "kind": "misc", "model": "res://assets/props/items/plank.tscn"},
 	"radio": {"name": "Two-way radio", "w": 1, "h": 2, "stack": 1, "kind": "misc", "model": "res://assets/ph/survival/vintage_radio_transceiver/vintage_radio_transceiver.gltf"},
 	"wrench": {"name": "Shifter", "w": 2, "h": 1, "stack": 1, "kind": "misc", "model": "res://assets/ph/tools/adjustable_wrench/adjustable_wrench.gltf"},
 	"jerry_fuel": {"name": "Jerry can (fuel)", "w": 2, "h": 3, "stack": 1, "kind": "misc", "model": "res://assets/ph/carparts/metal_jerrycan/metal_jerrycan.gltf"},
-	"oil_can": {"name": "Engine oil", "w": 1, "h": 2, "stack": 2, "kind": "misc", "model": "res://assets/ph/carparts/small_oil_can_01/small_oil_can_01.gltf"},
+	"oil_can": {"name": "Engine oil", "w": 2, "h": 1, "stack": 2, "kind": "misc", "icon_rot": -90, "model": "res://assets/ph/carparts/small_oil_can_01/small_oil_can_01.gltf"},
 }
 
 const GUN_AMMO := {"enfield": "ammo_303", "slr": "ammo_762", "python": "ammo_357", "sawnoff": "ammo_12g", "dbshotgun": "ammo_12g", "rem870": "ammo_12g", "hunter": "ammo_762", "magnum45": "ammo_45"}
@@ -55,27 +62,29 @@ const LOOT := {
 	"ammo": [["ammo_303", 0.6, 10, 30], ["ammo_762", 0.5, 10, 40], ["ammo_357", 0.5, 6, 36], ["ammo_45", 0.4, 6, 30], ["ammo_12g", 0.6, 6, 20], ["ammo_12g", 0.3, 4, 12]],
 	"medical": [["bandage", 0.95, 2, 8], ["bandage", 0.4, 1, 5], ["medkit", 0.35, 1, 1]],
 	"food": [["food_can", 0.8, 1, 4], ["long_life", 0.5, 1, 2], ["thermos", 0.25, 1, 1]],
-	"tools": [["wrench", 0.6, 1, 1], ["oil_can", 0.5, 1, 2], ["torch", 0.3, 1, 1], ["radio", 0.15, 1, 1]],
+	"tools": [["tape", 0.3, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.3, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.5, 1, 2], ["torch", 0.3, 1, 1], ["radio", 0.15, 1, 1]],
 	"crate": [["food_can", 0.5, 1, 4], ["bandage", 0.4, 1, 4], ["ammo_12g", 0.3, 4, 12], ["ammo_303", 0.25, 5, 20], ["ammo_45", 0.15, 4, 12], ["gun_magnum45", 0.03, 1, 1], ["shirt_flanno", 0.2, 1, 1],
 		["pants_cargo", 0.15, 1, 1], ["jacket_army", 0.08, 1, 1], ["pack_small", 0.1, 1, 1], ["binoculars", 0.08, 1, 1], ["torch", 0.15, 1, 1]],
 	"military": [["ammo_762", 0.7, 15, 40], ["ammo_303", 0.5, 10, 30], ["gun_slr", 0.12, 1, 1], ["gun_enfield", 0.12, 1, 1], ["gun_hunter", 0.08, 1, 1], ["jacket_army", 0.3, 1, 1],
 		["pack_large", 0.12, 1, 1], ["medkit", 0.25, 1, 1], ["long_life", 0.5, 1, 2], ["gas_mask", 0.2, 1, 1]],
 	"fuel": [["jerry_fuel", 0.9, 1, 1]],
+	"planks": [["plank", 1.0, 2, 6], ["nails", 0.25, 1, 1]],
+	"none": [],
 	# house and shed furniture
-	"kitchen": [["food_can", 0.7, 1, 3], ["long_life", 0.3, 1, 1], ["thermos", 0.15, 1, 1], ["torch", 0.08, 1, 1], ["bandage", 0.1, 1, 2]],
+	"kitchen": [["tape", 0.08, 1, 1], ["food_can", 0.7, 1, 3], ["long_life", 0.3, 1, 1], ["thermos", 0.15, 1, 1], ["torch", 0.08, 1, 1], ["bandage", 0.1, 1, 2]],
 	"fridge": [["food_can", 0.35, 1, 2], ["thermos", 0.12, 1, 1], ["long_life", 0.1, 1, 1]],
 	"pantry": [["food_can", 0.8, 1, 4], ["long_life", 0.45, 1, 2], ["oil_can", 0.1, 1, 1], ["torch", 0.06, 1, 1]],
 	"bathroom": [["bandage", 0.75, 1, 4], ["medkit", 0.1, 1, 1], ["bandage", 0.2, 1, 2]],
 	"wardrobe": [["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.5, 1, 1], ["shirt_work", 0.3, 1, 1], ["pants_cargo", 0.22, 1, 1], ["jacket_army", 0.08, 1, 1],
 		["boots_rubber", 0.2, 1, 1], ["pack_small", 0.1, 1, 1], ["gun_dbshotgun", 0.02, 1, 1]],
-	"drawers": [["shirt_flanno", 0.3, 1, 1], ["pants_jeans", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["binoculars", 0.05, 1, 1], ["ammo_357", 0.1, 6, 18], ["radio", 0.05, 1, 1], ["bandage", 0.15, 1, 2]],
+	"drawers": [["tape", 0.12, 1, 1], ["shirt_flanno", 0.3, 1, 1], ["pants_jeans", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["binoculars", 0.05, 1, 1], ["ammo_357", 0.1, 6, 18], ["radio", 0.05, 1, 1], ["bandage", 0.15, 1, 2]],
 	"nightstand": [["torch", 0.3, 1, 1], ["bandage", 0.3, 1, 2], ["ammo_357", 0.12, 6, 12], ["ammo_45", 0.1, 6, 12], ["gun_python", 0.03, 1, 1], ["gun_magnum45", 0.02, 1, 1]],
 	"bookshelf": [["binoculars", 0.1, 1, 1], ["radio", 0.08, 1, 1], ["torch", 0.1, 1, 1], ["bandage", 0.1, 1, 1]],
 	"office": [["radio", 0.3, 1, 1], ["torch", 0.3, 1, 1], ["binoculars", 0.1, 1, 1], ["thermos", 0.2, 1, 1], ["ammo_45", 0.05, 4, 12]],
-	"shed_shelf": [["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1]],
-	"workbench": [["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
-	"laundry": [["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
-	"servo_shelf": [["food_can", 0.6, 1, 4], ["long_life", 0.35, 1, 2], ["oil_can", 0.5, 1, 2], ["torch", 0.15, 1, 1], ["bandage", 0.25, 1, 3], ["jerry_fuel", 0.1, 1, 1], ["thermos", 0.1, 1, 1]],
+	"shed_shelf": [["tape", 0.3, 1, 1], ["hammer", 0.15, 1, 1], ["nails", 0.3, 1, 2], ["plank", 0.2, 1, 3], ["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1]],
+	"workbench": [["tape", 0.35, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.35, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
+	"laundry": [["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
+	"servo_shelf": [["tape", 0.2, 1, 1], ["torch", 0.1, 1, 1], ["food_can", 0.6, 1, 4], ["long_life", 0.35, 1, 2], ["oil_can", 0.5, 1, 2], ["torch", 0.15, 1, 1], ["bandage", 0.25, 1, 3], ["jerry_fuel", 0.1, 1, 1], ["thermos", 0.1, 1, 1]],
 	"rack": [["food_can", 0.4, 1, 4], ["long_life", 0.3, 1, 2], ["ammo_762", 0.08, 10, 30], ["jerry_fuel", 0.12, 1, 1], ["pack_small", 0.06, 1, 1], ["oil_can", 0.3, 1, 2]],
 }
 # which Forge props are containers, the loot table, and the grid size inside
@@ -92,7 +101,8 @@ const CONTAINERS := {
 	"tools": ["tools", [5, 3]], "kitchen": ["kitchen", [6, 3]], "fridge": ["fridge", [4, 5]], "pantry": ["pantry", [5, 4]],
 	"bathroom": ["bathroom", [4, 3]], "wardrobe": ["wardrobe", [6, 6]], "drawers": ["drawers", [5, 4]], "nightstand": ["nightstand", [3, 2]],
 	"bookshelf": ["bookshelf", [6, 3]], "office": ["office", [5, 3]], "shed_shelf": ["shed_shelf", [7, 4]], "workbench": ["workbench", [6, 2]],
-	"laundry": ["laundry", [4, 3]], "rack": ["rack", [8, 5]], "servo_shelf": ["servo_shelf", [7, 4]],
+	"laundry": ["laundry", [4, 3]], "rack": ["rack", [8, 5]], "servo_shelf": ["servo_shelf", [7, 4]], "planks": ["planks", [8, 3]],
+	"car_boot": ["none", [7, 4]], "car_wagon": ["none", [8, 5]], "car_tray": ["none", [10, 5]],
 }
 # small enough to pick up and carry (middle mouse) in survival, by Forge key prefix match or mass
 const CARRY_MAX_KG := 45.0

@@ -17,8 +17,10 @@ varying float var_k;
 void vertex() {
 	vec3 w = (MODEL_MATRIX * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
 	float dc = distance(w.xz, CAMERA_POSITION_WORLD.xz);
-	float keep = smoothstep(near_hide - 3.0, near_hide, dc) * (1.0 - smoothstep(far_hide - 4.0, far_hide, dc));
 	var_k = fract(sin(dot(w.xz, vec2(12.9898, 78.233))) * 43758.5453);
+	// handing over to the cards clump by clump across a band (the cards take the same share from the other side)
+	float h2 = fract(var_k * 7.77);
+	float keep = step(h2, 1.0 - smoothstep(far_hide - 4.0, far_hide + 3.0, dc)) * smoothstep(near_hide - 3.0, near_hide, dc);
 	float k = clamp(VERTEX.y / height, 0.0, 1.0);
 	bend = k;
 	float t = TIME;

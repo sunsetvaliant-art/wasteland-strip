@@ -86,6 +86,10 @@ func load_model(key: String) -> void:
 	model_path = path_of(key)
 	var ps: PackedScene = load(model_path)
 	model = ps.instantiate()
+	# some exports bring collision of their own (a box frozen in the rest pose that outlives the body): none of that
+	for co in model.find_children("*", "CollisionObject3D", true, false):
+		co.get_parent().remove_child(co)
+		co.free()
 	add_child(model)
 	skel = model.find_children("*", "Skeleton3D", true, false)[0]
 	var aps := model.find_children("*", "AnimationPlayer", true, false)

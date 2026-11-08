@@ -118,6 +118,10 @@ const RULES := {
 		["outdoor_set", "center", 0.4], ["drum", "corner", 0.4], ["crate_s", "corner", 0.5]],
 }
 
+# light enough to pick up and carry (middle mouse): kg
+const CARRY := {"dchair": 6.0, "pchair": 5.0, "schoolchair": 6.0, "monobloc": 3.0, "stool": 5.0, "side_table": 8.0, "kettle": 1.0,
+	"bottle": 2.0, "boombox": 3.0, "tyre": 12.0, "crate_s": 6.0, "cardboard": 4.0, "tub_box": 3.0, "cement": 20.0, "lpg": 12.0,
+	"coffee": 12.0, "nightstand": 12.0, "drum2": 18.0, "jerry": 4.0, "toolcart": 25.0, "handtruck": 14.0, "compost": 20.0}
 static var _dims := {}   # model key -> [scale, AABB (unscaled)]
 static var pending: Array = []   # [node, key, offset, plan]: models still to be put in (a few each frame)
 
@@ -427,6 +431,9 @@ static func _wall_spot(rm: Room, sx: float, sz: float, hh: float, rng: RandomNum
 				return spot
 	return {}
 
+static func outdoors_on_top(_spot: Dictionary) -> bool:
+	return false
+
 ## Make the thing and stand it at the spot (its footprint centre at pos, its bottom on the floor or at spot.y)
 static func _put(rm: Room, key: String, spot: Dictionary, holder: Node3D, boxes: Array, p: Dictionary, outdoors: bool) -> Node3D:
 	var dm := dims(key)
@@ -439,7 +446,21 @@ static func _put(rm: Room, key: String, spot: Dictionary, holder: Node3D, boxes:
 	elif FIX.has(key):
 		cont = FIX[key][3]
 	var node: Node3D
-	if solid or cont != "":
+	if CARRY.has(key) and not outdoors_on_top(spot):
+		# a loose thing: a physics body, asleep (frozen) where it stands until someone picks it up
+		var rb := RigidBody3D.new()
+		rb.mass = float(CARRY[key])
+		rb.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+		rb.freeze = true
+		rb.set_meta("carryable", true)
+		rb.add_to_group("carryable")
+		var rcs := CollisionShape3D.new()
+		var rbs := BoxShape3D.new()
+		rbs.size = bb.size.max(Vector3(0.05, 0.05, 0.05))
+		rcs.shape = rbs
+		rb.add_child(rcs)
+		node = rb
+	elif solid or cont != "":
 		var sb := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
 		var bs := BoxShape3D.new()
@@ -454,7 +475,7 @@ static func _put(rm: Room, key: String, spot: Dictionary, holder: Node3D, boxes:
 		node = Node3D.new()
 	# the model itself comes a little later (BuildProps.work), its footprint centred on the node's origin
 	pending.append([node, key, Vector3(-bb.get_center().x, -bb.position.y, -bb.get_center().z), p])
-	if node is StaticBody3D:
+	if node is CollisionObject3D:
 		(node.get_child(0) as CollisionShape3D).position = Vector3(0, bb.size.y / 2, 0)
 	var y: float = spot.get("y", rm.fy)
 	node.position = Vector3(spot.pos.x, y, spot.pos.y)

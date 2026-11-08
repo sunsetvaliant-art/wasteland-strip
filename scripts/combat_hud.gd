@@ -66,6 +66,9 @@ func _draw() -> void:
 	# what F does here, and the bandage / food you're using
 	if p.interact_hint != "":
 		_text(Vector2(c.x, c.y + 64), p.interact_hint, 18, Color(1, 0.92, 0.7), true)
+	if p._toast_t > 0.0:
+		p._toast_t -= get_process_delta_time()
+		_text(Vector2(c.x, c.y + 100), p.toast_text, 18, Color(0.85, 0.95, 1.0), true)
 	if p.carried:
 		_text(Vector2(c.x, c.y + 64), "let go of the middle button to put it down · right click to throw", 14, Color(1, 1, 1, 0.75), true)
 	if not p.inv.using.is_empty():
@@ -95,6 +98,10 @@ func _draw() -> void:
 	_ammo(g, sz)
 
 func _ammo(g: Gun, sz: Vector2) -> void:
+	if g.def.has("tool"):
+		_text(Vector2(sz.x - 24, sz.y - 80), str(g.def.name), 18, Color(0.85, 0.85, 0.8), false, true)
+		_text(Vector2(sz.x - 24, sz.y - 52), ("LMB  light on / off" if g.def.tool == "torch" else "RMB  look through"), 18, Color(1, 0.9, 0.7), false, true)
+		return
 	# gun and rounds
 	var tx := "%s" % g.def.name
 	_text(Vector2(sz.x - 24, sz.y - 82), tx, 14, Color(1, 1, 1, 0.75), false, true)

@@ -79,7 +79,8 @@ func _ready() -> void:
 	add_child(player)
 	player.global_position = PUB + Vector3(0, height_at(PUB.x, PUB.z) + 1.2, 0)
 	var cp := PUB + Vector3(6, 0, 3)
-	car = spawn_vehicle("vjwagon", cp + Vector3(0, height_at(cp.x, cp.z) + 1.0, 0), 0.6)
+	if Settings.creative():          # in survival you find your own
+		car = spawn_vehicle("vjwagon", cp + Vector3(0, height_at(cp.x, cp.z) + 1.0, 0), 0.6)
 	player.camera_changed.connect(func(cam): terrain.set_camera(cam))
 	terrain.set_camera(player.active_camera())
 	terrain.set_collision_target(player)

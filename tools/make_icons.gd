@@ -65,7 +65,11 @@ func _init() -> void:
 		# lie the model's long side along the icon's long side
 		var bb := WorldItem._aabb(holder)
 		var wide: bool = d.w >= d.h
-		if d.kind != "gun" and d.w != d.h and (bb.size.x >= bb.size.y) != wide:
+		if d.has("icon_rot"):
+			spin.rotation.z = deg_to_rad(float(d.icon_rot))
+			await process_frame
+			bb = WorldItem._aabb(holder)
+		elif d.kind != "gun" and d.w != d.h and (bb.size.x >= bb.size.y) != wide:
 			spin.rotation.z = PI * 0.5
 			await process_frame
 			bb = WorldItem._aabb(holder)

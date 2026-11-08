@@ -4,6 +4,10 @@ extends StaticBody3D
 ## The body is the leaf: it swings about its hinge edge (the parent pivot), away from whoever opened it.
 
 var pivot: Node3D
+var boards: Boards
+var key := ""
+var leaf_w := 0.82
+var leaf_h := 2.0
 var open := false
 var _target := 0.0
 var _angle := 0.0
@@ -13,6 +17,8 @@ var _snd: AudioStreamPlayer3D
 func setup(p: Node3D, w: float, h: float, mat: Material) -> void:
 	pivot = p
 	width = w
+	leaf_w = w
+	leaf_h = h
 	add_to_group("doors")
 	collision_layer = 1
 	var mi := MeshInstance3D.new()
@@ -42,10 +48,13 @@ func setup(p: Node3D, w: float, h: float, mat: Material) -> void:
 	set_meta("container_name", "door")
 
 func hint() -> String:
+	if boards: return boards.hint()
 	return "F  Close door" if open else "F  Open door"
 
 ## Swing it from where `from` stands: away from them
 func toggle(from := Vector3.INF) -> void:
+	if boards:
+		return
 	if open:
 		_target = 0.0
 	else:
@@ -58,7 +67,7 @@ func toggle(from := Vector3.INF) -> void:
 	set_physics_process(true)
 
 func push_open(from: Vector3) -> void:
-	if not open:
+	if not open and boards == null:
 		toggle(from)
 
 func _physics_process(dt: float) -> void:

@@ -23,6 +23,7 @@ var load_opt: OptionButton
 var axle_tabs: TabContainer
 var _rebuild_t := -1.0
 var _dragging := false
+var target: Car = null            # working on a car that's already out in the world (survival, with a shifter)
 
 func setup(m) -> void:
 	main = m
@@ -43,9 +44,10 @@ func toggle() -> void:
 	if open: close()
 	else: show_garage()
 
-func show_garage(from: Dictionary = {}) -> void:
+func show_garage(from: Dictionary = {}, on_car: Car = null) -> void:
 	if open:
 		return
+	target = on_car
 	open = true
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	cam.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -56,6 +58,11 @@ func show_garage(from: Dictionary = {}) -> void:
 	var fwd: Vector3 = -p.global_transform.basis.z
 	spot = p.global_position + Vector3(fwd.x, 0, fwd.z).normalized() * 9.0
 	spot.y = main.ground_at(spot.x, spot.z)
+	if target:
+		spot = target.global_position
+		spot.y = main.ground_at(spot.x, spot.z)
+		target.visible = false
+		target.freeze = true
 	design = (from if not from.is_empty() else VehicleSpecs.default_design("vjwagon")).duplicate(true)
 	_build_ui()
 	root.visible = true
@@ -64,6 +71,10 @@ func show_garage(from: Dictionary = {}) -> void:
 
 func close() -> void:
 	open = false
+	if target and is_instance_valid(target):
+		target.visible = true
+		target.freeze = false
+	target = null
 	get_tree().paused = false
 	root.visible = false
 	if preview and is_instance_valid(preview):
@@ -76,7 +87,18 @@ func close() -> void:
 func drive() -> void:
 	var c := preview
 	preview = null
+	var old := target
+	target = null
+	var yaw := 0.0
+	if old and is_instance_valid(old):
+		# it replaces the car you worked on, where it stood, with what was in the boot
+		yaw = old.rotation.y
+		if old.has_meta("inv") and c.has_meta("container"): c.set_meta("inv", old.get_meta("inv"))
+		for m in ["player_car", "home_name"]:
+			if old.has_meta(m): c.set_meta(m, old.get_meta(m))
+		old.queue_free()
 	close()
+	c.rotation.y = yaw
 	c.process_mode = Node.PROCESS_MODE_INHERIT
 	c.freeze = false
 	c.global_position = spot + Vector3(0, float(design.axles[0].tyre_r) - float(design.ride) + 0.3, 0)
@@ -95,7 +117,7 @@ func _rebuild() -> void:
 	main.add_child(preview)
 	# body origin sits "ride" above the wheel centres, wheel centres a tyre radius off the ground
 	preview.global_position = spot + Vector3(0, float(design.axles[0].tyre_r) - float(design.ride) + 0.02, 0)
-	preview.get_node("Cab").visible = cab_on
+
 	# let the suspension settle onto its static height for the picture: wheels at the static droop
 	for w in preview.wheels:
 		w.L = 0.6 * float(w.T)
@@ -169,9 +191,9 @@ func _build_ui() -> void:
 	_slider("Cab fore / aft", -1.5, 1.5, 0.01, off[2], func(v): off[2] = v; _changed())
 	_slider("Cab height on frame", -0.3, 0.8, 0.01, off[1], func(v): off[1] = v; _changed())
 	_slider("Cab sideways", -0.3, 0.3, 0.01, off[0], func(v): off[0] = v; _changed())
-	_check("Show cab (off = bare chassis)", cab_on, func(v):
-		cab_on = v
-		if preview: preview.get_node("Cab").visible = v)
+	_check("Body fitted (off = bare chassis)", not design.get("no_cab", false), func(v):
+		design.no_cab = not v
+		_changed())
 	# --- chassis
 	_title("Chassis")
 	var fr: Dictionary = design.frame

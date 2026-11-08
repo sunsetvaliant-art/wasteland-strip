@@ -42,6 +42,14 @@ func world_state() -> Dictionary:
 		d["sky"] = SkyCycle.inst.state()
 	if main.buildings:
 		d["buildings"] = main.buildings.save_state()
+	# every car someone's driven: what it is, where it is, what's in the back
+	var cars := []
+	for c in get_tree().get_nodes_in_group("vehicles"):
+		if c is Car and c.has_meta("player_car") and c != main.garage.preview:
+			var car: Car = c
+			cars.append({"name": str(car.name), "home": car.home_pos if "home_pos" in car else car.global_position,
+				"xf": car.global_transform, "design": car.design, "inv": car.get_meta("inv", null)})
+	d["cars"] = cars
 	return d
 
 func char_state() -> Dictionary:
@@ -59,7 +67,27 @@ func load_world() -> void:
 		SkyCycle.inst.take_state(d.sky)
 	if d.has("buildings") and main.buildings:
 		main.buildings.load_state(d.buildings)
+	if d.has("cars"):
+		_restore_cars.call_deferred(d.cars)
 	print("SAVE world loaded")
+
+## Put the saved cars back: the one that started there is moved to where it was left (and rebuilt as it was), anything
+## else is made again
+func _restore_cars(cars: Array) -> void:
+	await get_tree().process_frame
+	for e in cars:
+		var found: Car = null
+		for c in get_tree().get_nodes_in_group("vehicles"):
+			if c is Car and str(c.name) == str(e.name) and ("home_pos" in c) and (c.home_pos as Vector3).distance_to(e.home) < 5.0:
+				found = c
+		if found:
+			found.queue_free()
+		var xf: Transform3D = e.xf
+		var nc: Car = main.spawn_vehicle(str(e.design.get("cab", "vjwagon")), xf.origin + Vector3.UP * 0.4, 0.0, e.design)
+		nc.global_transform = Transform3D(xf.basis, xf.origin + Vector3.UP * 0.4)
+		nc.set_meta("player_car", true)
+		if e.inv != null:
+			nc.set_meta("inv", e.inv)
 
 func load_character() -> void:
 	var d := _read(CHAR)

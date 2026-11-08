@@ -25,6 +25,12 @@ var full := {}                     # lot index -> Node3D
 var lod := {}                      # cell -> MeshInstance3D (or null while queued)
 var _floor := {}                   # lot index -> floor height (cached)
 var loot_store := {}               # "lot:box" -> {"inv": Dictionary, "t": float, "gen": int}
+var boards := {}                   # "lot:d3" / "lot:w2" -> {"n": planks, "side": +1/-1}: boarded-up doors and windows
+var broken := {}                   # "lot:w2" -> true: windows someone's put through
+var cars_taken := {}               # lot -> true: its project car's been driven off (don't make another)
+var _lot_cars := {}                # lot -> [Node3D, spawn position]
+const PROJECT_CHANCE := {"qlder": 0.05, "cottage": 0.05, "brick": 0.04, "two_storey": 0.03, "shed": 0.15, "machine_shed": 0.22,
+	"workshop": 0.2, "dairy": 0.08, "warehouse": 0.05}
 var _dirty := {}                   # cells whose LOD mesh needs rebuilding
 var _t := 0.0
 
@@ -123,7 +129,13 @@ func _focus() -> Vector3:
 		return main.forge.cam.global_position
 	return main.player.vehicle.global_position if main.player.vehicle else main.player.global_position
 
+var _perf_t := 0.0
 func _process(dt: float) -> void:
+	if OS.get_environment("PERF") != "":
+		_perf_t += dt
+		if _perf_t > 10.0:
+			_perf_t = 0.0
+			print("PERF fps ", Engine.get_frames_per_second(), " full ", full.size(), " lod ", lod.size(), " props pending ", BuildProps.pending.size(), " t ", Time.get_ticks_msec() / 1000)
 	if lots.is_empty() or main == null or main.player == null:
 		return
 	var me := _focus()
@@ -297,8 +309,205 @@ func _build_full(i: int) -> void:
 		box.set_meta("loot_bonus", clampf((Vector2(float(lots[i][1]), float(lots[i][2])).length() - 1500.0) / 6000.0, 0.0, 1.0))
 		box.set_meta("loot_gen", gen)
 	full[i] = b
+	b.set_meta("plan", p)
+	_project_car(i, p, b)
+	# doors and windows as they were left
+	for n in b.find_children("*", "", true, false):
+		if n is BuildDoor or n is BuildWindow:
+			n.key = "%d:%s" % [i, n.key]
+			if n is BuildWindow and broken.has(n.key):
+				(n as BuildWindow)._smash(false)
+			if boards.has(n.key):
+				board(n, int(boards[n.key].side), int(boards[n.key].n))
+	_nav.erase(i)
+
+# ------------------------------------------------------------------ getting about inside (for zombies and scavs)
+var _nav := {}       # lot -> {"edges": [[a, b, [local points a->b]]], "rooms": {id: room}, "floors": [y]}
+
+## Which full-built building (lot index) a point is in or right by, else -1
+func lot_at(pt: Vector3, pad := 1.0) -> int:
+	var k := Vector2i(floori(pt.x / 50.0), floori(pt.z / 50.0))
+	for i in _q.get(k, []):
+		if not full.has(i): continue
+		var l: Array = lots[i]
+		var yaw := float(l[3])
+		var dx := pt.x - float(l[1])
+		var dz := pt.z - float(l[2])
+		var lx := dx * cos(yaw) - dz * sin(yaw)
+		var lz := dx * sin(yaw) + dz * cos(yaw)
+		var extra := 3.5 if l[0] == "qlder" else 0.0
+		if absf(lx) < float(l[4]) * 0.5 + pad and lz > -float(l[5]) * 0.5 - pad and lz < float(l[5]) * 0.5 + pad + extra:
+			return i
+	return -1
+
+func _room_of(p: Dictionary, lp: Vector3) -> String:
+	var best_f := -1
+	for fi in p.floors.size():
+		if float(p.floors[fi].y) <= lp.y + 0.8: best_f = fi
+	if best_f < 0:
+		return "out"
+	for r in p.floors[best_f].rooms:
+		if lp.x >= float(r.x0) - 0.05 and lp.x <= float(r.x1) + 0.05 and lp.z >= float(r.z0) - 0.05 and lp.z <= float(r.z1) + 0.05:
+			return r.id
+	return "out"
+
+func _nav_of(i: int) -> Dictionary:
+	if _nav.has(i):
+		return _nav[i]
+	var p: Dictionary = full[i].get_meta("plan")
+	var edges := []
+	var flights: Array = p.get("flights", [])
+	for fi in p.floors.size():
+		var fy := float(p.floors[fi].y)
+		for r in p.floors[fi].rooms:
+			for side in ["N", "S", "W", "E"]:
+				for op in r.ops[side]:
+					if op.kind not in ["door", "open", "arch", "roller"]: continue
+					var c := (float(op.a) + float(op.b)) * 0.5
+					var pt: Vector3
+					var outv: Vector3
+					match side:
+						"N": pt = Vector3(c, fy, float(r.z0)); outv = Vector3(0, 0, -1)
+						"S": pt = Vector3(c, fy, float(r.z1)); outv = Vector3(0, 0, 1)
+						"W": pt = Vector3(float(r.x0), fy, c); outv = Vector3(-1, 0, 0)
+						_: pt = Vector3(float(r.x1), fy, c); outv = Vector3(1, 0, 0)
+					var inside := pt - outv * 0.6
+					if op.get("ext", false):
+						# out the door, and down the steps if there are any
+						var pts := [inside, pt, pt + outv * 0.7]
+						var best := {}
+						var bd := 3.4
+						for fl in flights:
+							var dd := Vector2(fl.top.x - pt.x, fl.top.z - pt.z).length()
+							if dd < bd and absf(float(fl.top.y) - fy) < 0.5:
+								bd = dd
+								best = fl
+						if not best.is_empty():
+							pts.append(best.top)
+							pts.append(best.foot)
+						else:
+							pts.append(pt + outv * 1.6 + Vector3(0, -float(p.raised), 0))
+						edges.append([r.id, "out", pts])
+					else:
+						var nb := _room_of_floor(p, fi, pt + outv * 0.3)
+						if nb != "" and nb != r.id:
+							edges.append([r.id, nb, [inside, pt, pt + outv * 0.6]])
+			if r.type == "stair" and fi + 1 < p.floors.size():
+				var cx := (float(r.x0) + float(r.x1)) * 0.5
+				var up := _room_of_floor(p, fi + 1, Vector3(cx, 0, float(r.z0) - 0.4))
+				if up != "":
+					edges.append([r.id, up, [Vector3(cx, fy, float(r.z1) + 0.3), Vector3(cx, fy, float(r.z1) - 0.2),
+						Vector3(cx, float(p.floors[fi + 1].y), float(r.z0) + 0.1), Vector3(cx, float(p.floors[fi + 1].y), float(r.z0) - 0.5)]])
+	_nav[i] = {"edges": edges}
+	return _nav[i]
+
+func _room_of_floor(p: Dictionary, fi: int, lp: Vector3) -> String:
+	for r in p.floors[fi].rooms:
+		if lp.x >= float(r.x0) and lp.x <= float(r.x1) and lp.z >= float(r.z0) and lp.z <= float(r.z1):
+			return r.id
+	return ""
+
+## Waypoints (world) from a to b through a building's doors and stairs, when either end is in one; else empty
+func route(a: Vector3, b: Vector3) -> Array:
+	var ib := lot_at(b)
+	var ia := lot_at(a)
+	var i := ib if ib >= 0 else ia
+	if i < 0:
+		return []
+	var p: Dictionary = full[i].get_meta("plan")
+	var xf: Transform3D = full[i].global_transform
+	var inv := xf.affine_inverse()
+	var ra := _room_of(p, inv * a) if ia == i else "out"
+	var rb := _room_of(p, inv * b) if ib == i else "out"
+	if ra == rb:
+		return []
+	var nav := _nav_of(i)
+	# breadth first over rooms
+	var prev := {ra: null}
+	var q := [ra]
+	while not q.is_empty():
+		var cur: String = q.pop_front()
+		if cur == rb: break
+		for e in nav.edges:
+			var nxt := ""
+			var pts: Array
+			if e[0] == cur: nxt = e[1]; pts = e[2]
+			elif e[1] == cur: nxt = e[0]; pts = (e[2] as Array).duplicate(); pts.reverse()
+			else: continue
+			if prev.has(nxt): continue
+			prev[nxt] = [cur, pts]
+			q.append(nxt)
+	if not prev.has(rb):
+		return []
+	var out := []
+	var n = rb
+	while prev[n] != null:
+		var pts: Array = prev[n][1]
+		var w := []
+		for lp in pts: w.append(xf * (lp as Vector3))
+		out = w + out
+		n = prev[n][0]
+	if rb == "out" and ib != i:
+		pass
+	return out
+
+## Now and then a rolling chassis or a loose body: in the shed, or out the back of the house
+func _project_car(i: int, p: Dictionary, b: Node3D) -> void:
+	if cars_taken.has(i) or main == null:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(lots[i][6]) + 991
+	if rng.randf() > float(PROJECT_CHANCE.get(p.kind, 0.0)):
+		return
+	var cat: Dictionary = Car.catalog()
+	var keys: Array = cat.keys()
+	var kind: String = keys[rng.randi() % keys.size()]
+	var shedlike: bool = p.kind in ["shed", "machine_shed", "workshop", "warehouse", "dairy"]
+	var lp := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.5, 1.5)) if shedlike else Vector3(rng.randf_range(-2.0, 2.0), 0.0, -float(p.d) / 2 - 5.0)
+	var wp: Vector3 = b.global_transform * lp
+	var yaw: float = b.rotation.y + (PI * 0.5 if p.kind == "machine_shed" else 0.0) + rng.randf_range(-0.3, 0.3)
+	var gy: float = main.height_at(wp.x, wp.z) if not shedlike else b.global_position.y
+	var node: Node3D
+	if rng.randf() < 0.55:
+		var design := VehicleSpecs.default_design(kind)
+		design["no_cab"] = true
+		node = main.spawn_vehicle(kind, Vector3(wp.x, gy + 1.0, wp.z), yaw, design)
+	else:
+		node = _shell(kind, Vector3(wp.x, gy, wp.z), yaw, rng)
+	_lot_cars[i] = [node, node.global_position]
+
+## A car body off its chassis, sat on the ground (not drivable: put it on a chassis in the garage)
+func _shell(kind: String, pos: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
+	var d: Dictionary = Car.catalog()[kind]
+	var sb := StaticBody3D.new()
+	sb.set_meta("shell", kind)
+	add_child(sb)
+	var body: Node3D = load("res://assets/vehicles/%s.glb" % d.glb).instantiate()
+	body.rotation_degrees.y = -90
+	sb.add_child(body)
+	var mn: Array = d.min
+	var ext: Array = d.ext
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new()
+	bs.size = Vector3(float(ext[2]) * 0.95, float(ext[1]) * 0.9, float(ext[0]) * 0.97)
+	cs.shape = bs
+	cs.position = Vector3(0, float(mn[1]) + float(ext[1]) * 0.45, float(mn[0]) + float(ext[0]) * 0.5)
+	sb.add_child(cs)
+	sb.global_transform = Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, rng.randf_range(-0.04, 0.04)) * Basis(Vector3.BACK, rng.randf_range(-0.04, 0.04)),
+		pos + Vector3(0, -float(mn[1]) - 0.12, 0))
+	return sb
 
 func _drop_full(i: int) -> void:
+	_nav.erase(i)
+	if _lot_cars.has(i):
+		var e: Array = _lot_cars[i]
+		_lot_cars.erase(i)
+		var n = e[0]
+		if is_instance_valid(n):
+			if n is Car and ((n as Car).has_meta("player_car") or (n as Car).global_position.distance_to(e[1]) > 6.0):
+				cars_taken[i] = true            # someone's had it: it's theirs now
+			else:
+				n.queue_free()
 	var b: Node3D = full[i]
 	full.erase(i)
 	_save_boxes(b)
@@ -311,14 +520,42 @@ func _save_boxes(b: Node) -> void:
 			var key: String = n.get_meta("loot_key")
 			loot_store[key] = {"inv": n.get_meta("inv"), "t": now, "gen": int(n.get_meta("loot_gen", 0))}   # t: when you left it
 
-## For the world save: what's been taken out of which cupboards
+## Nail planks across a door or window (side: which face, +1 / -1 along its z); remembered for next time
+func board(host: Node3D, side: int, n: int) -> Boards:
+	var bd := Boards.new()
+	bd.key = str(host.get("key"))
+	if host is BuildDoor:
+		var d: BuildDoor = host
+		if d.open: d.toggle()
+		d.pivot.rotation.y = 0.0
+		d._angle = 0.0
+		d._target = 0.0
+		d.open = false
+		var frame := Node3D.new()
+		d.pivot.get_parent().add_child(frame)
+		frame.transform = d.pivot.transform
+		frame.add_child(bd)
+		bd.setup(d.leaf_w, d.leaf_h, d.leaf_w * 0.5, d.leaf_h * 0.5, side, n)
+	else:
+		var w: BuildWindow = host
+		w.add_child(bd)
+		bd.setup(w.w, w.h, 0.0, 0.0, side, n)
+	bd.host = host
+	host.set("boards", bd)
+	boards[bd.key] = {"n": n, "side": side}
+	return bd
+
+## For the world save: what's been taken out of which cupboards, what's boarded up, which windows are smashed
 func save_state() -> Dictionary:
 	for i in full:
 		_save_boxes(full[i])
-	return {"loot": loot_store}
+	return {"loot": loot_store, "boards": boards, "broken": broken, "cars_taken": cars_taken}
 
 func load_state(d: Dictionary) -> void:
 	loot_store = d.get("loot", {})
+	boards = d.get("boards", {})
+	broken = d.get("broken", {})
+	cars_taken = d.get("cars_taken", {})
 
 ## The nearest town's name to a point (fictional names on the real towns)
 func town_at(x: float, z: float, r := 2500.0) -> String:

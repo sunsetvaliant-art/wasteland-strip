@@ -15,7 +15,7 @@ static func ensure() -> void:
 		"rotate": [KEY_E], "delete": [KEY_X], "undo": [KEY_Z],
 		"reload": [KEY_R], "holster": [KEY_H], "slot_1": [KEY_1], "slot_2": [KEY_2], "slot_3": [KEY_3],
 		"slot_4": [KEY_4], "slot_5": [KEY_5], "slot_6": [KEY_6], "bug_report": [KEY_F9],
-		"inventory": [KEY_I], "heal": [KEY_B],
+		"inventory": [KEY_I], "heal": [KEY_B], "torch": [KEY_T], "board": [KEY_G], "work_on_car": [KEY_K],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):

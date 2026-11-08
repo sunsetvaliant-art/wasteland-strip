@@ -441,8 +441,22 @@ func _shoot(aim_pt: Vector3, d: float) -> void:
 func _flat_dist(p: Vector3) -> float:
 	return Vector2(p.x - global_position.x, p.z - global_position.z).length()
 
+var _route: Array = []
+var _route_t := 0.0
+
 func _move(dt: float) -> void:
-	var to := goal - global_position
+	# through a building's doors and up its stairs, when you're inside one (or it is)
+	var g := goal
+	if Buildings.inst and state in ["chase", "investigate", "combat"]:
+		_route_t -= dt
+		if _route_t <= 0.0:
+			_route_t = 0.6
+			_route = Buildings.inst.route(global_position, goal)
+		while not _route.is_empty() and Vector2((_route[0] as Vector3).x - global_position.x, (_route[0] as Vector3).z - global_position.z).length() < 0.55:
+			_route.remove_at(0)
+		if not _route.is_empty():
+			g = _route[0]
+	var to := g - global_position
 	to.y = 0.0
 	var spd := move_speed
 	if stagger > 0.0 or swing_t >= 0.0: spd = 0.0
@@ -468,12 +482,14 @@ func _move(dt: float) -> void:
 	else:
 		if not is_on_floor():
 			velocity.y -= 9.8 * dt
-		move_and_slide()
+		StepUp.slide(self)
 		# leaning on a shut door pushes it open
 		for ci in get_slide_collision_count():
 			var col := get_slide_collision(ci).get_collider()
 			if col is BuildDoor:
 				(col as BuildDoor).push_open(global_position)
+			elif col is Boards and kind == "zombie":
+				(col as Boards).hit(dt * 9.0)          # beating on the planks
 	if face_dir.length() > 0.1:
 		var yaw := atan2(-face_dir.x, -face_dir.z)
 		rotation.y = lerp_angle(rotation.y, yaw, clamp(dt * 6.0, 0.0, 1.0))

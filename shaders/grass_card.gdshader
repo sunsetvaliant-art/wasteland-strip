@@ -24,7 +24,12 @@ void vertex() {
 	VERTEX.x += s * k * k * 0.6;
 	VERTEX.z += s * 0.6 * k * k * 0.6;
 	float dc = distance(w.xz, CAMERA_POSITION_WORLD.xz);
-	VERTEX *= smoothstep(near_hide - 2.0, near_hide + 1.0, dc) * (1.0 - smoothstep(far_hide - 6.0, far_hide, dc));
+	// clump by clump, not ring by ring: a share of them takes over from the real clumps across a wide band, and
+	// out towards the edge they thin away gradually
+	float h2 = fract(var_k * 13.37);
+	float inner = smoothstep(near_hide - 4.0, near_hide + 3.0, dc);
+	float outer = 1.0 - smoothstep(far_hide * 0.45, far_hide - 1.0, dc);
+	VERTEX *= step(h2, inner) * step(h2, outer);
 	// light it like ground cover: mostly up-facing, so it sits in with the terrain instead of flashing per card
 	NORMAL = normalize(mix(NORMAL, vec3(0.0, 1.0, 0.0), 0.75));
 }

@@ -133,6 +133,12 @@ func _unhandled_input(e: InputEvent) -> void:
 		_carry_drop(true)
 		get_viewport().set_input_as_handled()
 		return
+	if e.is_action_pressed("torch") and not vehicle:
+		_torch_key()
+	if e.is_action_pressed("board") and not vehicle:
+		_board_up()
+	if e.is_action_pressed("work_on_car") and not vehicle:
+		_work_on_car()
 	if e.is_action_pressed("reload") and gun():
 		gun().start_reload()
 	if e.is_action_pressed("holster"):
@@ -198,9 +204,11 @@ func _physics_process(dt: float) -> void:
 	velocity.z = move_toward(velocity.z, dir.z * speed, accel * speed * dt)
 	if not is_on_floor():
 		velocity.y -= 9.8 * dt
+	elif Input.is_action_just_pressed("jump") and interact_target is BuildWindow and (interact_target as BuildWindow).passable():
+		(interact_target as BuildWindow).climb(self)          # through the window
 	elif Input.is_action_just_pressed("jump") and not crouching:
 		velocity.y = JUMP
-	move_and_slide()
+	StepUp.slide(self)
 	# legs: which clip set, how fast, and which way we're going relative to the body
 	var hv := Vector3(velocity.x, 0, velocity.z)
 	var lv := Basis(Vector3.UP, body_yaw).inverse() * hv
@@ -331,7 +339,15 @@ func _look_target() -> Node:
 	var n: Node = h.collider
 	for _i in 4:
 		if n == null: break
-		if n is BuildDoor or InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
+		if n is Car:
+			var lz := (n as Car).to_local(h.position).z
+			var mn: Array = (n as Car).def.min
+			var ext: Array = (n as Car).def.ext
+			if InventoryUI.is_container(n) and lz < float(mn[0]) + float(ext[0]) * 0.3:
+				return n                       # at the back: the boot / tray
+			return null
+		if n is RigidBody3D and n.get_meta("carryable", false) and not InventoryUI.is_container(n): return n
+		if n is Boards or n is BuildDoor or n is BuildWindow or n is BuildRoller or InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
 		n = n.get_parent()
 	return null
 
@@ -348,8 +364,13 @@ func _update_interact() -> void:
 				break
 	if t:
 		interact_target = t
-		if t is BuildDoor:
-			interact_hint = (t as BuildDoor).hint()
+		if t is RigidBody3D and t.get_meta("carryable", false) and not InventoryUI.is_container(t):
+			interact_hint = "Middle mouse  pick it up"
+			return
+		if t is BuildDoor or t is BuildWindow or t is BuildRoller or t is Boards:
+			interact_hint = t.hint()
+			if (t is BuildDoor or t is BuildWindow) and t.boards == null and _can_board(t):
+				interact_hint += "   ·   G  board it up"
 			return
 		if InventoryUI.is_container(t):
 			var nm := "box"
@@ -368,8 +389,21 @@ func _interact() -> void:
 	var t := interact_target
 	var ui = get_tree().current_scene.get("inv_ui")
 	if t and is_instance_valid(t):
+		if t is RigidBody3D and t.get_meta("carryable", false) and not InventoryUI.is_container(t):
+			return
 		if t is BuildDoor:
 			(t as BuildDoor).toggle(global_position)
+			return
+		if t is BuildWindow or t is BuildRoller:
+			t.toggle()
+			return
+		if t is Boards:
+			if inv.count("hammer") < 1:
+				_toast("You need a hammer to prise the planks off")
+				return
+			var n := (t as Boards).pry()
+			var left := inv.add(Items.fresh("plank", n))
+			if left > 0: WorldItem.spawn(get_parent(), [Items.fresh("plank", left)], global_position + Vector3(0, 0.8, 0))
 			return
 		if InventoryUI.is_container(t):
 			if ui: ui.show_with(t)
@@ -389,6 +423,93 @@ func _interact() -> void:
 		return
 	_try_get_in()
 
+# ---------------------------------------------------------------- working on a car (K): a shifter opens the garage on it
+func _nearest_car(r: float) -> Car:
+	var best: Car = null
+	var bd := r
+	for c in get_tree().get_nodes_in_group("vehicles"):
+		if c is Car and c.driver == null and not c.has_meta("net_driven"):
+			var d: float = (c as Car).global_position.distance_to(global_position)
+			if d < bd:
+				bd = d
+				best = c
+	return best
+
+func _work_on_car() -> void:
+	var c := _nearest_car(5.0)
+	if c == null:
+		return
+	if not Settings.creative() and inv.count("wrench") < 1:
+		_toast("You need a shifter to work on it")
+		return
+	var main_node = get_tree().current_scene
+	if main_node and main_node.get("garage"):
+		main_node.garage.show_garage(c.design, c)
+
+# ---------------------------------------------------------------- boarding up (G): hammer, nails, planks
+func _planks_for(t: Node) -> int:
+	return 3 if t is BuildDoor else 2
+
+func _can_board(t: Node) -> bool:
+	return inv.count("hammer") > 0 and inv.count("nails") > 0 and inv.count("plank") >= _planks_for(t)
+
+var nail_uses := 0                    # a box of nails does three jobs
+
+func _board_up() -> void:
+	var t := interact_target
+	if not (t is BuildDoor or t is BuildWindow) or t.get("boards") != null:
+		return
+	if not _can_board(t):
+		_toast("To board it up: a hammer, a box of nails and %d planks" % _planks_for(t))
+		return
+	var n := _planks_for(t)
+	inv.take("plank", n)
+	nail_uses += 1
+	if nail_uses >= 3:
+		nail_uses = 0
+		inv.take("nails", 1)
+	# on your side of it
+	var frame: Node3D = (t as BuildDoor).pivot if t is BuildDoor else t
+	var side := 1 if frame.to_local(global_position).z > 0.0 else -1
+	if Buildings.inst:
+		Buildings.inst.board(t, side, n)
+	var a := AudioStreamPlayer3D.new()
+	a.stream = Gun.sfx("hammer_nails")
+	add_child(a)
+	a.play()
+	get_tree().create_timer(1.5).timeout.connect(a.queue_free)
+	Hearing.emit(get_tree(), global_position, 25.0, "hammering", self)
+
+# ---------------------------------------------------------------- torch on the gun (T)
+## T: the gun in your hands has a torch taped on? switch it. Not yet, and you've got a torch and tape? tape it on.
+func _torch_key() -> void:
+	var g := gun()
+	if g == null or holstered:
+		return
+	if g.light and not g.def.has("tool"):
+		g.toggle_light()
+		var st = g.get_meta("stack") if g.has_meta("stack") else null
+		if st: st.data["torch_on"] = g.light.visible
+		return
+	if g.def.has("tool"):
+		return
+	if inv.count("torch") < 1 or inv.count("tape") < 1:
+		_toast("Tape a torch to it: you need a torch and duct tape")
+		return
+	inv.take("torch", 1)
+	inv.take("tape", 1)
+	var st = g.get_meta("stack") if g.has_meta("stack") else null
+	if st: st.data["torch"] = true
+	g.add_taped_torch()
+	g.toggle_light()
+	_toast("Torch taped on. T switches it.")
+
+var _toast_t := 0.0
+var toast_text := ""
+func _toast(t: String) -> void:
+	toast_text = t
+	_toast_t = 3.0
+
 # ---------------------------------------------------------------- carrying things (middle mouse)
 func _carry_start() -> void:
 	if vehicle or dead or carried: return
@@ -398,6 +519,8 @@ func _carry_start() -> void:
 	var h := get_world_3d().direct_space_state.intersect_ray(q)
 	if h.is_empty() or not (h.collider is RigidBody3D): return
 	var rb := h.collider as RigidBody3D
+	if rb.freeze and rb.get_meta("carryable", false):
+		rb.freeze = false                      # furniture: asleep till you pick it up
 	if rb is VehicleBody3D or rb.is_in_group("vehicles") or rb.freeze or rb.mass > Items.CARRY_MAX_KG: return
 	if (h.position as Vector3).distance_to(global_position + Vector3(0, 1.0, 0)) > 2.6: return
 	carried = rb
@@ -499,6 +622,7 @@ func _respawn() -> void:
 func _try_get_in() -> void:
 	for c in get_tree().get_nodes_in_group("vehicles"):
 		if c.global_position.distance_to(global_position) < 4.0 and c.driver == null:
+			c.set_meta("player_car", true)          # saved with the world from now on
 			vehicle = c
 			c.driver = self
 			add_collision_exception_with(c)
