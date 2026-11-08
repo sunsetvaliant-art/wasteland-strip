@@ -139,6 +139,13 @@
     "patch_0.2.0_0016.pck.p01",
     "patch_0.2.0_0016.pck.p02"
    ]
+  },
+  {
+   "file": "patch_0.2.0_0017.pck",
+   "version": "0.2.17",
+   "date": "2026-11-08",
+   "notes": "Roads painted into the terrain (no more flicker or grass through the road). Grass density even around you. Step up lips and stairs (no bump at the bottom of Queenslander stairs). Zombies follow you through doorways and up stairs. Windows: open, climb through (Space), shoot out. Roller doors open/shut with F, zombies can't. Board up doors and windows with G (hammer, nails, planks); zombies bash through, pry off with F and a hammer. Pick up chairs, stools, crates and more (middle mouse). Binoculars and torch equip in primary/secondary with their own models; tape a torch to any gun, T toggles it. New loot: tape, hammer, nails, planks. Engine oil sits sideways in the bag. Project cars: rolling chassis and loose bodies at sheds and behind houses. Spanner + K opens the garage on the car in front of you. Car boots/trays hold stuff. Cars you drive are saved. Co-op: no friendly fire. Survival starts without a car. Fixed the invisible wall left by dead zombies.",
+   "size": 4325376
   }
  ],
  "full": {
