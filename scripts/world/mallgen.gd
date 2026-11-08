@@ -15,7 +15,7 @@ extends RefCounted
 
 const GH := 3.8          # ground (car park and street shops), floor to ceiling
 const UY := 4.2          # the first floor
-const UH := 4.6
+const UH := 6.5          # high ceilings: a sense of scale
 const CW := 9.0          # concourse width
 const FS := 12.0         # depth of the street shops
 const RAMP_W := 16.0     # the ramp's bay

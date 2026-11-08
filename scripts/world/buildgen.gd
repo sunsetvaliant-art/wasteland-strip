@@ -85,6 +85,11 @@ static func mat(key: String) -> Material:
 		"enamel":
 			m.albedo_color = Color(0.9, 0.9, 0.87) * tint
 			m.roughness = 0.3
+		"terrazzo":
+			# polished mall floor: cream, glossy, catches the skylight
+			m.albedo_color = Color(0.86, 0.83, 0.76) * tint
+			m.roughness = 0.12
+			m.metallic_specular = 0.7
 		"cloth":
 			m.albedo_color = Color(0.8, 0.8, 0.8) * tint
 			m.roughness = 1.0
@@ -822,7 +827,7 @@ const FLOOR_MAT := {"lounge": "timber_floor", "dining": "timber_floor", "hall": 
 	"bed": "carpet", "bath": "tile", "laundry": "lino", "toilet": "tile", "shed": "concrete", "store": "concrete", "workshop": "concrete",
 	"warehouse": "concrete_worn", "office": "carpet", "lunch": "lino", "machinery": "dirt", "milking": "concrete_worn", "vat": "concrete", "study": "carpet",
 	"shop": "lino", "lobby": "lino",
-	"carpark": "concrete_worn", "ramp": "concrete", "dock": "concrete_worn", "concourse": "tile", "unit": "lino", "super": "lino",
+	"carpark": "concrete_worn", "ramp": "concrete", "dock": "concrete_worn", "concourse": "terrazzo", "unit": "lino", "super": "lino",
 	"super_store": "concrete", "bigbox": "lino", "foodcourt": "tile", "fc_kitchen": "tile", "service": "concrete", "security": "carpet", "lift": "concrete"}
 
 static func _skin_mat(p: Dictionary, r: Dictionary) -> String:

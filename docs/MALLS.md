@@ -52,3 +52,25 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
 - docs/tweed_city_plan.png: the centre directory (user). Hoyts is drawn small there: in reality 5-7 big screens fill the bottom left, attached at that point.
 - Second photo the user sent of the black ramp and glass balustrades is Sunnyside.
 - Modern kit to build (user): rectangular bulkheads/soffits, high ceilings, polished floors, glass shopfronts, a sense of scale; no curves.
+
+## NEXT (handoff, 2026-11-08)
+1. Performance: Sunnyvale ran 28 fps / ~9.6k draw calls on a GTX 1650 Ti. Merge each room's fixtures (FIX props) into one mesh.
+2. Modern 2020 mall kit (all malls, Sunnyvale first): 6-7 m concourse ceilings with a clerestory; rectangular bulkheads and soffits;
+   downlight grid; glossy cream terrazzo with straight dark inlay bands; full-height glass shopfronts with aluminium frames, sign
+   bands and see-through grilles; glass balustrades; white columns; black ribbed travelator ramps; dead escalators; made-up banners
+   and wayfinding signs; fallen ceiling panels and survivor barricades.
+3. Tweed City from docs/tweed_city_plan.png, scaled to the real satellite outline; Hoyts = 5-7 big screens bottom left; multi-level car park.
+   Look for real plans: NSW Planning Portal (PPS-2019NTH002), Tweed Council DA tracker, owners' leasing brochures.
+4. Tweed Mall.
+5. Servos (real OSM fuel stations; generated canopy, bowsers, kiosk) and pubs, 2020-era look.
+6. Known issue: user reports project-car chassis not appearing (cars spawn). Parked for now at the user's request.
+
+## Building order the user set (3, 1, 2, 4), one patch per building type, for the Thursday session
+- 3. Malls: Sunnyvale done (0.2.20). Still to do: the modern kit, Tweed Mall, then Tweed City (cinemas, IMAX, multi-level car park).
+- 1. Servos (real OSM fuel stations, generated canopy over the bowsers, kiosk, workshop bay, car wash), then pubs (front bar,
+     lounge/bistro, kitchen, cool room, TAB, toilets, beer garden, drive-through bottle shop; old corner hotels two storeys
+     with verandah and rooms upstairs). 2020 era.
+- 2. Civic: schools, churches, halls/community centres, clubs (bowls/RSL/surf), motels, fire stations, hospital/medical,
+     police, post office, caravan park cabins, Condong sugar mill. Each with a sensible floor plan for its type.
+- 4. Extend the map north to the border/Coolangatta; high-rises with enterable ground floors (upper floors sealed).
+- 7. Houses: orient and nudge so none overlap a road or each other (user saw overlaps in game).
