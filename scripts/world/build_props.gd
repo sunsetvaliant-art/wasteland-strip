@@ -90,7 +90,13 @@ const FIX := {
 	"fridge": [0.72, 0.7, 1.75, "fridge"], "bath": [1.7, 0.76, 0.55, ""], "toilet": [0.42, 0.7, 0.8, ""],
 	"vanity": [0.8, 0.48, 0.86, "bathroom"], "ltub": [0.62, 0.56, 0.9, ""], "wbench": [2.0, 0.75, 0.9, "workbench"],
 	"pallet_rack": [2.7, 1.0, 3.6, "rack"], "vat": [2.4, 1.3, 1.5, ""], "bench_low": [1.6, 0.6, 0.9, "kitchen"],
-	"safe": [0.75, 0.7, 1.1, "bank"], "bar": [3.2, 0.7, 1.05, "pub"], "drinks_fridge": [0.9, 0.7, 1.95, "grocer"],
+	"safe": [0.75, 0.7, 1.1, "bank"],
+	# the mall
+	"gondola": [3.6, 1.1, 1.75, "super"], "gondola_gen": [3.6, 1.1, 1.75, "general"], "checkout": [2.2, 0.9, 1.0, "till"],
+	"chiller": [3.0, 0.95, 2.0, "grocer"], "trolley": [0.62, 0.95, 1.0, ""], "planter": [1.8, 1.8, 0.65, ""], "mall_bench": [1.9, 0.6, 0.48, ""],
+	"mall_bin": [0.55, 0.55, 0.95, ""], "directory": [1.2, 0.35, 2.1, ""], "atm": [0.75, 0.6, 1.7, "till"], "gumball": [0.45, 0.45, 1.25, ""],
+	"kiosk": [2.6, 1.4, 2.5, "general"], "fc_counter": [2.6, 0.75, 1.05, "grocer"], "clothes_rack": [1.5, 0.55, 1.45, "clothes"],
+	"mannequin": [0.5, 0.35, 1.8, ""], "sec_desk": [1.8, 0.8, 0.95, "security"], "bar": [3.2, 0.7, 1.05, "pub"], "drinks_fridge": [0.9, 0.7, 1.95, "grocer"],
 }
 
 # what goes in each kind of room: [key (a|b = one of), where, chance]
@@ -136,7 +142,7 @@ const RULES := {
 # light enough to pick up and carry (middle mouse): kg
 const CARRY := {"dchair": 6.0, "pchair": 5.0, "schoolchair": 6.0, "monobloc": 3.0, "stool": 5.0, "side_table": 8.0, "kettle": 1.0,
 	"bottle": 2.0, "boombox": 3.0, "tyre": 12.0, "crate_s": 6.0, "cardboard": 4.0, "tub_box": 3.0, "cement": 20.0, "lpg": 12.0,
-	"coffee": 12.0, "nightstand": 12.0, "drum2": 18.0, "jerry": 4.0, "toolcart": 25.0, "handtruck": 14.0, "compost": 20.0}
+	"coffee": 12.0, "nightstand": 12.0, "trolley": 15.0, "mall_bin": 9.0, "gumball": 14.0, "drum2": 18.0, "jerry": 4.0, "toolcart": 25.0, "handtruck": 14.0, "compost": 20.0}
 static var _dims := {}   # model key -> [scale, AABB (unscaled)]
 static var pending: Array = []   # [node, key, offset, plan]: models still to be put in (a few each frame)
 
@@ -186,9 +192,17 @@ const SHOP_SHELF := {"chemist": "chem_shelf", "hardware": "hw_rack|hw_shelf", "g
 	"newsagent": "news_shelf|gen_shelf", "clothes": "clothes_shelf|clothes_cab", "sports": "sports_rack", "general": "gen_shelf|grocer_shelf", "pub": "bar_shelf", "bank": "bank_desk"}
 
 static func _rules(p: Dictionary, r: Dictionary) -> Array:
-	if r.type != "shop":
+	if MALL_RULES.has(r.type) and p.kind == "mall":
+		return MALL_RULES[r.type]
+	if r.type not in ["shop", "unit"]:
 		return RULES.get(r.type, [])
-	var sub: String = p.get("sub", "general")
+	var sub: String = r.get("sub", p.get("sub", "general"))
+	if sub == "bottlo":
+		return [["shop_counter", "wall", 1.0], ["drinks_fridge", "wall", 1.0], ["drinks_fridge", "wall", 1.0], ["drinks_fridge", "wall", 0.8],
+			["bar_shelf", "wall", 1.0], ["bar_shelf", "center", 0.8], ["cardboard", "corner", 0.7], ["fluoro", "ceiling", 1.0]]
+	if sub == "clothes" and p.kind == "mall":
+		return [["shop_counter", "wall", 1.0], ["clothes_rack", "center", 1.0], ["clothes_rack", "center", 1.0], ["clothes_rack", "center", 0.8],
+			["clothes_shelf", "wall", 1.0], ["mannequin", "wall", 0.8], ["mannequin", "corner", 0.6], ["fluoro", "ceiling", 1.0]]
 	var sh: String = SHOP_SHELF.get(sub, "gen_shelf")
 	match sub:
 		"pub":
@@ -204,6 +218,36 @@ static func _rules(p: Dictionary, r: Dictionary) -> Array:
 	return [["shop_counter", "wall", 1.0], [sh, "wall", 1.0], [sh, "wall", 1.0], [sh, "wall", 0.9], [sh, "center", 0.8], [sh, "center", 0.6],
 		["drinks_fridge" if sub in ["grocer", "general"] else "cardboard", "wall", 0.8], ["cardboard", "corner", 0.6], ["trashbag", "corner", 0.4],
 		["fluoro", "ceiling", 1.0], ["fan", "ceiling", 0.4], ["clock", "high", 0.4]]
+
+const MALL_RULES := {
+	"carpark": [["trolley", "center", 0.9], ["trolley", "center", 0.7], ["trolley", "center", 0.5], ["trashbag", "corner", 0.5], ["cardboard", "corner", 0.4],
+		["drum", "corner", 0.3], ["tyre", "corner", 0.3]],
+	"dock": [["pallet_rack", "wall", 1.0], ["crate", "wall", 0.8], ["cardboard", "corner", 0.9], ["handtruck", "wall", 0.7], ["trashbag", "corner", 0.7], ["drum2", "corner", 0.5]],
+	"lobby": [["planter", "center", 1.0], ["mall_bench", "center", 0.8], ["directory", "wall", 1.0], ["atm", "wall", 0.8], ["trolley", "center", 0.6], ["mall_bin", "wall", 0.7]],
+	"concourse": [["planter", "center", 1.0], ["planter", "center", 1.0], ["planter", "center", 0.8], ["mall_bench", "center", 1.0], ["mall_bench", "center", 0.9],
+		["mall_bench", "center", 0.7], ["mall_bin", "wall", 1.0], ["mall_bin", "wall", 0.8], ["directory", "wall", 1.0], ["atm", "wall", 0.8], ["gumball", "wall", 0.8],
+		["kiosk", "center", 0.8], ["kiosk", "center", 0.5], ["trolley", "center", 0.8], ["trolley", "center", 0.6], ["trashbag", "center", 0.4], ["cardboard", "center", 0.3]],
+	"super": [["checkout", "wall", 1.0], ["checkout", "wall", 1.0], ["checkout", "wall", 0.9], ["chiller", "wall", 1.0], ["chiller", "wall", 1.0], ["chiller", "wall", 0.9],
+		["drinks_fridge", "wall", 0.9], ["gondola", "rows", 1.0], ["trolley", "center", 0.9], ["trolley", "center", 0.7], ["trolley", "center", 0.5],
+		["cardboard", "center", 0.6], ["trashbag", "corner", 0.5], ["fluoro", "ceiling", 1.0]],
+	"super_store": [["pallet_rack", "rows", 1.0], ["handtruck", "center", 0.8], ["crate", "center", 0.8], ["cardboard", "corner", 0.9], ["cardboard", "corner", 0.7],
+		["chiller", "wall", 0.6], ["lamp_ind", "ceiling", 1.0]],
+	"bigbox": [["shop_counter", "wall", 1.0], ["gondola_gen", "rows", 0.8], ["sofa|sofa1", "center", 1.0], ["sofa|sofa1", "center", 0.8], ["bed", "center", 0.8],
+		["dtable", "center", 0.7], ["dchair", "chairs:dtable", 0.8], ["tvcab", "wall", 0.9], ["tv", "on:tvcab", 0.9], ["fridge", "wall", 0.9], ["fridge", "wall", 0.7],
+		["wardrobe", "wall", 0.6], ["cardboard", "corner", 0.8], ["fluoro", "ceiling", 1.0]],
+	"foodcourt": [["ktable", "center", 1.0], ["monobloc|pchair", "chairs:ktable", 1.0], ["dtable", "center", 1.0], ["monobloc|pchair", "chairs:dtable", 1.0],
+		["ktable", "center", 1.0], ["monobloc|pchair", "chairs:ktable", 1.0], ["ktable", "center", 1.0], ["monobloc|pchair", "chairs:ktable", 1.0],
+		["dtable", "center", 1.0], ["monobloc|pchair", "chairs:dtable", 1.0], ["ktable", "center", 0.9], ["monobloc|pchair", "chairs:ktable", 1.0],
+		["ktable", "center", 0.8], ["monobloc|pchair", "chairs:ktable", 1.0], ["dtable", "center", 0.8], ["monobloc|pchair", "chairs:dtable", 1.0],
+		["mall_bin", "wall", 1.0], ["mall_bin", "wall", 0.7], ["trashbag", "center", 0.5], ["planter", "corner", 0.6], ["planter", "corner", 0.6],
+		["fluoro", "ceiling", 1.0]],
+	"fc_kitchen": [["fc_counter", "wall", 1.0], ["bench_low", "wall", 1.0], ["fridge", "wall", 0.9], ["drinks_fridge", "wall", 0.6], ["trashbag", "corner", 0.6]],
+	"service": [["shelf|rack", "wall", 1.0], ["cardboard", "corner", 0.8], ["trashbag", "corner", 0.7], ["drum2", "corner", 0.5], ["handtruck", "wall", 0.5]],
+	"security": [["sec_desk", "wall", 1.0], ["schoolchair", "front:sec_desk", 1.0], ["drawers", "wall", 0.8], ["pantry", "wall", 0.5], ["fluoro", "ceiling", 1.0]],
+	"store": [["shelf|rack", "wall", 1.0], ["shelf|rack", "wall", 0.8], ["cardboard", "corner", 0.9], ["cardboard", "corner", 0.6], ["crate_s", "corner", 0.5]],
+	"hall": [["mall_bin", "wall", 0.4]],
+	"toilet": [["toilet", "wall", 1.0], ["toilet", "wall", 0.9], ["vanity", "wall", 1.0], ["vanity", "wall", 0.7]],
+}
 
 static func furnish(p: Dictionary, root: Node3D, rng: RandomNumberGenerator) -> Array:
 	var holder := Node3D.new()
@@ -543,7 +587,8 @@ static func _nice(key: String) -> String:
 		"toolcart": "tool cart", "toolchest": "tool chest", "scart": "trolley", "tub_box": "tub", "desk": "desk", "crate": "crate", "crate_s": "crate",
 		"jerry": "jerry can", "trashbag": "rubbish bag", "cardboard": "box", "mil_crate": "army crate", "stove": "stove", "bookshelf": "bookshelf",
 		"fridge": "fridge", "vanity": "bathroom cabinet", "safe": "safe", "bar": "bar", "drinks_fridge": "drinks fridge", "shop_counter": "counter",
-		"chem_shelf": "shelves", "hw_rack": "rack", "hw_shelf": "shelves", "grocer_shelf": "shelves", "grocer_rack": "rack", "news_shelf": "shelves",
+		"chem_shelf": "shelves", "gondola": "shelves", "gondola_gen": "shelves", "checkout": "checkout", "chiller": "fridge", "atm": "ATM",
+		"kiosk": "kiosk", "fc_counter": "counter", "clothes_rack": "clothes rack", "sec_desk": "security desk", "hw_rack": "rack", "hw_shelf": "shelves", "grocer_shelf": "shelves", "grocer_rack": "rack", "news_shelf": "shelves",
 		"clothes_shelf": "shelves", "clothes_cab": "cupboard", "sports_rack": "rack", "gen_shelf": "shelves", "bar_shelf": "shelves", "bank_desk": "desk", "wbench": "workbench", "pallet_rack": "pallet rack", "bench_low": "cupboard", "bench": "kitchen cupboards"}
 	return N.get(key, key)
 
@@ -567,6 +612,119 @@ static func _fixture(key: String, p: Dictionary) -> Node3D:
 			g.aabb("dark", Vector3(-hw + 0.03, 0.0, -hd + 0.03), Vector3(hw - 0.03, 0.05, hd - 0.06), false)
 		"bench_low":
 			_cupboards(g, -hw, hw, -hd, hd, h, false)
+		"gondola", "gondola_gen":
+			# supermarket shelving, both sides: a spine, shelves stepping in, a few things left on them
+			g.aabb("steel", Vector3(-hw, 0, -0.04), Vector3(hw, h, 0.04), false)
+			g.aabb("steel:white", Vector3(-hw, 0, -hd), Vector3(hw, 0.12, hd), false)
+			for sd in [-1.0, 1.0]:
+				for k in 4:
+					var sy := 0.12 + k * 0.42
+					var dep := hd - 0.05 - k * 0.04
+					g.aabb("steel:white", Vector3(-hw, sy, minf(0.0, sd * dep)), Vector3(hw, sy + 0.025, maxf(0.0, sd * dep)), false)
+					var seed := absi(hash(Vector3i(k, int(sd), int(w * 10))))
+					for j in 7:
+						if (seed >> j) & 3 == 0:
+							var cx := -hw + 0.25 + j * (w - 0.5) / 6.0
+							var col: String = "enamel:" + ["pink", "teal", "yellow", "green", "blue", "white", "cream"][(j + k + seed) % 7]
+							g.aabb(col, Vector3(cx - 0.12, sy + 0.025, minf(sd * 0.1, sd * (dep - 0.05))), Vector3(cx + 0.12, sy + 0.025 + 0.18 + (seed % 3) * 0.04, maxf(sd * 0.1, sd * (dep - 0.05))), false)
+			g.aabb("steel:white", Vector3(-hw, h - 0.06, -hd), Vector3(hw, h, hd), false)
+		"checkout":
+			g.aabb("trim:cream", Vector3(-hw, 0, -hd), Vector3(hw - 0.5, h - 0.15, hd), false)
+			g.aabb("dark", Vector3(-hw + 0.05, h - 0.15, -hd + 0.1), Vector3(hw - 0.55, h - 0.1, hd - 0.1), false)      # the belt
+			g.aabb("steel", Vector3(hw - 0.5, 0, -hd), Vector3(hw, h, hd), false)
+			g.aabb("dark", Vector3(hw - 0.42, h, -0.15), Vector3(hw - 0.08, h + 0.25, 0.15), false)                     # the register
+			g.aabb("steel", Vector3(-hw + 0.2, h - 0.15, -hd - 0.02), Vector3(-hw + 0.25, h + 0.9, -hd + 0.02), false)
+			g.aabb("enamel:red", Vector3(-hw + 0.1, h + 0.75, -hd - 0.03), Vector3(-hw + 0.35, h + 0.95, -hd + 0.03), false) # lane number
+		"chiller":
+			g.aabb("enamel:white", Vector3(-hw, 0, -hd), Vector3(hw, h, -hd + 0.25), false)
+			g.aabb("enamel:white", Vector3(-hw, 0, -hd), Vector3(hw, 0.45, hd), false)
+			g.aabb("dark", Vector3(-hw + 0.05, 0.45, -hd + 0.25), Vector3(hw - 0.05, h - 0.3, hd - 0.1), false)
+			for k in 3:
+				g.aabb("steel", Vector3(-hw + 0.05, 0.85 + k * 0.4, -hd + 0.25), Vector3(hw - 0.05, 0.87 + k * 0.4, hd - 0.2 - k * 0.1), false)
+			g.aabb("enamel:white", Vector3(-hw, h - 0.3, -hd), Vector3(hw, h, hd - 0.3), false)
+			g.aabb("enamel:blue", Vector3(-hw, h - 0.3, hd - 0.32), Vector3(hw, h - 0.05, hd - 0.28), false)
+			for sx in [-hw, hw - 0.04]:
+				g.aabb("enamel:white", Vector3(sx, 0, -hd), Vector3(sx + 0.04, h, hd - 0.1), false)
+		"trolley":
+			g.aabb("steel", Vector3(-hw, 0.35, -hd + 0.1), Vector3(hw, 0.38, hd), false)
+			for sx in [-hw, hw - 0.02]:
+				g.aabb("steel", Vector3(sx, 0.35, -hd + 0.1), Vector3(sx + 0.02, h - 0.1, hd), false)
+			g.aabb("steel", Vector3(-hw, 0.35, hd - 0.02), Vector3(hw, h - 0.1, hd), false)
+			g.aabb("steel", Vector3(-hw + 0.05, 0.35, -hd + 0.1), Vector3(hw - 0.05, h - 0.15, -hd + 0.12), false)
+			g.aabb("enamel:red", Vector3(-hw - 0.02, h - 0.05, -hd), Vector3(hw + 0.02, h, -hd + 0.05), false)          # the handle
+			for sx in [-hw + 0.03, hw - 0.07]:
+				for sz in [-hd + 0.15, hd - 0.08]:
+					g.aabb("steel", Vector3(sx, 0.08, sz), Vector3(sx + 0.03, 0.35, sz + 0.03), false)
+					g.aabb("dark", Vector3(sx - 0.01, 0.0, sz - 0.03), Vector3(sx + 0.04, 0.09, sz + 0.06), false)
+		"planter":
+			g.aabb("brick", Vector3(-hw, 0, -hd), Vector3(hw, h, hd), false)
+			g.aabb("trim:cream", Vector3(-hw - 0.03, h, -hd - 0.03), Vector3(hw + 0.03, h + 0.05, hd + 0.03), false)
+			g.aabb("dirt", Vector3(-hw + 0.1, h - 0.05, -hd + 0.1), Vector3(hw - 0.1, h + 0.02, hd - 0.1), false)
+			# a dead palm in it
+			g.aabb("timber:tan", Vector3(-0.1, h, -0.1), Vector3(0.1, h + 2.4, 0.1), false)
+			for k in 5:
+				var a := TAU * k / 5.0
+				var tip := Vector3(cos(a) * 1.1, h + 1.9, sin(a) * 1.1)
+				ShopGen._rod(g, Vector3(0, h + 2.4, 0), tip, 0.06, "timber:tan")
+		"mall_bench":
+			g.aabb("steel", Vector3(-hw, 0, -0.04), Vector3(-hw + 0.08, h, 0.04), false)
+			g.aabb("steel", Vector3(hw - 0.08, 0, -0.04), Vector3(hw, h, 0.04), false)
+			g.aabb("timber", Vector3(-hw, h - 0.06, -hd), Vector3(hw, h, hd), false)
+		"mall_bin":
+			g.aabb("steel:charcoal", Vector3(-hw, 0, -hd), Vector3(hw, h, hd), false)
+			g.aabb("dark", Vector3(-hw + 0.06, h - 0.25, hd), Vector3(hw - 0.06, h - 0.1, hd + 0.005), false)
+		"directory":
+			g.aabb("steel:charcoal", Vector3(-hw, 0, -hd), Vector3(hw, h, hd), false)
+			g.aabb("enamel:cream", Vector3(-hw + 0.08, 0.6, hd), Vector3(hw - 0.08, h - 0.15, hd + 0.01), false)
+			for k in 8:
+				g.aabb("enamel:" + ["blue", "pink", "green", "yellow"][k % 4], Vector3(-hw + 0.15 + (k % 2) * 0.48, 0.75 + (k / 2) * 0.32, hd + 0.01), Vector3(-hw + 0.55 + (k % 2) * 0.48, 0.95 + (k / 2) * 0.32, hd + 0.015), false)
+			g.aabb("enamel:red", Vector3(-0.04, 1.3, hd + 0.015), Vector3(0.04, 1.38, hd + 0.02), false)
+		"atm":
+			g.aabb("steel:charcoal", Vector3(-hw, 0, -hd), Vector3(hw, h, hd - 0.15), false)
+			g.aabb("steel", Vector3(-hw, 0, hd - 0.15), Vector3(hw, 0.9, hd), false)
+			g.aabb("dark", Vector3(-hw + 0.12, 1.1, hd - 0.16), Vector3(hw - 0.12, 1.45, hd - 0.14), false)
+			g.aabb("enamel:green", Vector3(-hw, h - 0.2, hd - 0.16), Vector3(hw, h, hd - 0.13), false)
+		"gumball":
+			g.aabb("enamel:red", Vector3(-0.12, 0, -0.12), Vector3(0.12, 0.85, 0.12), false)
+			g.aabb("glass", Vector3(-hw, 0.85, -hd), Vector3(hw, h - 0.05, hd), false)
+			g.aabb("enamel:red", Vector3(-hw, h - 0.05, -hd), Vector3(hw, h, hd), false)
+			for k in 12:
+				var gx := -hw + 0.08 + (k % 4) * 0.09
+				var gz := -hd + 0.1 + (k / 4) * 0.12
+				g.aabb("enamel:" + ["yellow", "pink", "teal", "blue", "green"][k % 5], Vector3(gx, 0.86, gz), Vector3(gx + 0.06, 0.92 + (k % 3) * 0.04, gz + 0.06), false)
+		"kiosk":
+			g.aabb("trim:cream", Vector3(-hw, 0, -hd), Vector3(hw, 1.0, hd), false)
+			g.aabb("timber", Vector3(-hw - 0.05, 1.0, -hd - 0.05), Vector3(hw + 0.05, 1.05, hd + 0.05), false)
+			for sx in [-hw + 0.05, hw - 0.1]:
+				for sz in [-hd + 0.05, hd - 0.1]:
+					g.aabb("steel", Vector3(sx, 1.05, sz), Vector3(sx + 0.05, h - 0.2, sz + 0.05), false)
+			g.aabb("enamel:teal", Vector3(-hw - 0.15, h - 0.2, -hd - 0.15), Vector3(hw + 0.15, h, hd + 0.15), false)
+			g.aabb("enamel:cream", Vector3(-hw + 0.1, 1.05, -0.3), Vector3(hw - 0.1, 1.6, 0.3), false)
+		"fc_counter":
+			g.aabb("steel", Vector3(-hw, 0, -hd), Vector3(hw, h - 0.05, hd), false)
+			g.aabb("enamel:white", Vector3(-hw - 0.02, h - 0.05, -hd), Vector3(hw + 0.02, h, hd + 0.03), false)
+			g.aabb("glass", Vector3(-hw + 0.1, h, hd - 0.35), Vector3(hw - 0.1, h + 0.35, hd - 0.05), false)
+		"clothes_rack":
+			g.aabb("steel", Vector3(-hw, 0, -0.03), Vector3(hw, 0.03, 0.03), false)
+			for sx in [-hw, hw - 0.03]:
+				g.aabb("steel", Vector3(sx, 0, -0.02), Vector3(sx + 0.03, h, 0.02), false)
+			g.aabb("steel", Vector3(-hw, h - 0.03, -0.02), Vector3(hw, h, 0.02), false)
+			var nh := int(w / 0.12)
+			for k in nh:
+				if absi(hash(k * 7 + int(w * 3))) % 3 == 0: continue
+				var cx := -hw + 0.08 + k * (w - 0.16) / nh
+				g.aabb("cloth:" + ["blue", "green", "pink", "tan", "grey", "teal"][k % 6], Vector3(cx - 0.015, h - 0.95, -hd + 0.03), Vector3(cx + 0.015, h - 0.05, hd - 0.03), false)
+		"mannequin":
+			g.aabb("enamel:white", Vector3(-0.15, 0, -0.15), Vector3(0.15, 0.04, 0.15), false)
+			g.aabb("steel", Vector3(-0.015, 0.04, -0.015), Vector3(0.015, 0.8, 0.015), false)
+			g.aabb("enamel:cream", Vector3(-0.18, 0.8, -0.1), Vector3(0.18, 1.45, 0.1), false)
+			g.aabb("enamel:cream", Vector3(-0.08, 1.48, -0.08), Vector3(0.08, 1.7, 0.08), false)
+			g.aabb("cloth:" + ["blue", "pink", "tan"][int(w * 10) % 3], Vector3(-0.19, 0.95, -0.11), Vector3(0.19, 1.42, 0.11), false)
+		"sec_desk":
+			g.aabb("trim:cream", Vector3(-hw, 0, -hd), Vector3(hw, h - 0.04, hd), false)
+			g.aabb("timber", Vector3(-hw - 0.02, h - 0.04, -hd - 0.02), Vector3(hw + 0.02, h, hd + 0.02), false)
+			for k in 3:
+				g.aabb("dark", Vector3(-hw + 0.2 + k * 0.5, h, -hd + 0.05), Vector3(-hw + 0.6 + k * 0.5, h + 0.35, -hd + 0.4), false)
 		"safe":
 			g.aabb("steel", Vector3(-hw, 0, -hd), Vector3(hw, h, hd - 0.04), false)
 			g.aabb("dark", Vector3(-hw + 0.04, 0.04, hd - 0.04), Vector3(hw - 0.04, h - 0.04, hd), false)

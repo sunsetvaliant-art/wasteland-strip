@@ -35,3 +35,15 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
   dropped to cut the concourse into sections.
 - Internal bases (with base building in half 2): claim a shop unit or the supermarket's storeroom, drop the shutters,
   board the back door; the roof car park is the way in and out.
+
+## Built: Sunnyvale Mall (Sunnyside, Murwillumbah), 0.2.20
+- scripts/world/mallgen.gd (MallGen): plan, openings, the ramp, roof/lantern/parapet/signs. tools/_malllab.gd to look at it.
+- Corrected layout (user): the car park is the ground floor, under the mall, at street level; the street shops (cafes,
+  bank, bottle shop...) and the double-height entry lobby face the street; the four-trolley ramp starts in the lobby's
+  bay, climbs away from the street, turns 180 degrees and arrives on the first floor concourse.
+- First floor: concourse under a glazed lantern (some panes gone), a made-up supermarket (FRESHWAY / GREENGATE /
+  SAVEMART), a big-box furniture & electrical store, shop units with roller shutters and stockrooms, the food court
+  with kitchens, toilets, security office, service corridor; lift doors (dead) and a stair in the core.
+- Buildings._mall_life: wrecks in the car park bays and a horde (HORDE = 26) spread through the concourse,
+  supermarket, food court and car park; killed off, they stay gone for 2 hours (saved).
+- Placement: only OSM buildings named in place_buildings.MALL_NAMES become malls (Sunnyside -> SUNNYVALE).

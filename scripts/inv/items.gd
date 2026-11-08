@@ -85,6 +85,9 @@ const LOOT := {
 	"workbench": [["tape", 0.35, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.35, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
 	"laundry": [["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
 	"servo_shelf": [["tape", 0.2, 1, 1], ["torch", 0.1, 1, 1], ["food_can", 0.6, 1, 4], ["long_life", 0.35, 1, 2], ["oil_can", 0.5, 1, 2], ["torch", 0.15, 1, 1], ["bandage", 0.25, 1, 3], ["jerry_fuel", 0.1, 1, 1], ["thermos", 0.1, 1, 1]],
+	# the mall
+	"super": [["food_can", 0.85, 1, 4], ["long_life", 0.55, 1, 3], ["food_can", 0.5, 1, 3], ["bandage", 0.15, 1, 3], ["tape", 0.1, 1, 1], ["thermos", 0.08, 1, 1]],
+	"security": [["torch", 0.6, 1, 1], ["radio", 0.5, 1, 1], ["ammo_45", 0.35, 6, 18], ["gun_magnum45", 0.12, 1, 1], ["bandage", 0.4, 1, 4], ["binoculars", 0.1, 1, 1]],
 	# main-street shops
 	"chemist": [["bandage", 0.9, 2, 8], ["bandage", 0.5, 1, 5], ["medkit", 0.3, 1, 1], ["thermos", 0.05, 1, 1]],
 	"hardware": [["tape", 0.5, 1, 2], ["hammer", 0.35, 1, 1], ["nails", 0.55, 1, 3], ["plank", 0.35, 1, 4], ["wrench", 0.35, 1, 1], ["torch", 0.3, 1, 1], ["oil_can", 0.3, 1, 2], ["jerry_fuel", 0.08, 1, 1]],
@@ -117,7 +120,7 @@ const CONTAINERS := {
 	"laundry": ["laundry", [4, 3]], "rack": ["rack", [8, 5]], "servo_shelf": ["servo_shelf", [7, 4]], "planks": ["planks", [8, 3]],
 	"chemist": ["chemist", [7, 4]], "hardware": ["hardware", [8, 4]], "grocer": ["grocer", [7, 4]], "newsagent": ["newsagent", [6, 4]],
 	"clothes": ["clothes", [7, 5]], "sports": ["sports", [8, 4]], "general": ["general", [7, 4]], "pub": ["pub", [6, 3]], "till": ["till", [4, 2]],
-	"bank": ["bank", [5, 4]],
+	"bank": ["bank", [5, 4]], "super": ["super", [8, 4]], "security": ["security", [6, 4]],
 	"car_boot": ["none", [7, 4]], "car_wagon": ["none", [8, 5]], "car_tray": ["none", [10, 5]],
 }
 # small enough to pick up and carry (middle mouse) in survival, by Forge key prefix match or mass

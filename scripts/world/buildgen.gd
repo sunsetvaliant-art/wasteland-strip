@@ -15,7 +15,7 @@ const DOOR_W := 0.86
 const DOOR_H := 2.05
 const RISE := 0.18           # stair rise and going
 const GOING := 0.27
-const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop"]
+const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop", "mall"]
 
 # ------------------------------------------------------------------------------------------------ materials
 # key: [texture id, metres the texture covers, roughness scale]
@@ -35,7 +35,7 @@ const TINTS := {
 	# main-street paint
 	"sage": Color(0.74, 0.82, 0.68), "terracotta": Color(0.86, 0.58, 0.46), "mustard": Color(0.93, 0.8, 0.46), "pale_blue": Color(0.74, 0.84, 0.92),
 	"heritage": Color(0.42, 0.56, 0.44), "maroon": Color(0.56, 0.26, 0.24), "navy": Color(0.3, 0.37, 0.52), "charcoal": Color(0.34, 0.34, 0.36),
-	"sand": Color(0.92, 0.84, 0.7), "black": Color(0.22, 0.23, 0.25),
+	"sand": Color(0.92, 0.84, 0.7), "black": Color(0.22, 0.23, 0.25), "red": Color(0.86, 0.2, 0.18),
 }
 static var _mats := {}
 
@@ -85,6 +85,9 @@ static func mat(key: String) -> Material:
 		"enamel":
 			m.albedo_color = Color(0.9, 0.9, 0.87) * tint
 			m.roughness = 0.3
+		"cloth":
+			m.albedo_color = Color(0.8, 0.8, 0.8) * tint
+			m.roughness = 1.0
 		"steel":
 			m.albedo_color = Color(0.62, 0.63, 0.64)
 			m.metallic = 0.85
@@ -293,6 +296,8 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			p.floors.append({"y": 0.0, "h": p.h, "rooms": rooms})
 		"shop":
 			ShopGen.plan_into(p, w, d, rng, sub)
+		"mall":
+			MallGen.plan_into(p, w, d, rng, sub)
 	var fi := 0
 	for f in p.floors:
 		var i := 0
@@ -303,6 +308,9 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			r["ops"] = {"N": [], "S": [], "W": [], "E": []}
 			i += 1
 		fi += 1
+	if p.kind == "mall":
+		MallGen.openings(p, rng)
+		return p
 	for fl in p.floors.size():
 		_connect(p, fl, rng)
 	_ext_doors(p, rng)
@@ -653,6 +661,9 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 	if p.kind == "shop":
 		if cut == INF:
 			ShopGen.top(p, g, top_h, ground)
+	elif p.kind == "mall":
+		if cut == INF:
+			MallGen.top(p, g, top_h, ground)
 	elif cut == INF:
 		_roof(p, g, top_h)
 	_ext_steps(p, g, ground)
@@ -703,7 +714,7 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		ro.transform = rd.xf
 		root.add_child(ro)
 		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0)
-	if p.kind == "shop":
+	if p.kind in ["shop", "mall"]:
 		ShopGen.labels(p, root)
 	return root
 
@@ -766,6 +777,9 @@ static func build_lod(p: Dictionary, g: Geo, ground: Callable) -> void:
 	if p.kind == "shop":
 		ShopGen.top(p, g, top_y, ground, true)
 		return
+	if p.kind == "mall":
+		MallGen.top(p, g, top_y, ground, true)
+		return
 	_roof(p, g, top_y)
 
 ## Edge geometry of a room side, in this frame: the line it runs along and how the skin box sits
@@ -807,12 +821,20 @@ static func _cut_wall(g: Geo, mk: String, si: Dictionary, a: float, b: float, ba
 const FLOOR_MAT := {"lounge": "timber_floor", "dining": "timber_floor", "hall": "timber_floor", "stair": "timber_floor", "kitchen": "lino",
 	"bed": "carpet", "bath": "tile", "laundry": "lino", "toilet": "tile", "shed": "concrete", "store": "concrete", "workshop": "concrete",
 	"warehouse": "concrete_worn", "office": "carpet", "lunch": "lino", "machinery": "dirt", "milking": "concrete_worn", "vat": "concrete", "study": "carpet",
-	"shop": "lino", "lobby": "lino"}
+	"shop": "lino", "lobby": "lino",
+	"carpark": "concrete_worn", "ramp": "concrete", "dock": "concrete_worn", "concourse": "tile", "unit": "lino", "super": "lino",
+	"super_store": "concrete", "bigbox": "lino", "foodcourt": "tile", "fc_kitchen": "tile", "service": "concrete", "security": "carpet", "lift": "concrete"}
 
 static func _skin_mat(p: Dictionary, r: Dictionary) -> String:
 	if r.type in ["bath", "toilet"]: return "tile"
 	if r.type in ["shed", "machinery", "workshop", "warehouse", "store"]: return p.clad
 	if r.type in ["milking", "vat"]: return "plaster:white"
+	if p.kind == "mall":
+		match r.type:
+			"carpark", "ramp", "dock", "service", "super_store", "lift": return "concrete"
+			"fc_kitchen": return "tile"
+			"concourse", "lobby", "super", "bigbox", "foodcourt", "hall": return "plaster:white"
+			"unit", "shop": return ["plaster:white", "plaster:cream", "plaster:sand", "plaster:pale_blue", "plaster:sage", "plaster:pink"][absi(hash(r.id) + int(p.seed)) % 6]
 	if r.type == "shop": return ["plaster:white", "plaster:cream", "plaster:sand", "plaster:pale_blue", "plaster:sage"][absi(int(p.seed)) % 5]
 	if r.type in ["store", "lobby"] and p.kind == "shop": return "plaster_worn:white"
 	var seed := int(p.seed) + hash(r.id)
@@ -830,8 +852,8 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 		if p.kind == "qlder" and fm == "carpet": fm = "timber_floor"
 		g.aabb(fm, Vector3(x0, fy - 0.12, z0), Vector3(x1, fy, z1))
 	if p.has("cut"): h = minf(h, float(p.cut))
-	if r.type not in ["void", "stair", "shed", "machinery", "workshop", "warehouse"] and not p.has("cut"):
-		g.aabb("trim:white", Vector3(x0, fy + h, z0), Vector3(x1, fy + h + 0.06, z1), false)
+	if r.type not in ["void", "stair", "shed", "machinery", "workshop", "warehouse", "ramp"] and not r.get("open_above", false) and not p.has("cut"):
+		g.aabb("concrete" if r.type in ["carpark", "dock"] else "trim:white", Vector3(x0, fy + h, z0), Vector3(x1, fy + h + 0.06, z1), false)
 	if r.type == "void":
 		return
 	if r.type == "stair":
@@ -850,7 +872,8 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 					_wall_box(g, "timber", si, c - 0.02, c + 0.02, fy, fy + 0.95, 0.01, 0.05, k % 3 == 0)
 		var open_ops := []
 		for op in ops:
-			open_ops.append(op)
+			if op.kind != "liftdoor":
+				open_ops.append(op)
 		var thin := T_IN
 		if r.type in ["shed", "machinery", "workshop", "warehouse"] and _ext_side(p, r, side):
 			continue     # sheds: the cladding is the wall (built in _outer_skin)
@@ -892,6 +915,12 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 					_wall_box(g, "trim", si, float(op.a) - 0.05, float(op.b) + 0.05, fy + float(op.y0) - 0.04, fy + float(op.y0), -T_OUT - 0.04, T_IN + 0.03)
 				"arch":
 					_frame(g, si, op, fy, 0.0, T_IN)
+				"roller":
+					# a shutter on an inside wall (a mall shop's front); outside ones are done with the cladding
+					if not _ext_side(p, r, side):
+						_wall_box(g, "steel", si, float(op.a) - 0.1, float(op.b) + 0.1, fy + float(op.y1), fy + float(op.y1) + 0.35, -0.2, T_IN, false)
+						p["_rollers"].append({"xf": _opening_xf(si, (float(op.a) + float(op.b)) * 0.5, fy + float(op.y0), -0.12),
+							"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0), "frac": float(op.get("open_frac", 1.0)) * 0.94})
 
 ## Where an opening's own node sits: on the wall line (offset t toward the room), its +z pointing outside
 static func _opening_xf(si: Dictionary, along: float, y: float, t: float) -> Transform3D:

@@ -85,7 +85,7 @@ static func blocked(x: float, z: float, pad := 0.0) -> bool:
 		var hw := float(l[4]) * 0.5 + pad + 0.3
 		var hd := float(l[5]) * 0.5 + pad + 0.3
 		if l[0] == "qlder": hd += 3.0          # the verandah and its stairs
-		if l[0] == "shop": hd += 3.2           # the awning over the footpath
+		if l[0] in ["shop", "mall"]: hd += 3.2          # the awning over the footpath
 		if absf(lx) < hw and absf(lz) < hd + 1.5:
 			return true
 	return false
@@ -314,6 +314,8 @@ func _build_full(i: int) -> void:
 	full[i] = b
 	b.set_meta("plan", p)
 	_project_car(i, p, b)
+	if p.kind == "mall":
+		_mall_life(i, p, b)
 	# doors and windows as they were left
 	for n in b.find_children("*", "", true, false):
 		if n is BuildDoor or n is BuildWindow:
@@ -402,6 +404,8 @@ func _nav_of(i: int) -> Dictionary:
 				if up != "":
 					edges.append([r.id, up, [Vector3(cx, fy, float(r.z1) + 0.3), Vector3(cx, fy, float(r.z1) - 0.2),
 						Vector3(cx, float(p.floors[fi + 1].y), float(r.z0) + 0.1), Vector3(cx, float(p.floors[fi + 1].y), float(r.z0) - 0.5)]])
+	for e in p.get("nav_extra", []):
+		edges.append(e)
 	_nav[i] = {"edges": edges}
 	return _nav[i]
 
@@ -501,8 +505,65 @@ func _shell(kind: String, pos: Vector3, yaw: float, rng: RandomNumberGenerator) 
 		pos + Vector3(0, -float(mn[1]) - 0.12, 0))
 	return sb
 
+## A mall's crowd and the cars left in its car park: the dead in their dozens, shuffling about the concourse, the
+## supermarket, the food court and the car park, until they hear you. Killed off, they stay gone a good while.
+var _hordes := {}           # lot -> [zombies]
+var _mall_cars := {}        # lot -> [wrecks]
+var horde_cleared := {}     # lot -> when the last of them went down
+const HORDE := 26
+
+func _mall_life(i: int, p: Dictionary, b: Node3D) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(lots[i][6]) + 4242
+	var xf := b.global_transform
+	# wrecks in the bays
+	var wrecks := []
+	var cat: Dictionary = Car.catalog()
+	var keys: Array = cat.keys()
+	for r in p.floors[0].rooms:
+		if r.type != "carpark" or (float(r.x1) - float(r.x0)) * (float(r.z1) - float(r.z0)) < 200.0: continue
+		for k in rng.randi_range(2, 5):
+			var lp := Vector3(rng.randf_range(float(r.x0) + 3.0, float(r.x1) - 3.0), 0.0, rng.randf_range(float(r.z0) + 3.0, float(r.z1) - 3.0))
+			var yaw := xf.basis.get_euler().y + (PI / 2 if rng.randf() < 0.5 else -PI / 2) + rng.randf_range(-0.15, 0.15)
+			wrecks.append(_shell(keys[rng.randi() % keys.size()], xf * lp, yaw, rng))
+	_mall_cars[i] = wrecks
+	# the crowd
+	if main.net and not main.net.runs_world(): return
+	if OS.get_environment("NPC_OFF") != "": return
+	if horde_cleared.has(i) and Time.get_unix_time_from_system() - float(horde_cleared[i]) < RESPAWN_S * 4.0: return
+	var spots := []
+	for fi in p.floors.size():
+		for r in p.floors[fi].rooms:
+			if r.type in ["concourse", "super", "foodcourt", "carpark", "bigbox", "lobby", "super_store"]:
+				spots.append([r, float(p.floors[fi].y)])
+	var crowd := []
+	for k in HORDE:
+		var e: Array = spots[rng.randi() % spots.size()]
+		var r: Dictionary = e[0]
+		var lp := Vector3(rng.randf_range(float(r.x0) + 1.0, float(r.x1) - 1.0), float(e[1]) + 0.15, rng.randf_range(float(r.z0) + 1.0, float(r.z1) - 1.0))
+		var z := NPC.new()
+		z.kind = "zombie"
+		main.add_child(z)
+		z.global_position = xf * lp
+		z.rotation.y = rng.randf() * TAU
+		z.home = z.global_position
+		z.goal = z.global_position
+		crowd.append(z)
+	_hordes[i] = crowd
+
 func _drop_full(i: int) -> void:
 	_nav.erase(i)
+	for n in _mall_cars.get(i, []):
+		if is_instance_valid(n): n.queue_free()
+	_mall_cars.erase(i)
+	if _hordes.has(i):
+		var left := 0
+		for z in _hordes[i]:
+			if is_instance_valid(z) and not z.dead:
+				left += 1
+				z.free_body()
+		if left == 0: horde_cleared[i] = Time.get_unix_time_from_system()
+		_hordes.erase(i)
 	if _lot_cars.has(i):
 		var e: Array = _lot_cars[i]
 		_lot_cars.erase(i)
@@ -553,7 +614,7 @@ func board(host: Node3D, side: int, n: int) -> Boards:
 func save_state() -> Dictionary:
 	for i in full:
 		_save_boxes(full[i])
-	return {"loot": loot_store, "boards": boards, "broken": broken, "cars_taken": cars_taken, "lots_ver": lots_ver}
+	return {"loot": loot_store, "boards": boards, "broken": broken, "cars_taken": cars_taken, "lots_ver": lots_ver, "hordes": horde_cleared}
 
 func load_state(d: Dictionary) -> void:
 	if str(d.get("lots_ver", "")) != lots_ver:
@@ -563,6 +624,7 @@ func load_state(d: Dictionary) -> void:
 	boards = d.get("boards", {})
 	broken = d.get("broken", {})
 	cars_taken = d.get("cars_taken", {})
+	horde_cleared = d.get("hordes", {})
 
 ## The nearest town's name to a point (fictional names on the real towns)
 func town_at(x: float, z: float, r := 2500.0) -> String:

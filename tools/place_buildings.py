@@ -298,6 +298,7 @@ def spread_of(cx, cz, a, la, lb):
     h = hat(xs, zs); return float(h.max() - h.min())
 
 stats = collections.Counter()
+MALL_NAMES = {"Sunnyside Mall": "SUNNYVALE"}      # the real names are swapped for made-up ones, like the towns
 SKIP_TAGS = ("toilets", "garage", "carport", "hut", "greenhouse", "ruins", "construction", "bunker", "kiosk")
 n_shop = 0
 def house_or(area, rural, spread, h=-1.0):
@@ -322,6 +323,8 @@ def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
     if tag == "roof": return "machine_shed"
     if tag in ("industrial", "warehouse", "manufacture") or (ind and tag == "yes"):
         return "shed" if area < 60 else ("workshop" if area < 900 else "warehouse")
+    if b is not None and b.get("name", "") in MALL_NAMES and area > 2500:
+        return "mall"
     if tag in ("retail", "commercial", "office", "supermarket", "service", "hotel", "post_office") or (com and tag == "yes"):
         return "shop" if area < 1600 and max(la, lb) < 60 else ("workshop" if area < 2500 else "warehouse")
     if tag in ("school", "church", "hospital", "fire_station", "public", "civic", "kindergarten", "motel", "apartments", "train_station"):
@@ -349,6 +352,18 @@ def do(pts, tag, b=None, h=-1.0):
         if w >= 4.0 and d >= 6.0:
             n_shop += add_shops(b or {"tag": tag}, cx, cz, front, w, d); stats["shop"] += 1; return
         kind = "brick"
+    if kind == "mall":
+        # the real outline's often not square: the mall takes its best rectangle, front to the main street
+        front, w, d = facing(cx, cz, a, la, lb, shop=True)
+        fx, fz = front
+        w2 = min(max(w, 60.0), 120.0); d2 = min(max(d, 60.0), 110.0)
+        name = MALL_NAMES.get(b.get("name", ""), "SUNNYVALE") if b else "SUNNYVALE"
+        yaw = math.atan2(fx, fz)
+        if site_ok(cx, cz, yaw, w2, d2, road_clear=0.0, max_spread=8.0, min_h=0.3):
+            add("mall", cx, cz, yaw, w2, d2, name); stats["mall"] += 1
+        else:
+            stats["rejected"] += 1; print("MALL rejected", b.get("name") if b else "", cx, cz)
+        return
     if kind == "rural?":
         rural_q.append((pts, cx, cz, a, la, lb, area, spread, h)); return
     front, w, d = facing(cx, cz, a, la, lb)
