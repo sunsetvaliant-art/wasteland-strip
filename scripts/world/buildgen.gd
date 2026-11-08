@@ -855,6 +855,7 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 	if r.type != "void":
 		var fm: String = FLOOR_MAT.get(r.type, "timber_floor")
 		if p.kind == "qlder" and fm == "carpet": fm = "timber_floor"
+		if p.kind == "mall" and r.type in ["lobby", "shop", "unit", "super", "bigbox", "foodcourt", "concourse", "hall"]: fm = "terrazzo"
 		g.aabb(fm, Vector3(x0, fy - 0.12, z0), Vector3(x1, fy, z1))
 	if p.has("cut"): h = minf(h, float(p.cut))
 	if r.type not in ["void", "stair", "shed", "machinery", "workshop", "warehouse", "ramp"] and not r.get("open_above", false) and not p.has("cut"):
