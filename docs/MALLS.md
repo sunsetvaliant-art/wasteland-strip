@@ -47,3 +47,8 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
 - Buildings._mall_life: wrecks in the car park bays and a horde (HORDE = 26) spread through the concourse,
   supermarket, food court and car park; killed off, they stay gone for 2 hours (saved).
 - Placement: only OSM buildings named in place_buildings.MALL_NAMES become malls (Sunnyside -> SUNNYVALE).
+
+## Tweed City
+- docs/tweed_city_plan.png: the centre directory (user). Hoyts is drawn small there: in reality 5-7 big screens fill the bottom left, attached at that point.
+- Second photo the user sent of the black ramp and glass balustrades is Sunnyside.
+- Modern kit to build (user): rectangular bulkheads/soffits, high ceilings, polished floors, glass shopfronts, a sense of scale; no curves.

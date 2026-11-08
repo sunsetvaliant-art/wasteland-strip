@@ -8,7 +8,7 @@ extends CharacterBody3D
 ##           and they fight: keep their distance, shoot in bursts, close in with shotguns, hunt where you were last seen.
 ## Both ragdoll when they die, lose limbs to big hits, and turn to paste under a car.
 
-const ZOMBIE_MODELS := ["zombie_hazmat", "zombie_runner", "zombie_mx", "zombie_soldier", "zombie_female", "zombie_hollow", "zombie_hollow"]
+const ZOMBIE_MODELS := ["zombie_hollow"]      # the Meshy walker only (the Sketchfab ones brought hidden collision with them)
 const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
 const SCAV_MODELS := ["scav_hooded", "scav_2"]
 const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff", "hunter", "magnum45"]

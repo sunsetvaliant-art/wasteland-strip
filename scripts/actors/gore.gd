@@ -159,6 +159,9 @@ static func make_gib(rig, root_bone: int, bodies: Dictionary, parent: Node) -> N
 	parent.add_child(holder)
 	holder.global_transform = rig.global_transform
 	var model: Node3D = load(rig.model_path).instantiate()
+	for co in model.find_children("*", "CollisionObject3D", true, false):     # the model's own collision: never
+		co.get_parent().remove_child(co)
+		co.free()
 	holder.add_child(model)
 	model.transform = rig.model.transform
 	for ap in model.find_children("*", "AnimationPlayer", true, false):
