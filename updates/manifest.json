@@ -181,6 +181,13 @@
    "date": "2026-11-08",
    "notes": "Sunnyvale Mall: the first floor's ceilings are now 6.5 m high for a proper sense of scale, and the concourse has a polished cream floor that catches the skylight.",
    "size": 68096
+  },
+  {
+   "file": "patch_0.2.0_0023.pck",
+   "version": "0.2.23",
+   "date": "2026-11-08",
+   "notes": "Sunnyvale Mall: polished cream floors right through: the lobby, street shops, shop units, supermarket, furniture store and food court.",
+   "size": 45372
   }
  ],
  "full": {
