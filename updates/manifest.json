@@ -223,6 +223,13 @@
    "date": "2026-11-12",
    "notes": "The ocean is back (the sea sheet was sitting under the sea bed). Twin City: the big centre near the border, built from the real Tweed City's centre map on one level, 380 m long: two supermarkets, department and discount stores, the hi-fi store, a food court, about 40 shops down three malls, and a five-screen cinema with a lobby. Cupboards and boards start fresh with this update.",
    "size": 25542192
+  },
+  {
+   "file": "patch_0.2.0_0029.pck",
+   "version": "0.2.29",
+   "date": "2026-11-12",
+   "notes": "Crafting and base building, first cut. N opens the make menu: bandages, first aid kits, rope, nails, tin sheets, planks, torches, a small pack and all the ammo, from scrap, rags, wire, gunpowder and spent cases now found in sheds, hardware shops, wardrobes and gun shelves. M (with a hammer) is build mode: walls, doorways, window walls, half walls, floors and roofs, stairs and a storage crate, in wood, tin or brick. Wheel picks the piece, Tab the material, R turns it, [ and ] lower and raise it, left click builds, X pulls a piece down. Zombies can beat what you build down, and it is saved with the world.",
+   "size": 236956
   }
  ],
  "full": {
