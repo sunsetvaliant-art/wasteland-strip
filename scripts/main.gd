@@ -32,13 +32,15 @@ var net: Net
 var rg_roads: RgRoads
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
+var craft_ui: CraftUI
+var base: BaseBuild
 var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon can't stop the game starting
 
 func _ready() -> void:
 	InputSetup.ensure()
 	# keys added in updates: InputSetup may be the copy Boot loaded from the original install (scripts already in memory
 	# aren't replaced when an update's pack is mounted), so register them here too
-	for e in [["torch", KEY_T], ["board", KEY_G], ["work_on_car", KEY_K], ["inventory", KEY_I], ["heal", KEY_B]]:
+	for e in [["torch", KEY_T], ["board", KEY_G], ["work_on_car", KEY_K], ["inventory", KEY_I], ["heal", KEY_B], ["craft", KEY_N], ["build", KEY_M]]:
 		if not InputMap.has_action(e[0]):
 			InputMap.add_action(e[0])
 			var ev := InputEventKey.new()
@@ -117,6 +119,14 @@ func _ready() -> void:
 	inv_ui.name = "InventoryUI"
 	add_child(inv_ui)
 	inv_ui.setup(self)
+	craft_ui = CraftUI.new()
+	craft_ui.name = "CraftUI"
+	add_child(craft_ui)
+	craft_ui.setup(self)
+	base = BaseBuild.new()
+	base.name = "BaseBuild"
+	add_child(base)
+	base.setup(self)
 	var bug := BugReport.new()
 	bug.name = "BugReport"
 	add_child(bug)
@@ -437,7 +447,7 @@ func _build_hud() -> void:
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nF9 bug report · Guns: LMB fire · RMB aim · R reload · 1 / 2 / wheel switch · H holster · I inventory · F pick up / open · B bandage · MMB carry\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nF9 bug report · Guns: LMB fire · RMB aim · R reload · 1 / 2 / wheel switch · H holster · I inventory · N make · M build · F pick up / open · B bandage · MMB carry\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.position = Vector2(14, -72)

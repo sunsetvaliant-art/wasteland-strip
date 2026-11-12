@@ -125,6 +125,12 @@ func _unhandled_input(e: InputEvent) -> void:
 		if ui: ui.toggle(null)
 	if e.is_action_pressed("heal"):
 		inv.quick_heal()
+	if e.is_action_pressed("craft"):
+		var cu = get_tree().current_scene.get("craft_ui")
+		if cu: cu.toggle()
+	if e.is_action_pressed("build"):
+		var bb = get_tree().current_scene.get("base")
+		if bb: bb.toggle()
 	if e.is_action_pressed("carry"):
 		_carry_start()
 	if e.is_action_released("carry"):
@@ -310,7 +316,7 @@ func _hold_gun(dt: float) -> void:
 		scope_view.set_active(ads > 0.85 and g.def.get("scope", 0.0) > 0.0, g, look, eye_pos)
 	# pulling the trigger
 	var auto: bool = g.def.action in ["semi", "revolver"]
-	var want := Input.is_action_just_pressed("fire")
+	var want := Input.is_action_just_pressed("fire") and not BaseBuild.busy
 	if want and low_ready < 0.3 and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused:
 		var origin := eye_pos
 		var dir := (aim_point - eye_pos).normalized()
@@ -347,6 +353,7 @@ func _look_target() -> Node:
 				return n                       # at the back: the boot / tray
 			return null
 		if n is RigidBody3D and n.get_meta("carryable", false) and not InventoryUI.is_container(n): return n
+		if n is BasePiece and (n as BasePiece).kind != "crate": return null
 		if n is Boards or n is BuildDoor or n is BuildWindow or n is BuildRoller or InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
 		n = n.get_parent()
 	return null

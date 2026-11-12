@@ -490,6 +490,8 @@ func _move(dt: float) -> void:
 				(col as BuildDoor).push_open(global_position)
 			elif col is Boards and kind == "zombie":
 				(col as Boards).hit(dt * 9.0)          # beating on the planks
+			elif col is BasePiece and kind == "zombie":
+				(col as BasePiece).hit(dt * 9.0)       # ... or on what you built
 	if face_dir.length() > 0.1:
 		var yaw := atan2(-face_dir.x, -face_dir.z)
 		rotation.y = lerp_angle(rotation.y, yaw, clamp(dt * 6.0, 0.0, 1.0))

@@ -50,6 +50,7 @@ func world_state() -> Dictionary:
 			cars.append({"name": str(car.name), "home": car.home_pos if "home_pos" in car else car.global_position,
 				"xf": car.global_transform, "design": car.design, "inv": car.get_meta("inv", null)})
 	d["cars"] = cars
+	if main.get("base"): d["base"] = main.base.save_state()
 	return d
 
 func char_state() -> Dictionary:
@@ -69,7 +70,12 @@ func load_world() -> void:
 		main.buildings.load_state(d.buildings)
 	if d.has("cars"):
 		_restore_cars.call_deferred(d.cars)
+	if d.has("base"):
+		_restore_base.call_deferred(d.base)
 	print("SAVE world loaded")
+
+func _restore_base(arr: Array) -> void:
+	if main.get("base"): main.base.load_state(arr)
 
 ## Put the saved cars back: the one that started there is moved to where it was left (and rebuilt as it was), anything
 ## else is made again

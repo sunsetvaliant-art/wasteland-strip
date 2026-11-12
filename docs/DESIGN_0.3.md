@@ -60,3 +60,15 @@ Delivery: two halves. Half 1 = world + loot. Half 2 = base/crafting/scavs/trader
 - Cars: rolling chassis and loose bodies at sheds/workshops/yards (Buildings._project_car); K with a shifter opens the garage on the car you're at (survival); "Body fitted" switch; boots/trays/wagon backs (F at the back); cars you've driven are saved with the world (with their boot).
 - 50-question audit fixes: LAN co-op has no friendly fire (Q24); survival starts with no car (Q47).
 - Still for half 2: Q1-8, 10, 11, 17-21, 23, 32, 34-37, 39-46, 48 (creative as a host toggle).
+
+## 0.2.29: first cut of half 2 (crafting and base building)
+- Crafting (N): scripts/craft/craft_ui.gd, Items.RECIPES (all known, tools not used up, no stations yet). New materials
+  in the loot tables: scrap, rags (cloth), wire, rope, gunpowder, spent cases (brass), sheets of tin, bricks.
+  Makes: bandages, first aid kit, rope, nails, tin sheets, planks, torch, small pack, all five kinds of ammo.
+- Building (M, needs a hammer): scripts/base/base_build.gd + base_piece.gd. Pieces: wall, doorway, window wall, half wall,
+  floor/roof, stairs (a 2-cell ramp), storage crate (8x5). Tiers wood (3 planks + nails) / tin (2 sheets, plank, nails) /
+  brick (6 bricks), hp 250/500/1000. Snaps to a 1.5 m grid and quarter turns; [ ] and PgUp/PgDn raise and lower;
+  X pulls a piece down for half back. Zombies beat pieces down (npc.gd). Saved in world.save ("base").
+- Not yet: work stations, harvesting trees/rocks/wrecks, doors and gates for doorways, spikes/wire/traps/lights,
+  melee weapons, LAN sync of pieces, hunger/thirst/cooking/farming, infection, traders, airdrops, bed respawn.
+- BASE_TEST=1/2 spawns three demo huts by the start (and opens the craft menu with 1).
