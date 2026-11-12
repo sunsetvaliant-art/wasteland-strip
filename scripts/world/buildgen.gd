@@ -758,6 +758,12 @@ static func build_lod(p: Dictionary, g: Geo, ground: Callable) -> void:
 		g.aabb(p.clad, Vector3(-w / 2 - T_OUT, bot, -d / 2), Vector3(-w / 2, top_y, d / 2), false)
 		g.aabb(p.clad, Vector3(w / 2, bot, -d / 2), Vector3(w / 2 + T_OUT, top_y, d / 2), false)
 		g.aabb("dirt", Vector3(-w / 2, -0.1, -d / 2), Vector3(w / 2, 0.0, d / 2), false)
+	elif p.kind == "mall":
+		# not a box: one block per room
+		for f in p.floors:
+			for r in f.rooms:
+				if r.type != "void":
+					g.aabb(p.clad, Vector3(float(r.x0), float(f.y) + bot, float(r.z0)), Vector3(float(r.x1), float(f.y) + float(f.h), float(r.z1)), false)
 	else:
 		g.aabb(p.clad, Vector3(-w / 2 - T_OUT, bot, -d / 2 - T_OUT), Vector3(w / 2 + T_OUT, top_y, d / 2 + T_OUT), false)
 		# window panes and doors drawn on
@@ -874,7 +880,7 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 	if r.type != "void":
 		var fm: String = FLOOR_MAT.get(r.type, "timber_floor")
 		if p.kind == "qlder" and fm == "carpet": fm = "timber_floor"
-		if p.kind == "mall" and r.type in ["lobby", "shop", "unit", "super", "bigbox", "foodcourt", "concourse", "hall"]: fm = "terrazzo"
+		if p.kind == "mall" and r.type in ["lobby", "shop", "unit", "super", "bigbox", "foodcourt", "concourse", "hall", "ramp"]: fm = "terrazzo"
 		g.aabb(fm, Vector3(x0, fy - 0.12, z0), Vector3(x1, fy, z1))
 	if p.has("cut"): h = minf(h, float(p.cut))
 	if r.type not in ["void", "stair", "shed", "machinery", "workshop", "warehouse", "ramp"] and not r.get("open_above", false) and not p.has("cut"):

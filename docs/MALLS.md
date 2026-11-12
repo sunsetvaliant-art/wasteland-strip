@@ -105,3 +105,16 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
   MallGen._dress (bulkheads, downlights, floor inlays, hanging signs, banners, fallen panels), "rubber" ramp + glass sides.
 - Not yet seen in the real game by the user. Known rough spot: ramp room has a brown band on its side walls and a black ceiling.
 - Next: Tweed City (item 3).
+
+## Sunnyvale redone from the real plans (patch 0027, 2026-11-12)
+- The real Sunnyside floor plans are on the centre's own shop-guide page as SVG; rendered copies in docs/sunnyside_lower.png
+  and docs/sunnyside_upper.png (north up; plan is ~0.25 m per SVG unit; block about 97.6 x 94.3 m).
+- MallGen is now layout-driven: plan_into -> _sunnyside(), rooms written in metres east of the west wall / south of the
+  street front and stretched to the lot. Add other malls as their own layout functions (_tweed_city, _tweed_mall).
+- Generalised: any number of "concourse" rooms (arms) each get bulkheads/inlays/signs/lantern (_dress, _roof_room);
+  wells ("void" with well=true) get balustrades from the openings recorded in r._edges; shop signs from r._fronts;
+  bare upstairs walls get cladding + parapet (_bare); LOD is one block per room; footprint need not fill the lot upstairs.
+- Tweed City: tweedcity.com.au/centre-map is a JS widget (no static plan); use docs/tweed_city_plan.png.
+  Tweed Mall: site refuses automated fetches; known facts: single level, opened 1973, three supermarkets, 62 specialty
+  shops, ~5 ha site, corner Wharf St and Bay St. Lay it out from the OSM outline.
+- Shop flats (0026): ShopGen.upper_rooms has a passage (CORR) beside the stairwell so every room opens off it.

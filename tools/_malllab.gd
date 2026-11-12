@@ -18,8 +18,8 @@ func _init() -> void:
 	var gnd := MeshInstance3D.new(); var pm := PlaneMesh.new(); pm.size = Vector2(400, 400); gnd.mesh = pm
 	var gm := StandardMaterial3D.new(); gm.albedo_color = Color(0.36, 0.4, 0.3); gnd.material_override = gm; gnd.position.y = -0.02; root.add_child(gnd)
 	var cam := Camera3D.new(); cam.fov = 70; root.add_child(cam); cam.current = true; cam.far = 800
-	var w := float(OS.get_environment("W")) if OS.get_environment("W") != "" else 90.0
-	var d := float(OS.get_environment("D")) if OS.get_environment("D") != "" else 92.0
+	var w := float(OS.get_environment("W")) if OS.get_environment("W") != "" else 97.58
+	var d := float(OS.get_environment("D")) if OS.get_environment("D") != "" else 94.28
 	var seed := int(OS.get_environment("SEED")) if OS.get_environment("SEED") != "" else 1
 	var cut := OS.get_environment("CUT") != ""
 	var p := BuildGen.plan("mall", w, d, seed, "SUNNYVALE")
@@ -42,27 +42,27 @@ func _init() -> void:
 	var hw := w / 2
 	var hd := d / 2
 	if cut:
-		cam.look_at_from_position(Vector3(0.01, 95, 1), Vector3(0, 0, 0), Vector3.UP)
+		cam.look_at_from_position(Vector3(0.01, 105, 1), Vector3(0, 0, 0), Vector3.UP)
 		await _shot("plan" + ("_up" if OS.get_environment("UPPER") != "" else ""))
 		quit()
 		return
 	var rp: Dictionary = p.ramp
 	var shots := [
-		["street", Vector3(-15, 2.0, hd + 30), Vector3(5, 5, hd)],
-		["air", Vector3(-hw - 40, 45, hd + 50), Vector3(0, 0, 0)],
+		["street", Vector3(10, 2.0, hd + 30), Vector3(15, 5, hd)],
+		["air", Vector3(hw + 45, 60, hd + 55), Vector3(0, 0, 0)],
+		["air2", Vector3(-hw - 45, 60, -hd - 55), Vector3(0, 0, 0)],
 		["carpark", Vector3(-hw + 3, 1.7, -hd + 14), Vector3(hw, 1.2, -6)],
-		["lobby", Vector3((float(rp.xa) + float(rp.xb)) / 2, 1.7, hd - 2), Vector3((float(rp.xa) + float(rp.xb)) / 2, 2.5, float(rp.zt))],
-		["ramp_foot", Vector3(float(rp.xa), 1.7, float(rp.za) - 2.5), Vector3(float(rp.xa), 2.0, float(rp.zh))],
-		["ramp_turn", Vector3(float(rp.xa), 3.0, float(rp.zh) - 4.0), Vector3(float(rp.xc), 3.0, float(rp.zh) + float(rp.r))],
+		["lobby", Vector3(hw - 47.0, 1.7, hd + 3), Vector3(float(rp.xc), 1.5, float(rp.zt))],
+		["ramp_foot", Vector3(float(rp.xa), 1.7, float(rp.zt) - 3.0), Vector3(float(rp.xa), 2.0, float(rp.zh))],
 		["ramp_top", Vector3(float(rp.xb), 5.6, float(rp.zh) - 2.0), Vector3(float(rp.xb), 4.5, float(rp.zt) - 3)],
-		["concourse", Vector3(-hw + 3, ShopGenUY() + 1.7, 0), Vector3(hw, ShopGenUY() + 1.5, 0)],
-		["concourse2", Vector3(hw - 3, ShopGenUY() + 1.7, 2), Vector3(-hw, ShopGenUY() + 1.5, -1)],
+		["arm_s", Vector3(hw - 3, MallGen.UY + 1.7, float(rp.zt) - 3.5), Vector3(-hw, MallGen.UY + 1.5, float(rp.zt) - 3.5)],
+		["arm_s2", Vector3(hw - 76, MallGen.UY + 1.7, float(rp.zt) - 3.5), Vector3(hw, MallGen.UY + 1.5, float(rp.zt) - 3.5)],
+		["arm_n", Vector3(hw - 18, MallGen.UY + 1.7, hd - 15.5), Vector3(-hw, MallGen.UY + 1.5, hd - 15.5)],
+		["well", Vector3(hw - 20, MallGen.UY + 1.7, hd - 22), Vector3(float(rp.xc), MallGen.UY - 1.0, float(rp.zh))],
 	]
 	for r in p.floors[1].rooms:
 		if r.type == "super":
-			shots.append(["super", Vector3(float(r.x1) - 2, ShopGenUY() + 1.8, float(r.z1) - 2), Vector3(float(r.x0), ShopGenUY() + 0.8, float(r.z0))])
-		if r.type == "foodcourt":
-			shots.append(["foodcourt", Vector3(float(r.x0) + 1, ShopGenUY() + 1.8, float(r.z0) + 1), Vector3(float(r.x1), ShopGenUY() + 0.8, float(r.z1))])
+			shots.append(["super", Vector3(float(r.x1) - 2, MallGen.UY + 1.8, float(r.z1) - 2), Vector3(float(r.x0), MallGen.UY + 0.8, float(r.z0))])
 	for s in shots:
 		cam.look_at_from_position(s[1], s[2], Vector3.UP)
 		await _shot(s[0])
