@@ -230,6 +230,13 @@
    "date": "2026-11-12",
    "notes": "Crafting and base building, first cut. N opens the make menu: bandages, first aid kits, rope, nails, tin sheets, planks, torches, a small pack and all the ammo, from scrap, rags, wire, gunpowder and spent cases now found in sheds, hardware shops, wardrobes and gun shelves. M (with a hammer) is build mode: walls, doorways, window walls, half walls, floors and roofs, stairs and a storage crate, in wood, tin or brick. Wheel picks the piece, Tab the material, R turns it, [ and ] lower and raise it, left click builds, X pulls a piece down. Zombies can beat what you build down, and it is saved with the world.",
    "size": 236956
+  },
+  {
+   "file": "patch_0.2.0_0030.pck",
+   "version": "0.2.30",
+   "date": "2026-11-12",
+   "notes": "Fighting and survival. Put the gun away (H) and the left button swings the best weapon you carry: fists, knife, tyre iron, pipe wrench, cricket bat, crowbar, machete, axe, sledgehammer (found in sheds, kitchens, hardware and sports shops; you start with a knife). Q kicks them off you, and a kick off a running jump sends them flying. Alt dodges, crouching at a sprint slides, and jumping at a wall or fence up to head height climbs it. X throws a brick, a bottle (they go and look), a petrol bomb (make it with N) or the weapon itself. Stamina, food and water bars: eat and drink or you slow down and starve. Zombies come in walkers, runners and brutes, scream to bring others, grab you, and are faster at night.",
+   "size": 256116
   }
  ],
  "full": {
