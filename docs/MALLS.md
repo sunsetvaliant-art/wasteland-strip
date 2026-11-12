@@ -118,3 +118,16 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
   Tweed Mall: site refuses automated fetches; known facts: single level, opened 1973, three supermarkets, 62 specialty
   shops, ~5 ha site, corner Wharf St and Bay St. Lay it out from the OSM outline.
 - Shop flats (0026): ShopGen.upper_rooms has a passage (CORR) beside the stairwell so every room opens off it.
+
+## Twin City = Tweed City (patch 0028, 2026-11-12)
+- MallGen._twin_city: ONE level at ground (p.mall.fl = 0, p.mall.y = 0), written in the centre map's own pixels
+  (docs/ref/tweed_city_centremap.jpg, 0.452 m/px; local x = north to south, front +z = west, the main road).
+  Anchors FRESHWAY, GREENGATE, HOLLIS & CRANE, BIG VALUE, BIGMART, DJ HI-FI; REGAL CINEMAS (lobby, hall, 5 screens with
+  stepped seats); food court. No multi-level car park yet (the real deck car park isn't modelled).
+- It isn't named in OSM, so tools/add_malls.py puts it on the lot list (called at the end of place_buildings.py):
+  ["mall", 13940.68, -14048.52, yaw -1.7325, 378.3, 244.7, seed, "TWIN CITY"]. The lot list's version changed, so
+  saved cupboards/boards start fresh.
+- Ocean: the released main.gd had the sea sheet at -0.05 m, under the flat 0 m seabed, so it never showed. Now at
+  +0.1 m with base_depth 5 (water.gdshader) so it shades as deep water.
+- Tweed Mall refs: docs/ref/tweed_mall_*.jpg (Google indoor map with 50 m scale bar, satellite, 3D). Still needs the
+  map extended north (it's at about z = -17036, the map ends at -16960).

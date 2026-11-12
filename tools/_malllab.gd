@@ -22,7 +22,8 @@ func _init() -> void:
 	var d := float(OS.get_environment("D")) if OS.get_environment("D") != "" else 94.28
 	var seed := int(OS.get_environment("SEED")) if OS.get_environment("SEED") != "" else 1
 	var cut := OS.get_environment("CUT") != ""
-	var p := BuildGen.plan("mall", w, d, seed, "SUNNYVALE")
+	var nm := OS.get_environment("NAME") if OS.get_environment("NAME") != "" else "SUNNYVALE"
+	var p := BuildGen.plan("mall", w, d, seed, nm)
 	if cut:
 		p["cut"] = 2.2
 		p["cut_floor"] = 0 if OS.get_environment("UPPER") == "" else 1
@@ -35,15 +36,34 @@ func _init() -> void:
 	print("BUILT mall ", Time.get_ticks_msec() - t0, " ms, containers ", boxes.size(), " rollers ", p._rollers.size(), " windows ", p._windows.size(), " doors ", b.find_children("*", "BuildDoor", true, false).size())
 	for f in p.floors:
 		print("FLOOR y=", f.y, " ", f.rooms.map(func(r): return "%s[%.0f..%.0f x %.0f..%.0f]" % [r.type, r.x0, r.x1, r.z0, r.z1]))
-	print("RAMP ", p.ramp)
+	
 	for _k in 60:
 		BuildProps.work(300000)
 		await process_frame
 	var hw := w / 2
 	var hd := d / 2
 	if cut:
-		cam.look_at_from_position(Vector3(0.01, 105, 1), Vector3(0, 0, 0), Vector3.UP)
+		cam.look_at_from_position(Vector3(0.01, maxf(w, d) * 1.08, 1), Vector3(0, 0, 0), Vector3.UP)
 		await _shot("plan" + ("_up" if OS.get_environment("UPPER") != "" else ""))
+		quit()
+		return
+	if not p.has("ramp"):
+		var P := func(px: float, py: float, y: float) -> Vector3: return Vector3((px - 1303.5) * 0.452, y, (py - 637.5) * 0.452)
+		var sh := [
+			["tc_air", Vector3(-hw - 60, 150, hd + 160), Vector3(0, 0, 0)],
+			["tc_front", P.call(1230, 1010, 2.0), P.call(1230, 900, 4.0)],
+			["tc_mall", P.call(880, 516, 1.7), P.call(1590, 516, 2.0)],
+			["tc_mall2", P.call(1230, 920, 1.7), P.call(1230, 640, 2.5)],
+			["tc_food", P.call(1105, 598, 1.8), P.call(1020, 532, 1.0)],
+			["tc_cine_lobby", P.call(1372, 620, 1.7), P.call(1420, 578, 1.5)],
+			["tc_cinema", P.call(1437, 636, 3.6), P.call(1437, 584, 3.0)],
+			["tc_bigmart", P.call(1018, 620, 1.8), P.call(862, 865, 1.0)],
+			["tc_super", P.call(1380, 460, 1.8), P.call(1560, 340, 1.0)],
+		]
+		for s2 in sh:
+			cam.look_at_from_position(s2[1], s2[2], Vector3.UP)
+			await _shot(s2[0])
+			print("DRAWS ", s2[0], " ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
 		quit()
 		return
 	var rp: Dictionary = p.ramp

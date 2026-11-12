@@ -410,8 +410,12 @@ func _build_water() -> void:
 	pm.subdivide_width = 64
 	pm.subdivide_depth = 64
 	sea.mesh = pm
-	sea.material_override = water_mat
-	sea.position = Vector3(7040, -0.05, -960)
+	# the height map has the sea bed dead flat at 0 m: the sheet sits just over it and is shaded as deep water
+	var sea_mat: ShaderMaterial = water_mat.duplicate()
+	sea_mat.set_shader_parameter("base_depth", 5.0)
+	sea_mat.set_shader_parameter("foam_max", 0.07)
+	sea.material_override = sea_mat
+	sea.position = Vector3(7040, 0.1, -960)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sea)
 

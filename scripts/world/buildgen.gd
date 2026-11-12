@@ -853,7 +853,7 @@ const FLOOR_MAT := {"lounge": "timber_floor", "dining": "timber_floor", "hall": 
 	"warehouse": "concrete_worn", "office": "carpet", "lunch": "lino", "machinery": "dirt", "milking": "concrete_worn", "vat": "concrete", "study": "carpet",
 	"shop": "lino", "lobby": "lino",
 	"carpark": "concrete_worn", "ramp": "concrete", "dock": "concrete_worn", "concourse": "terrazzo", "unit": "lino", "super": "lino",
-	"super_store": "concrete", "bigbox": "lino", "foodcourt": "tile", "fc_kitchen": "tile", "service": "concrete", "security": "carpet", "lift": "concrete"}
+	"super_store": "concrete", "bigbox": "lino", "foodcourt": "tile", "fc_kitchen": "tile", "service": "concrete", "security": "carpet", "lift": "concrete", "cinema": "carpet", "cine_hall": "carpet", "cine_lobby": "carpet"}
 
 static func _skin_mat(p: Dictionary, r: Dictionary) -> String:
 	if r.type in ["bath", "toilet"]: return "tile"
@@ -863,6 +863,8 @@ static func _skin_mat(p: Dictionary, r: Dictionary) -> String:
 		match r.type:
 			"carpark", "ramp", "dock", "service", "super_store", "lift": return "concrete"
 			"fc_kitchen": return "tile"
+			"cinema": return "plaster:charcoal"
+			"cine_hall", "cine_lobby": return "plaster:maroon"
 			"concourse", "lobby", "super", "bigbox", "foodcourt", "hall": return "plaster:white"
 			"unit", "shop": return ["plaster:white", "plaster:cream", "plaster:sand", "plaster:pale_blue", "plaster:sage", "plaster:pink"][absi(hash(r.id) + int(p.seed)) % 6]
 	if r.type == "shop": return ["plaster:white", "plaster:cream", "plaster:sand", "plaster:pale_blue", "plaster:sage"][absi(int(p.seed)) % 5]

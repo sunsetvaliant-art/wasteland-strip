@@ -519,3 +519,5 @@ print("total", len(lots), collections.Counter(l[0] for l in lots))
 import hashlib
 ver = hashlib.md5(json.dumps(lots, separators=(",", ":")).encode()).hexdigest()[:12]      # saves know which town they were
 json.dump({"lots": lots, "towns": towns, "ver": ver}, open(f"{GAME}/assets/world/buildings.json", "w"), separators=(",", ":"))
+import subprocess, sys
+subprocess.run([sys.executable, f"{GAME}/tools/add_malls.py"], check=True)      # the malls OSM doesn't name

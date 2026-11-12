@@ -8,6 +8,8 @@ uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap;
 uniform vec3 shallow : source_color = vec3(0.30, 0.34, 0.22);
 uniform vec3 deep : source_color = vec3(0.03, 0.10, 0.11);
 uniform float clarity = 1.6;
+uniform float base_depth = 0.0;      // the sea: the map's seabed is flat at 0 m, so pretend it's this much deeper
+uniform float foam_max = 0.35;       // foam where the water's shallower than this
 
 // ripples: one seamless normal-map noise sampled three times at different scales, angles and drift, so there's no
 // grid to see (the old hash noise fell apart into blocks at the map's big world coordinates)
@@ -37,11 +39,11 @@ void fragment() {
 	vec4 v = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, d, 1.0);
 	v.xyz /= v.w;
 	float thick = max(0.0, VERTEX.z - v.z);
-	float k = 1.0 - exp(-thick / clarity);
+	float k = 1.0 - exp(-(thick + base_depth) / clarity);
 	vec2 ruv = SCREEN_UV + n.xz * 0.02 * k;
 	vec3 under = texture(screen_tex, ruv).rgb;
 	vec3 col = mix(under * shallow * 2.2, deep, k);
-	float foam = (1.0 - smoothstep(0.0, 0.35, thick)) * (0.5 + 0.5 * texture(foam_tex, mod(q, 4096.0) / 2.5 + t * 0.02).r);
+	float foam = (1.0 - smoothstep(0.0, foam_max, thick)) * clamp(1.0 + VERTEX.z / 250.0, 0.0, 1.0) * (0.5 + 0.5 * texture(foam_tex, mod(q, 4096.0) / 2.5 + t * 0.02).r);
 	ALBEDO = mix(col, vec3(0.85, 0.88, 0.85), foam * 0.5);
 	ROUGHNESS = 0.04 + foam * 0.4;
 	METALLIC = 0.0;
