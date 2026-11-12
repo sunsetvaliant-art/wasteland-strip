@@ -244,6 +244,13 @@
    "date": "2026-11-12",
    "notes": "Cars as you find them. Family cars now sit in driveways and yards, each in its own state: worn or good engine, flat or charged battery, some fuel or none, and the key in the ignition, hidden in the cab, or gone. K beside a car opens under the bonnet: look it over, search for the key, try a key you have found in a house (one in three fits), or hotwire it with a length of wire (your odds rise with your mechanic level). Pouring in fuel, topping up oil and cleaning the plugs need no tools; repairing the engine and swapping batteries need a shifter. Cars burn fuel now, and a worn engine is slow and stalls. In creative every car just goes.",
    "size": 277224
+  },
+  {
+   "file": "patch_0.2.0_0032.pck",
+   "version": "0.2.32",
+   "date": "2026-11-12",
+   "notes": "Thicker, more tropical bush: palms, figs, bananas and bamboo now grow through the forest and out in the open, bananas, bamboo and palms come in clumps, ferns in drifts, about twice the trees in open country and more along wet ground, the odd giant tree, and more scrub and understory everywhere. If the frame rate drops, lower plant density in the settings.",
+   "size": 16912
   }
  ],
  "full": {
