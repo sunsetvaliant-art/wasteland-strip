@@ -216,6 +216,13 @@
    "date": "2026-11-12",
    "notes": "Sunnyvale rebuilt from the real centre's floor plans. Ground: shops along the street, a lobby wrapping round the ramp, the bottle shop, car park west, east and under the supermarket, lift and stairs on the west wall, loading dock. Upstairs: the mall runs in a C round the open ramp well under skylights, variety store and shops on the street side, toilets and shops down the west, furniture and electrical store on the east, and the supermarket across the whole south half.",
    "size": 75904
+  },
+  {
+   "file": "patch_0.2.0_0028.pck",
+   "version": "0.2.28",
+   "date": "2026-11-12",
+   "notes": "The ocean is back (the sea sheet was sitting under the sea bed). Twin City: the big centre near the border, built from the real Tweed City's centre map on one level, 380 m long: two supermarkets, department and discount stores, the hi-fi store, a food court, about 40 shops down three malls, and a five-screen cinema with a lobby. Cupboards and boards start fresh with this update.",
+   "size": 25542192
   }
  ],
  "full": {
