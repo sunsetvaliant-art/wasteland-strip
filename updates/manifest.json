@@ -202,6 +202,13 @@
    "date": "2026-11-12",
    "notes": "Faster towns and malls: each room's shelves and fittings now draw as one piece (about a quarter of the draw calls in Sunnyvale), buildings load in closer, lighter windows. Sunnyvale gets the modern look: glass shopfronts with see-through grilles, stepped bulkheads with downlights, polished floor with dark inlay bands, hanging signs and banners, black ramp with glass sides, lower ceilings inside the shops.",
    "size": 143936
+  },
+  {
+   "file": "patch_0.2.0_0026.pck",
+   "version": "0.2.26",
+   "date": "2026-11-12",
+   "notes": "Flats over the shops are a proper floor plan now: a passage runs from the top of the stairs past the stairwell to the lounge, and every room upstairs opens off it.",
+   "size": 208688
   }
  ],
  "full": {
