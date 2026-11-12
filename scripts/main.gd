@@ -33,6 +33,7 @@ var rg_roads: RgRoads
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
+var car_care: CarCare
 var base: BaseBuild
 var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon can't stop the game starting
 
@@ -123,6 +124,10 @@ func _ready() -> void:
 	craft_ui.name = "CraftUI"
 	add_child(craft_ui)
 	craft_ui.setup(self)
+	car_care = CarCare.new()
+	car_care.name = "CarCare"
+	add_child(car_care)
+	car_care.setup(self)
 	base = BaseBuild.new()
 	base.name = "BaseBuild"
 	add_child(base)
@@ -447,10 +452,10 @@ func _build_hud() -> void:
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nF9 bug report · Guns: LMB fire · RMB aim · R reload · 1 / 2 / wheel switch · H gun away / out · LMB swing (gun away) · Q kick · X throw · Alt dodge · I inventory · N make · M build · F pick up / open · B bandage · MMB carry\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · wheel switch · H gun away / out   Hand to hand (gun away): LMB swing · Q kick · X throw · Alt dodge\nI inventory · N make · M build · K under the bonnet · F pick up / open · B bandage · MMB carry · F9 bug report\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
-	hint.position = Vector2(14, -72)
+	hint.position = Vector2(14, -90)
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
 	hint.add_theme_constant_override("outline_size", 4)

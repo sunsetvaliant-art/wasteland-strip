@@ -301,7 +301,9 @@ func _shift(d: int) -> void:
 		auto_gear = 0
 
 # ---------------------------------------------------------------- simulation
+var _why_t := 0.0
 func _physics_process(dt: float) -> void:
+	if running and driver: CarCare.burn(self, dt, throttle)
 	if home_pos == Vector3.ZERO:
 		home_pos = global_position
 	if freeze:
@@ -309,7 +311,15 @@ func _physics_process(dt: float) -> void:
 	_read_controls(dt)
 	# climb in and it cranks and catches; climb out and it's switched off
 	if driver and not running:
-		crank += dt
+		var why := CarCare.blocked(self)
+		if why != "":
+			crank = 0.0
+			_why_t -= dt
+			if _why_t <= 0.0 and driver.has_method("_toast"):
+				_why_t = 4.0
+				driver._toast(why)
+		else:
+			crank += dt
 		if crank > 0.85:
 			running = true
 			crank = 0.0
@@ -454,7 +464,7 @@ func _read_controls(dt: float) -> void:
 	var brk := 0.0
 	handbrake = false
 	if driver and not get_tree().paused:
-		thr = Input.get_action_strength("move_forward")
+		thr = Input.get_action_strength("move_forward") * CarCare.power(self)
 		brk = Input.get_action_strength("move_back")
 		steer_in = Input.get_action_strength("move_left") - Input.get_action_strength("move_right")
 		handbrake = Input.is_action_pressed("brake")

@@ -467,12 +467,9 @@ func _work_on_car() -> void:
 	var c := _nearest_car(5.0)
 	if c == null:
 		return
-	if not Settings.creative() and inv.count("wrench") < 1:
-		_toast("You need a shifter to work on it")
-		return
 	var main_node = get_tree().current_scene
-	if main_node and main_node.get("garage"):
-		main_node.garage.show_garage(c.design, c)
+	if main_node and main_node.get("car_care"):
+		main_node.car_care.show_for(c)
 
 # ---------------------------------------------------------------- boarding up (G): hammer, nails, planks
 func _planks_for(t: Node) -> int:

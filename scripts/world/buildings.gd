@@ -30,6 +30,7 @@ var boards := {}                   # "lot:d3" / "lot:w2" -> {"n": planks, "side"
 var broken := {}                   # "lot:w2" -> true: windows someone's put through
 var cars_taken := {}               # lot -> true: its project car's been driven off (don't make another)
 var _lot_cars := {}                # lot -> [Node3D, spawn position]
+const DRIVE_CHANCE := {"qlder": 0.16, "cottage": 0.16, "brick": 0.18, "two_storey": 0.2, "shop": 0.05, "workshop": 0.2, "warehouse": 0.15}
 const PROJECT_CHANCE := {"shop": 0.0, "qlder": 0.05, "cottage": 0.05, "brick": 0.04, "two_storey": 0.03, "shed": 0.15, "machine_shed": 0.22,
 	"workshop": 0.2, "dairy": 0.08, "warehouse": 0.05}
 var _dirty := {}                   # cells whose LOD mesh needs rebuilding
@@ -465,10 +466,19 @@ func _project_car(i: int, p: Dictionary, b: Node3D) -> void:
 		return
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(lots[i][6]) + 991
-	if rng.randf() > float(PROJECT_CHANCE.get(p.kind, 0.0)):
-		return
 	var cat: Dictionary = Car.catalog()
 	var keys: Array = cat.keys()
+	if rng.randf() > float(PROJECT_CHANCE.get(p.kind, 0.0)):
+		# no project in the shed: perhaps the family car's still in the drive, in whatever state it was left
+		if rng.randf() < float(DRIVE_CHANCE.get(p.kind, 0.0)):
+			var side := -1.0 if rng.randf() < 0.5 else 1.0
+			var dl := Vector3(side * (float(p.w) / 2 + 2.3), 0.0, float(p.d) / 2 - rng.randf_range(2.5, 5.0))
+			var dw: Vector3 = b.global_transform * dl
+			if not Buildings.blocked(dw.x, dw.z, 1.6) and (main.veg == null or main.veg.road_clearance(dw.x, dw.z) > 2.5):
+				var dk: String = keys[rng.randi() % keys.size()]
+				var dn: Car = main.spawn_vehicle(dk, Vector3(dw.x, main.height_at(dw.x, dw.z) + 0.9, dw.z), b.rotation.y + rng.randf_range(-0.12, 0.12) + (PI if rng.randf() < 0.3 else 0.0), VehicleSpecs.default_design(dk))
+				_lot_cars[i] = [dn, dn.global_position]
+		return
 	var kind: String = keys[rng.randi() % keys.size()]
 	var shedlike: bool = p.kind in ["shed", "machine_shed", "workshop", "warehouse", "dairy"]
 	var lp := Vector3(rng.randf_range(-1.0, 1.0), 0.0, rng.randf_range(-1.5, 1.5)) if shedlike else Vector3(rng.randf_range(-2.0, 2.0), 0.0, -float(p.d) / 2 - 5.0)

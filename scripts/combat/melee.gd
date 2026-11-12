@@ -23,6 +23,7 @@ var player: Player
 var stamina := 100.0
 var hunger := 100.0             # 100 full .. 0 starving
 var thirst := 100.0
+var skills := {}                # "mechanic": xp
 var weapon := "fists"
 var swing := -1.0               # seconds into the swing, -1 when not
 var _hit_done := false
@@ -403,9 +404,10 @@ func _sfx(n: String, pitch := 1.0) -> void:
 	a.finished.connect(a.queue_free)
 
 func state() -> Dictionary:
-	return {"hunger": hunger, "thirst": thirst, "stamina": stamina}
+	return {"hunger": hunger, "thirst": thirst, "stamina": stamina, "skills": skills}
 
 func take_state(d: Dictionary) -> void:
 	hunger = float(d.get("hunger", 100.0))
 	thirst = float(d.get("thirst", 100.0))
 	stamina = float(d.get("stamina", 100.0))
+	skills = d.get("skills", {})

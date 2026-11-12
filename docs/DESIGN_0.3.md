@@ -83,3 +83,11 @@ Delivery: two halves. Half 1 = world + loot. Half 2 = base/crafting/scavs/trader
   grabs (Q to break), knockback (knock_t).
 - Still to do from the user's list of 2026-11-12: vehicle keys / hotwiring / engine repair window / Zomboid-style car
   and loot spawns; tropical foliage variety; ground and grass textures; dedicated swing animations.
+
+## 0.2.31: cars as you find them
+- scripts/vehicle/car_care.gd (CarCare): each car's state rolled once from where it stood (engine 8-100, battery flat
+  1 in 4, fuel often empty, key in ignition 12% / in the cab 20% / none). K opens "under the bonnet": look it over,
+  search the cab, try a found key (1 in 3 fits), hotwire (1 wire a go; 10/30/60/85/100% by mechanic level), pour
+  fuel, top up oil, clean plugs (no tools); repair engine, fit / take battery, the old garage rebuild (shifter).
+  Fuel burns, a worn engine is down on power and stalls. Mechanic xp in player.melee.skills. CAR_TEST=1 self test.
+- Family cars in driveways (Buildings.DRIVE_CHANCE), keys and batteries in the loot. Creative: every car just goes.
