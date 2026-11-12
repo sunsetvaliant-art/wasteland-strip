@@ -251,6 +251,13 @@
    "date": "2026-11-12",
    "notes": "Thicker, more tropical bush: palms, figs, bananas and bamboo now grow through the forest and out in the open, bananas, bamboo and palms come in clumps, ferns in drifts, about twice the trees in open country and more along wet ground, the odd giant tree, and more scrub and understory everywhere. If the frame rate drops, lower plant density in the settings.",
    "size": 16912
+  },
+  {
+   "file": "patch_0.2.0_0033.pck",
+   "version": "0.2.33",
+   "date": "2026-11-13",
+   "notes": "Fixes. Twin City: the ground under it is levelled so it no longer sits behind a wall, every mall now has a way in from outside (there were none), and every shop has a door. Weapons and anything else you drop show under on the ground near me straight away. Oracle mode: a World tab in the palette with fly speed in m/s, time of day and weather, and P drops the player wherever you look at any distance. Grass: no longer black (lit like the ground and toned to it) and sunk so it stops floating on slopes.",
+   "size": 132224
   }
  ],
  "full": {
