@@ -120,6 +120,10 @@ func tick(dt: float) -> void:
 			var s: Dictionary = using.stack
 			var d := Items.def(s.id)
 			player.hp = min(player.hp + float(d.get("heal", 0.0)), 100.0)
+			if player.get("melee"):
+				player.melee.hunger = minf(player.melee.hunger + float(d.get("eat", 0.0)), 100.0)
+				player.melee.thirst = minf(player.melee.thirst + float(d.get("drink", 0.0)), 100.0)
+			if s.id == "water_bottle": add(Items.fresh("bottle", 1))
 			s.n -= 1
 			if s.n <= 0:
 				using.grid.items.erase(s)
@@ -161,6 +165,7 @@ func loadout(creative: bool) -> void:
 			Inventory.add(equip.back.data.grid, s)
 		for a in [["ammo_303", 60], ["ammo_762", 80], ["ammo_357", 36], ["ammo_45", 36], ["ammo_12g", 40], ["bandage", 10], ["medkit", 1], ["food_can", 4]]:
 			add(Items.fresh(a[0], a[1]))
+		add(Items.fresh("machete", 1))
 	else:
 		equip["secondary"] = Items.fresh("gun_python")
 		equip.secondary.data.ammo = 6
@@ -169,5 +174,7 @@ func loadout(creative: bool) -> void:
 		add(Items.fresh("ammo_357", 12))
 		add(Items.fresh("bandage", 3))
 		add(Items.fresh("food_can", 1))
+		add(Items.fresh("water_bottle", 1))
+		add(Items.fresh("knife", 1))
 	sync_guns()
 	changed.emit()

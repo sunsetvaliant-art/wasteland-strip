@@ -47,6 +47,16 @@ func _draw() -> void:
 	draw_rect(hb, Color(0, 0, 0, 0.45))
 	draw_rect(Rect2(hb.position, Vector2(hb.size.x * p.hp / 100.0, hb.size.y)), Color(0.75, 0.12, 0.08).lerp(Color(0.35, 0.75, 0.3), p.hp / 100.0))
 	_text(Vector2(24, sz.y - 78), "HEALTH", 12, Color(1, 1, 1, 0.7))
+	if p.get("melee"):
+		var ml: Melee = p.melee
+		var bars := [[ml.stamina, Color(0.9, 0.8, 0.25), "STAMINA"], [ml.hunger, Color(0.8, 0.5, 0.2), "FOOD"], [ml.thirst, Color(0.3, 0.6, 0.9), "WATER"]]
+		for i in bars.size():
+			var r := Rect2(260 + i * 84, sz.y - 70, 76, 8)
+			draw_rect(r, Color(0, 0, 0, 0.45))
+			draw_rect(Rect2(r.position, Vector2(r.size.x * float(bars[i][0]) / 100.0, r.size.y)), bars[i][1])
+			_text(Vector2(260 + i * 84, sz.y - 76), bars[i][2], 10, Color(1, 1, 1, 0.6))
+		if not p.armed() and p.vehicle == null:
+			_text(Vector2(sz.x - 24, sz.y - 46), Melee.WEAPONS[ml.weapon].name, 18, Color(1, 1, 1, 0.85), false, true)
 	# stealth eye: the most suspicious scav who can see you
 	var sus := 0.0
 	var alarm := false

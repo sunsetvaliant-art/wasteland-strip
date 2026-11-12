@@ -72,3 +72,14 @@ Delivery: two halves. Half 1 = world + loot. Half 2 = base/crafting/scavs/trader
 - Not yet: work stations, harvesting trees/rocks/wrecks, doors and gates for doorways, spikes/wire/traps/lights,
   melee weapons, LAN sync of pieces, hunger/thirst/cooking/farming, infection, traders, airdrops, bed respawn.
 - BASE_TEST=1/2 spawns three demo huts by the start (and opens the craft menu with 1).
+
+## 0.2.30: fighting, the body, zombie breeds
+- scripts/combat/melee.gd (Melee, a child of the player): stamina, hunger, thirst; melee with the best weapon carried
+  when the gun's away (H): fists, knife, tyre iron, pipe wrench, bat, crowbar, machete, axe, sledgehammer (WEAPONS);
+  Q kick (flying kick off a sprint jump), Alt dodge, crouch at a sprint slides, jump at a ledge 0.75-2.45 m climbs it,
+  X throws brick / bottle / petrol bomb / the weapon (thrown.gd, fire.gd). MELEE_TEST=1 runs a self test (PROBE lines).
+- Food has "eat", drinks "drink"; water bottles and soft drink in kitchens, fridges, shops; hp drains at zero.
+- Zombies: breeds (walker, 14% runner, 6% brute), a scream that brings others within 28 m, 1.3x faster at night,
+  grabs (Q to break), knockback (knock_t).
+- Still to do from the user's list of 2026-11-12: vehicle keys / hotwiring / engine repair window / Zomboid-style car
+  and loot spawns; tropical foliage variety; ground and grass textures; dedicated swing animations.

@@ -57,7 +57,7 @@ func char_state() -> Dictionary:
 	var p = main.player
 	if p == null:
 		return {}
-	return {"ver": 1, "pos": p.global_position, "yaw": p.rotation.y, "hp": p.hp, "dead": p.dead,
+	return {"ver": 1, "pos": p.global_position, "yaw": p.rotation.y, "hp": p.hp, "body": p.melee.state(), "dead": p.dead,
 		"hands": p.inv.hands, "equip": p.inv.equip, "creative": Settings.creative()}
 
 func load_world() -> void:
@@ -110,6 +110,7 @@ func load_character() -> void:
 		p.global_position = pos + Vector3.UP * 0.3
 		p.rotation.y = float(d.get("yaw", 0.0))
 	p.hp = float(d.get("hp", 100.0))
+	if d.has("body"): p.melee.take_state(d.body)
 	if d.has("hands"):
 		p.inv.hands = d.hands
 		p.inv.equip = d.get("equip", {})

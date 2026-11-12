@@ -40,7 +40,7 @@ func _ready() -> void:
 	InputSetup.ensure()
 	# keys added in updates: InputSetup may be the copy Boot loaded from the original install (scripts already in memory
 	# aren't replaced when an update's pack is mounted), so register them here too
-	for e in [["torch", KEY_T], ["board", KEY_G], ["work_on_car", KEY_K], ["inventory", KEY_I], ["heal", KEY_B], ["craft", KEY_N], ["build", KEY_M]]:
+	for e in [["torch", KEY_T], ["board", KEY_G], ["work_on_car", KEY_K], ["inventory", KEY_I], ["heal", KEY_B], ["craft", KEY_N], ["build", KEY_M], ["kick", KEY_Q], ["throw", KEY_X], ["dodge", KEY_ALT]]:
 		if not InputMap.has_action(e[0]):
 			InputMap.add_action(e[0])
 			var ev := InputEventKey.new()
@@ -447,7 +447,7 @@ func _build_hud() -> void:
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nF9 bug report · Guns: LMB fire · RMB aim · R reload · 1 / 2 / wheel switch · H holster · I inventory · N make · M build · F pick up / open · B bandage · MMB carry\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nF9 bug report · Guns: LMB fire · RMB aim · R reload · 1 / 2 / wheel switch · H gun away / out · LMB swing (gun away) · Q kick · X throw · Alt dodge · I inventory · N make · M build · F pick up / open · B bandage · MMB carry\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.position = Vector2(14, -72)

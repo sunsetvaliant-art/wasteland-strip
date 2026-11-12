@@ -48,10 +48,15 @@ var interact_hint := ""                # what F would do right now (the HUD show
 var interact_target: Node = null
 var carried: RigidBody3D = null        # something picked up with the middle mouse button
 var carry_dist := 1.5
+var melee: Melee
 signal hurt(amount: float)
 signal died
 
 func _ready() -> void:
+	melee = Melee.new()
+	melee.name = "Melee"
+	add_child(melee)
+	melee.setup(self)
 	floor_max_angle = deg_to_rad(50)
 	floor_snap_length = 0.4
 	shape = CollisionShape3D.new()
@@ -116,6 +121,11 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("camera"):
 		first_person = not first_person
 		_apply_camera()
+	if e.is_action_pressed("kick"): melee.kick()
+	if e.is_action_pressed("throw") and not BaseBuild.busy: melee.throw()
+	if e.is_action_pressed("dodge"): melee.dodge()
+	if e.is_action_pressed("crouch") and melee.try_slide():
+		return
 	if e.is_action_pressed("crouch"):
 		crouching = not crouching
 	if e.is_action_pressed("interact"):
@@ -198,16 +208,27 @@ func _physics_process(dt: float) -> void:
 	var target_h := 1.1 if crouching else 1.62
 	head.position.y = lerp(head.position.y, target_h, 10 * dt)
 	var inp := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
-	var speed := CROUCH if crouching else (RUN if Input.is_action_pressed("sprint") else WALK * 2.0)
+	var speed := CROUCH if crouching else (RUN if (Input.is_action_pressed("sprint") and melee.can_sprint()) else WALK * 2.0)
 	if ads > 0.5: speed = min(speed, WALK * 1.3)
+	speed *= melee.speed_mul()
+	melee.tick(dt)
+	if melee.climbing():
+		return
 	_noise_t -= dt
 	if _noise_t <= 0.0 and velocity.length() > 0.5:
 		_noise_t = 0.5
 		Hearing.emit(get_tree(), global_position, 14.0 if speed >= RUN else (6.0 if not crouching else 1.5), "steps", self)
 	var dir := (Basis(Vector3.UP, yaw) * Vector3(inp.x, 0, inp.y)).normalized()
 	var accel := 10.0 if is_on_floor() else 2.0
-	velocity.x = move_toward(velocity.x, dir.x * speed, accel * speed * dt)
-	velocity.z = move_toward(velocity.z, dir.z * speed, accel * speed * dt)
+	if melee.lock_t > 0.0:
+		# a slide or a hop: it carries, you don't steer
+		velocity.x = move_toward(velocity.x, 0.0, 4.0 * dt)
+		velocity.z = move_toward(velocity.z, 0.0, 4.0 * dt)
+	else:
+		velocity.x = move_toward(velocity.x, dir.x * speed, accel * speed * dt)
+		velocity.z = move_toward(velocity.z, dir.z * speed, accel * speed * dt)
+	if (Input.is_action_just_pressed("jump") or (not is_on_floor() and Input.is_action_pressed("jump") and velocity.y < 1.5)) and melee.try_mantle():
+		return
 	if not is_on_floor():
 		velocity.y -= 9.8 * dt
 	elif Input.is_action_just_pressed("jump") and interact_target is BuildWindow and (interact_target as BuildWindow).passable():
@@ -610,6 +631,9 @@ func _die(impulse: Vector3, point: Vector3) -> void:
 func _respawn() -> void:
 	dead = false
 	hp = 100.0
+	melee.hunger = maxf(melee.hunger, 50.0)
+	melee.thirst = maxf(melee.thirst, 50.0)
+	melee.stamina = 100.0
 	if ragdoll and is_instance_valid(ragdoll):
 		ragdoll.queue_free()
 	ragdoll = null

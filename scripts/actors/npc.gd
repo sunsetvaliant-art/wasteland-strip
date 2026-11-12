@@ -35,6 +35,9 @@ var react_t := 0.0
 var attack_t := 0.0
 var swing_t := -1.0
 var stagger := 0.0
+var knock_t := 0.0             # kicked: flying backwards, not walking
+var breed := "walker"          # walker, runner (quick and frail), brute (slow, huge, hits like a truck)
+var hit_dmg := 1.0
 var groan_t := 3.0
 var avoid := Vector3.ZERO
 var avoid_t := 0.0
@@ -112,6 +115,20 @@ func _setup_zombie() -> void:
 	rig.mods.head_tilt = Vector2(randf_range(-0.2, 0.2), randf_range(-0.12, 0.12))
 	gait = randf_range(0.8, 1.15)
 	limp = randf_range(0.0, 0.4)
+	var roll := randf()
+	if roll < 0.14:
+		breed = "runner"
+		anim_set = "zombie_c"
+		hp *= 0.6
+		gait = randf_range(1.15, 1.35)
+		limp = 0.0
+	elif roll < 0.2:
+		breed = "brute"
+		anim_set = "zombie_a"
+		hp *= 2.6
+		gait = 0.8
+		hit_dmg = 1.9
+		scale = Vector3.ONE * 1.16
 	rig.anim.speed_scale = 1.0
 
 func _setup_scav() -> void:
@@ -257,6 +274,12 @@ func _think_zombie(dt: float) -> void:
 			rig.act(Rig.SETS[anim_set].get("spot", ""), 1.2)
 			stagger = 1.2
 			_say("zattack")
+			# the scream brings the others
+			for n in get_tree().get_nodes_in_group("zombies"):
+				if n != self and is_instance_valid(n) and not n.dead and n.state != "chase" and n.global_position.distance_to(global_position) < 28.0:
+					n.state = "investigate"
+					n.goal = _target_pos() + Vector3(randf_range(-3, 3), 0, randf_range(-3, 3))
+					n.goal_t = 25.0
 		state = "chase"
 		last_seen = _target_pos()
 		lost_t = 0.0
@@ -297,6 +320,9 @@ func _think_zombie(dt: float) -> void:
 				move_speed = float(zs.get("chase_speed", 1.25)) * gait
 				if d < 6.0 and zs.has("close_speed"):
 					move_speed = float(zs.close_speed) * gait      # the last few metres at a run
+				# after dark they're quicker and they don't give up
+				if SkyCycle.inst and SkyCycle.inst.night > 0.5:
+					move_speed *= 1.3
 				if lost_t > 12.0:
 					state = "wander"
 					goal_t = 15.0
@@ -306,7 +332,9 @@ func _think_zombie(dt: float) -> void:
 		if swing_t > swing_len * 0.45:
 			swing_t = -1.0
 			if player and not player.dead and _flat_dist(_target_pos()) < 2.0 and player.vehicle == null:
-				player.take_damage(randf_range(14.0, 22.0), global_position)
+				player.take_damage(randf_range(14.0, 22.0) * hit_dmg, global_position)
+				# sometimes it gets hold of you
+				if player.get("melee") and randf() < (0.5 if breed == "brute" else 0.22): player.melee.grabbed(self)
 			elif player and player.vehicle and _flat_dist(_target_pos()) < 3.0:
 				_say("hit_metal")
 				player.vehicle.apply_central_impulse((player.vehicle.global_position - global_position).normalized() * 120.0)
@@ -460,6 +488,7 @@ func _move(dt: float) -> void:
 	to.y = 0.0
 	var spd := move_speed
 	if stagger > 0.0 or swing_t >= 0.0: spd = 0.0
+	knock_t = maxf(knock_t - dt, 0.0)
 	if gun and gun.reloading > 0.0: spd = min(spd, 1.0)
 	var dir := Vector3.ZERO
 	if spd > 0.0 and to.length() > 0.4:
@@ -469,8 +498,9 @@ func _move(dt: float) -> void:
 			face_dir = face_dir.slerp(dir, clamp(dt * 3.0, 0.0, 1.0)) if face_dir.length() > 0.1 else dir
 	if kind == "zombie" and limp > 0.0:
 		spd *= 1.0 - limp * 0.5 * (0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.006 * gait))
-	velocity.x = move_toward(velocity.x, dir.x * spd, 8.0 * dt)
-	velocity.z = move_toward(velocity.z, dir.z * spd, 8.0 * dt)
+	var grip := 1.5 if knock_t > 0.0 else 8.0
+	velocity.x = move_toward(velocity.x, dir.x * spd, grip * dt)
+	velocity.z = move_toward(velocity.z, dir.z * spd, grip * dt)
 	# is there ground under it (terrain collision only exists near you)? if not, walk on the heightmap
 	var space := get_world_3d().direct_space_state
 	var q := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 1.0, global_position + Vector3.DOWN * 3.0, 1, [get_rid()])
