@@ -14,12 +14,14 @@ var SCAN_R := 10.0             # real grass_medium_01 clumps out to here, cards 
 
 # key, groups it grows in (weight) — from VEG_DEF
 const DEF := {
-	"jungle": {"forest": 1.0}, "island1": {"forest": 0.9, "open": 0.3},
-	"rubberfig": {"forest": 0.5, "wet": 0.6, "town": 0.3}, "ghostgum": {"forest": 0.7, "open": 1.0}, "tree2": {"open": 0.8, "town": 0.5, "forest": 0.3},
-	"coconut": {"beach": 1.0, "town": 0.5}, "palms": {"beach": 0.8, "wet": 0.4, "town": 0.5}, "palm4": {"town": 0.7, "beach": 0.4, "wet": 0.3},
-	"banana": {"wet": 0.8, "town": 0.5}, "bamboo": {"wet": 1.0}, "jacaranda": {"town": 0.8, "open": 0.4},
-	"fern": {"under": 1.0}, "fern2": {"under": 1.0, "edge": 0.3}, "monstera": {"under": 0.6}, "elephant": {"under": 0.6, "wet": 0.2},
-	"bush1": {"edge": 1.0, "under": 0.4}, "shrub1": {"edge": 0.8}, "shrub4": {"edge": 0.8}, "weed": {"edge": 0.6},
+	# the subtropics: rainforest with palms and figs through it, bananas and bamboo wherever it's wet or someone once
+	# lived, gums and jacarandas in the open, coconuts on the sand
+	"jungle": {"forest": 1.0, "wet": 0.3}, "island1": {"forest": 0.9, "open": 0.35, "wet": 0.2},
+	"rubberfig": {"forest": 0.6, "wet": 0.6, "town": 0.4, "open": 0.2}, "ghostgum": {"forest": 0.5, "open": 1.0, "town": 0.2}, "tree2": {"open": 0.8, "town": 0.5, "forest": 0.4},
+	"coconut": {"beach": 1.0, "town": 0.5, "wet": 0.15}, "palms": {"beach": 0.8, "wet": 0.5, "town": 0.5, "forest": 0.35, "open": 0.12}, "palm4": {"town": 0.7, "beach": 0.4, "wet": 0.4, "forest": 0.3, "open": 0.1},
+	"banana": {"wet": 0.8, "town": 0.6, "forest": 0.2, "open": 0.15}, "bamboo": {"wet": 1.0, "forest": 0.2, "open": 0.08, "town": 0.15}, "jacaranda": {"town": 0.8, "open": 0.45},
+	"fern": {"under": 1.0, "edge": 0.15}, "fern2": {"under": 1.0, "edge": 0.35}, "monstera": {"under": 0.7, "edge": 0.1}, "elephant": {"under": 0.7, "wet": 0.2, "edge": 0.2},
+	"bush1": {"edge": 1.0, "under": 0.5}, "shrub1": {"edge": 0.8, "under": 0.25}, "shrub4": {"edge": 0.8, "under": 0.25}, "weed": {"edge": 0.7},
 }
 const TREES := ["jungle", "island1", "rubberfig", "ghostgum", "tree2", "coconut", "palms", "palm4", "banana", "bamboo", "jacaranda"]
 const SMALL := ["fern", "fern2", "monstera", "elephant", "bush1", "shrub1", "shrub4", "weed"]
@@ -241,7 +243,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			var sc := 1.0
 			match layer:
 				"tree":
-					var p := m.r * 0.9 + m.g * 0.22 + m.b * 0.1 + m.a * 0.25 + 0.025
+					var p := m.r * 0.95 + m.g * 0.26 + m.b * 0.14 + m.a * 0.42 + 0.05
 					if m2.g > 0.4: p *= 0.05      # cane paddocks stay open
 					if rng.randf() > p: continue
 					var gw := {"forest": m.r, "beach": m.g * 1.5, "town": m.b * 0.8, "wet": m.a * 0.7, "open": 0.12 * (1.0 - m.r)}
@@ -253,16 +255,17 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 						r -= gw[g]
 						if r <= 0: grp = g; break
 					kind = _pick(rng, grp)
-					sc = rng.randf_range(0.75, 1.25)
+					sc = rng.randf_range(0.65, 1.4)
+					if rng.randf() < 0.06 and grp in ["forest", "open"]: sc = rng.randf_range(1.6, 2.1)      # the odd giant standing over the rest
 				"small":
-					var pu := m.r * 0.55
-					var pe := (1.0 - m.r) * 0.06 * (1.0 - m.b) + m.a * 0.15
+					var pu := m.r * 0.7
+					var pe := (1.0 - m.r) * 0.11 * (1.0 - m.b * 0.6) + m.a * 0.28
 					var rr := rng.randf()
 					rr /= max(density, 0.1)
 					if rr < pu: kind = _pick(rng, "under")
 					elif rr < pu + pe: kind = _pick(rng, "edge")
 					else: continue
-					sc = rng.randf_range(0.7, 1.3)
+					sc = rng.randf_range(0.6, 1.7)
 				"grass":
 					# cards: pictures of the grass_medium_01 clumps, dense and cheap
 					var pg := (1.0 - m.r * 0.6) * (1.0 - m.g) * (1.0 - m.b) * 0.9
@@ -305,6 +308,19 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 				basis = basis.rotated(Vector3(rng.randf() - 0.5, 0, rng.randf() - 0.5).normalized(), rng.randf() * 0.15)
 			if not per.has(kind): per[kind] = []
 			per[kind].append(Transform3D(basis, Vector3(x, h - 0.05, z)))
+			# bananas, bamboo and palms come in clumps; ferns in drifts
+			var extra := 0
+			if layer == "tree" and kind in ["banana", "bamboo", "palms", "palm4"]: extra = rng.randi_range(1, 3)
+			elif layer == "small" and kind in ["fern", "fern2", "elephant"]: extra = rng.randi_range(0, 2)
+			for _c in extra:
+				var ca := rng.randf() * TAU
+				var cr := rng.randf_range(1.6, 4.2) if layer == "tree" else rng.randf_range(0.5, 1.4)
+				var cx := x + cos(ca) * cr
+				var cz := z + sin(ca) * cr
+				if road_clearance(cx, cz) < (4.5 if layer == "tree" else 1.5) or Buildings.blocked(cx, cz, 3.0 if layer == "tree" else 0.8): continue
+				var ch := _height(cx, cz)
+				if is_nan(ch): continue
+				per[kind].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc * rng.randf_range(0.7, 1.15)), Vector3(cx, ch - 0.05, cz)))
 	var node := Node3D.new()
 	for kind in per:
 		var mm := MultiMesh.new()

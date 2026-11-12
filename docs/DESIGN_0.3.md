@@ -91,3 +91,10 @@ Delivery: two halves. Half 1 = world + loot. Half 2 = base/crafting/scavs/trader
   fuel, top up oil, clean plugs (no tools); repair engine, fit / take battery, the old garage rebuild (shifter).
   Fuel burns, a worn engine is down on power and stalls. Mechanic xp in player.melee.skills. CAR_TEST=1 self test.
 - Family cars in driveways (Buildings.DRIVE_CHANCE), keys and batteries in the loot. Creative: every car just goes.
+
+## 0.2.32: thicker, more mixed bush (veg.gd)
+- Species spread across more groups (palms, figs, bananas, bamboo through the forest and the open), about twice the
+  trees in open country, more along wet ground, the odd giant (6%, 1.6-2.1x), bananas/bamboo/palms in clumps of 2-4,
+  ferns in drifts, understory and edge scrub up about 30-80%, sizes 0.6-1.7x.
+- NOT done: new ground and grass textures and new plant species (need new CC0 assets downloaded: ask the user first);
+  frame-rate cost of the extra plants is unmeasured on the user's GTX 1650 Ti.
