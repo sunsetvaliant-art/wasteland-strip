@@ -68,10 +68,10 @@ cd $REPO_DIR
 # push big things a few at a time so no single push gets too large
 for d in updates; do [ -d $d ] && git add $d && git commit -qm "Release $KIND $ID: $d
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01UwUdmBaRmNwsMyT6MNDatn" && git push 2>&1 | tail -1; done
 git add -A && git commit -qm "Release $KIND $ID
 
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01UwUdmBaRmNwsMyT6MNDatn" && git push 2>&1 | tail -1
 echo "released $KIND $ID"

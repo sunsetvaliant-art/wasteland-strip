@@ -90,3 +90,18 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
 - Tweed Heads high-rises (inside the map) with enterable ground floors.
 - Half 2 (the big one): base building, crafting, survival needs, scavs, traders; open design questions Q1-8, 10, 11,
   17-21, 23, 32, 34-37, 39-46 (start kit knife + water), 48 (creative as a host toggle). See docs/DESIGN_0.3.md.
+
+## Facts found 2026-11-12
+- Tweed City: OSM retail outline 62,063 m2, bbox 268 x 402 m, centre (13930, -14099), 114 pts. The directory map
+  (docs/tweed_city_plan.png, 722x1069 px) has the same aspect (0.67), so it's close to scale: ~0.4 m per px.
+- Tweed Mall sits at about (13522, -17036): just north of the map edge (z = -16960). It needs the northern map
+  extension first (do it with Coolangatta).
+
+## Done 2026-11-12 (patch 0025)
+- Handoff items 1 and 2: fixture merging (BuildProps batches of 48 static fixtures -> one mesh), FULL_R 90 / FULL_DROP 120,
+  cached sash windows, shadows off on small things. Mall lab draw calls: concourse 2375 -> 752, supermarket 1242 -> 261.
+- Modern kit on Sunnyvale: MallGen._glaze (glass panes + matching "open" on the concourse side; also fixes the
+  supermarket windows that were blocked), grille rollers (BuildRoller.setup(..., grille)), r["ceil"] dropped ceilings,
+  MallGen._dress (bulkheads, downlights, floor inlays, hanging signs, banners, fallen panels), "rubber" ramp + glass sides.
+- Not yet seen in the real game by the user. Known rough spot: ramp room has a brown band on its side walls and a black ceiling.
+- Next: Tweed City (item 3).

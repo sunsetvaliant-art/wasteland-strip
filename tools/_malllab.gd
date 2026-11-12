@@ -66,6 +66,7 @@ func _init() -> void:
 	for s in shots:
 		cam.look_at_from_position(s[1], s[2], Vector3.UP)
 		await _shot(s[0])
+		print("DRAWS ", s[0], " ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " objs ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
 	quit()
 
 func ShopGenUY() -> float:

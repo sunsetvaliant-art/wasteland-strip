@@ -60,6 +60,8 @@ func setup(p: Node3D, w: float, h: float, mat: Material, glass := false) -> void
 	kmat.roughness = 0.4
 	knob.material_override = kmat
 	knob.position = Vector3(w - 0.08, 1.0, 0)
+	knob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	knob.visibility_range_end = 40.0
 	add_child(knob)
 	var cs := CollisionShape3D.new()
 	var bs := BoxShape3D.new()

@@ -88,8 +88,27 @@ static func mat(key: String) -> Material:
 		"terrazzo":
 			# polished mall floor: cream, glossy, catches the skylight
 			m.albedo_color = Color(0.86, 0.83, 0.76) * tint
-			m.roughness = 0.12
-			m.metallic_specular = 0.7
+			m.roughness = 0.3
+			m.metallic_specular = 0.45
+		"rubber":
+			m.albedo_color = Color(0.07, 0.07, 0.075)
+			m.roughness = 0.85
+		"grille":
+			# a shop's roller grille: you can see through it
+			var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+			img.fill(Color(0, 0, 0, 0))
+			for i in 16:
+				for j in 2:
+					img.set_pixel(i, j, Color(0.75, 0.76, 0.78, 1))
+					img.set_pixel(j, i, Color(0.75, 0.76, 0.78, 1))
+			m.albedo_texture = ImageTexture.create_from_image(img)
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+			m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+			m.uv1_triplanar = true
+			m.uv1_scale = Vector3(8, 8, 8)
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m.metallic = 0.6
+			m.roughness = 0.4
 		"cloth":
 			m.albedo_color = Color(0.8, 0.8, 0.8) * tint
 			m.roughness = 1.0
@@ -718,7 +737,7 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		var ro := BuildRoller.new()
 		ro.transform = rd.xf
 		root.add_child(ro)
-		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0)
+		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0, rd.get("grille", false))
 	if p.kind in ["shop", "mall"]:
 		ShopGen.labels(p, root)
 	return root
@@ -859,7 +878,8 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 		g.aabb(fm, Vector3(x0, fy - 0.12, z0), Vector3(x1, fy, z1))
 	if p.has("cut"): h = minf(h, float(p.cut))
 	if r.type not in ["void", "stair", "shed", "machinery", "workshop", "warehouse", "ramp"] and not r.get("open_above", false) and not p.has("cut"):
-		g.aabb("concrete" if r.type in ["carpark", "dock"] else "trim:white", Vector3(x0, fy + h, z0), Vector3(x1, fy + h + 0.06, z1), false)
+		var ch := minf(h, float(r.get("ceil", h)))          # a dropped ceiling (a mall shop under a high roof)
+		g.aabb("concrete" if r.type in ["carpark", "dock"] else "trim:white", Vector3(x0, fy + ch, z0), Vector3(x1, fy + ch + 0.06, z1), false)
 	if r.type == "void":
 		return
 	if r.type == "stair":
@@ -926,7 +946,7 @@ static func _room_shell(p: Dictionary, g: Geo, r: Dictionary, fy: float, doors: 
 					if not _ext_side(p, r, side):
 						_wall_box(g, "steel", si, float(op.a) - 0.1, float(op.b) + 0.1, fy + float(op.y1), fy + float(op.y1) + 0.35, -0.2, T_IN, false)
 						p["_rollers"].append({"xf": _opening_xf(si, (float(op.a) + float(op.b)) * 0.5, fy + float(op.y0), -0.12),
-							"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0), "frac": float(op.get("open_frac", 1.0)) * 0.94})
+							"w": float(op.b) - float(op.a), "h": float(op.y1) - float(op.y0), "frac": float(op.get("open_frac", 1.0)) * 0.94, "grille": op.get("grille", false)})
 
 ## Where an opening's own node sits: on the wall line (offset t toward the room), its +z pointing outside
 static func _opening_xf(si: Dictionary, along: float, y: float, t: float) -> Transform3D:

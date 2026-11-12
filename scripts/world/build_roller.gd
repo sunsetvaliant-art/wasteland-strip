@@ -12,7 +12,7 @@ var _shape: CollisionShape3D
 var _box: BoxShape3D
 var _snd: AudioStreamPlayer3D
 
-func setup(width: float, height: float, frac: float) -> void:
+func setup(width: float, height: float, frac: float, grille := false) -> void:
 	w = width
 	h = height
 	add_to_group("rollers")
@@ -21,7 +21,8 @@ func setup(width: float, height: float, frac: float) -> void:
 	var bm := BoxMesh.new()
 	bm.size = Vector3(w, h, 0.04)
 	_panel.mesh = bm
-	_panel.material_override = BuildGen.mat("tin:grey")
+	_panel.material_override = BuildGen.mat("grille" if grille else "tin:grey")
+	_panel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if grille else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	add_child(_panel)
 	_shape = CollisionShape3D.new()
 	_box = BoxShape3D.new()

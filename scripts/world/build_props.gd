@@ -147,25 +147,82 @@ static var _dims := {}   # model key -> [scale, AABB (unscaled)]
 static var pending: Array = []   # [node, key, offset, plan]: models still to be put in (a few each frame)
 
 ## Put in the models still waiting, for up to `budget_us` microseconds
+static var batches := {}        # Props holder id -> {"holder", "left", "items": [[key, Transform3D]]}: fixtures waiting to be merged
+static var _fix_mesh := {}      # fixture key -> its mesh (they're all the same)
+const BATCH := 48
+static var _nomerge := OS.get_environment("PROPS_NOMERGE") != ""
+
 static func work(budget_us: int) -> void:
 	var t0 := Time.get_ticks_usec()
 	while not pending.is_empty() and Time.get_ticks_usec() - t0 < budget_us:
 		var job: Array = pending.pop_front()
 		var node = job[0]
+		var hid: int = job[4]
 		if not is_instance_valid(node):
+			batches.erase(hid)
 			continue
-		var vis := _make(job[1], job[3])
-		vis.position = job[2]
-		(node as Node3D).add_child(vis)
-		if job[1] == "bed":
-			var bb: AABB = dims("bed")[1]
-			var g := BuildGen.Geo.new()
-			g.aabb("fabric:white", Vector3(-bb.size.x / 2 + 0.06, 0.42, -bb.size.z / 2 + 0.12), Vector3(bb.size.x / 2 - 0.06, 0.6, bb.size.z / 2 - 0.12), false)
-			g.aabb("fabric:blue", Vector3(-bb.size.x / 2 + 0.06, 0.6, -bb.size.z / 2 + 0.6), Vector3(bb.size.x / 2 - 0.06, 0.64, bb.size.z / 2 - 0.15), false)
-			g.aabb("fabric:white", Vector3(-bb.size.x / 2 + 0.15, 0.6, -bb.size.z / 2 + 0.15), Vector3(bb.size.x / 2 - 0.15, 0.72, -bb.size.z / 2 + 0.5), false)
-			var mi := MeshInstance3D.new()
-			mi.mesh = g.commit()
-			(node as Node3D).add_child(mi)
+		var key: String = job[1]
+		var bt: Dictionary = batches.get(hid, {})
+		if FIX.has(key) and not _nomerge and key != "vat" and not (node is RigidBody3D) and not bt.is_empty():
+			# a fixture that stays put: its mesh goes into one shared mesh for the building (a draw call per material,
+			# not per shelf), a batch at a time
+			bt.items.append([key, (node as Node3D).transform * Transform3D(Basis(), job[2])])
+		else:
+			var vis := _make(key, job[3])
+			vis.position = job[2]
+			if not job[5]:
+				# indoors the sun's shadows off the furniture aren't worth a draw call in every shadow split
+				for gi in vis.find_children("*", "GeometryInstance3D", true, false):
+					(gi as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			(node as Node3D).add_child(vis)
+			if key == "bed":
+				var bb: AABB = dims("bed")[1]
+				var g := BuildGen.Geo.new()
+				g.aabb("fabric:white", Vector3(-bb.size.x / 2 + 0.06, 0.42, -bb.size.z / 2 + 0.12), Vector3(bb.size.x / 2 - 0.06, 0.6, bb.size.z / 2 - 0.12), false)
+				g.aabb("fabric:blue", Vector3(-bb.size.x / 2 + 0.06, 0.6, -bb.size.z / 2 + 0.6), Vector3(bb.size.x / 2 - 0.06, 0.64, bb.size.z / 2 - 0.15), false)
+				g.aabb("fabric:white", Vector3(-bb.size.x / 2 + 0.15, 0.6, -bb.size.z / 2 + 0.15), Vector3(bb.size.x / 2 - 0.15, 0.72, -bb.size.z / 2 + 0.5), false)
+				var mi := MeshInstance3D.new()
+				mi.mesh = g.commit()
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				(node as Node3D).add_child(mi)
+		if not bt.is_empty():
+			bt.left -= 1
+			if bt.items.size() >= BATCH or bt.left <= 0:
+				_flush(bt)
+			if bt.left <= 0:
+				batches.erase(hid)
+
+## Merge a batch of fixtures into one mesh under the building's Props node
+static func _flush(bt: Dictionary) -> void:
+	if bt.items.is_empty() or not is_instance_valid(bt.holder):
+		bt.items.clear()
+		return
+	var sts := {}
+	for it in bt.items:
+		var key: String = it[0]
+		if not _fix_mesh.has(key):
+			var tmp := _fixture(key, {})
+			_fix_mesh[key] = (tmp.get_child(0) as MeshInstance3D).mesh
+			tmp.free()
+		var m: ArrayMesh = _fix_mesh[key]
+		for si in m.get_surface_count():
+			var mk := m.surface_get_name(si)
+			if not sts.has(mk):
+				var st := SurfaceTool.new()
+				st.begin(Mesh.PRIMITIVE_TRIANGLES)
+				sts[mk] = st
+			(sts[mk] as SurfaceTool).append_from(m, si, it[1])
+	var am := ArrayMesh.new()
+	for mk in sts:
+		(sts[mk] as SurfaceTool).commit(am)
+		am.surface_set_material(am.get_surface_count() - 1, BuildGen.mat(mk))
+	var mi := MeshInstance3D.new()
+	mi.mesh = am
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 150.0
+	mi.visibility_range_end_margin = 10.0
+	(bt.holder as Node3D).add_child(mi)
+	bt.items.clear()
 
 # ------------------------------------------------------------------------------------------------ a room being furnished
 class Room:
@@ -285,7 +342,7 @@ static func _room(r: Dictionary, fy: float) -> Room:
 	rm.z0 = float(r.z0) + BuildGen.T_IN
 	rm.z1 = float(r.z1) - BuildGen.T_IN
 	rm.fy = fy
-	rm.h = float(r.h)
+	rm.h = minf(float(r.h), float(r.get("ceil", r.h)))
 	# keep clear in front of doorways and openings
 	for side in ["N", "S", "W", "E"]:
 		for op in r.ops[side]:
@@ -325,7 +382,7 @@ static func _make(key: String, p: Dictionary) -> Node3D:
 	var dm := dims(key)
 	raw.scale = Vector3.ONE * float(dm[0])
 	for gi in raw.find_children("*", "GeometryInstance3D", true, false):
-		(gi as GeometryInstance3D).visibility_range_end = 110.0
+		(gi as GeometryInstance3D).visibility_range_end = 80.0
 		(gi as GeometryInstance3D).visibility_range_end_margin = 10.0
 	return raw
 
@@ -557,7 +614,11 @@ static func _put(rm: Room, key: String, spot: Dictionary, holder: Node3D, boxes:
 	else:
 		node = Node3D.new()
 	# the model itself comes a little later (BuildProps.work), its footprint centred on the node's origin
-	pending.append([node, key, Vector3(-bb.get_center().x, -bb.position.y, -bb.get_center().z), p])
+	var hid := holder.get_instance_id()
+	if not batches.has(hid):
+		batches[hid] = {"holder": holder, "left": 0, "items": []}
+	batches[hid].left += 1
+	pending.append([node, key, Vector3(-bb.get_center().x, -bb.position.y, -bb.get_center().z), p, hid, outdoors])
 	if node is CollisionObject3D:
 		(node.get_child(0) as CollisionShape3D).position = Vector3(0, bb.size.y / 2, 0)
 	var y: float = spot.get("y", rm.fy)

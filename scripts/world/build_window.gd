@@ -48,28 +48,33 @@ func _pane(glass: Material) -> Node3D:
 	bm.size = Vector3(w - 0.02, h - 0.02, 0.008)
 	g.mesh = bm
 	g.material_override = glass
+	g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	n.add_child(g)
 	return n
 
 func _sash(glass: Material, frame: Material, _z: float) -> Node3D:
+	# one mesh, two surfaces (it was five meshes a sash: with a town of windows that's a lot of draw calls)
 	var n := Node3D.new()
 	add_child(n)
-	var g := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(w - 0.08, h * 0.5 - 0.06, 0.006)
-	g.mesh = bm
-	g.material_override = glass
-	n.add_child(g)
-	for e in [[Vector3(0, h * 0.25 - 0.02, 0), Vector3(w, 0.04, 0.035)], [Vector3(0, -h * 0.25 + 0.02, 0), Vector3(w, 0.04, 0.035)],
-			[Vector3(-w * 0.5 + 0.02, 0, 0), Vector3(0.04, h * 0.5, 0.035)], [Vector3(w * 0.5 - 0.02, 0, 0), Vector3(0.04, h * 0.5, 0.035)]]:
-		var f := MeshInstance3D.new()
-		var fb := BoxMesh.new()
-		fb.size = e[1]
-		f.mesh = fb
-		f.material_override = frame
-		f.position = e[0]
-		n.add_child(f)
+	var key := Vector2i(roundi(w * 100), roundi(h * 100))
+	if not _sash_cache.has(key):
+		var g := BuildGen.Geo.new()
+		g.box("glass", Transform3D(), Vector3(w - 0.08, h * 0.5 - 0.06, 0.006), false)
+		for e in [[Vector3(0, h * 0.25 - 0.02, 0), Vector3(w, 0.04, 0.035)], [Vector3(0, -h * 0.25 + 0.02, 0), Vector3(w, 0.04, 0.035)],
+				[Vector3(-w * 0.5 + 0.02, 0, 0), Vector3(0.04, h * 0.5, 0.035)], [Vector3(w * 0.5 - 0.02, 0, 0), Vector3(0.04, h * 0.5, 0.035)]]:
+			g.box("frame", Transform3D(Basis(), e[0]), e[1], false)
+		_sash_cache[key] = g.commit(false)
+	var mi := MeshInstance3D.new()
+	mi.mesh = _sash_cache[key]
+	var am: ArrayMesh = mi.mesh
+	for si in am.get_surface_count():
+		mi.set_surface_override_material(si, glass if am.surface_get_name(si) == "glass" else frame)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 140.0
+	n.add_child(mi)
 	return n
+
+static var _sash_cache := {}
 
 func hint() -> String:
 	if boards: return boards.hint()

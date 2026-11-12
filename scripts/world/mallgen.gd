@@ -120,6 +120,8 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 		var nk := maxi(2, int(fc_w / 5.0))
 		for k in nk:
 			u.append({"x0": fc_x + fc_w * k / nk, "z0": hd - 6.0, "x1": fc_x + fc_w * (k + 1) / nk, "z1": hd, "type": "fc_kitchen"})
+	for r in u:
+		if r.type in ["unit", "store", "toilet", "security", "service", "fc_kitchen", "hall"]: r["ceil"] = 3.9
 	p.floors.append({"y": UY, "h": UH, "rooms": u})
 	# the ramp: lane A from near the back of its bay up toward the street, round the hairpin, lane B back to the concourse
 	var r := (RAMP_W - 2.0 * 1.3 - LANE) / 2.0          # centre-line radius of the turn
@@ -282,25 +284,28 @@ static func _between(p: Dictionary, pr: Dictionary, rng: RandomNumberGenerator) 
 				var c: float = (pr.lo + pr.hi) / 2
 				both_open.call(c - 2.0, c + 2.0, 0.0, 3.0)
 		"concourse|unit":
+			# a glass shopfront: the way in in the middle behind a see-through grille, full-height glass either side
 			var e: Array = of.call("unit")
-			var op := BuildGen._add_op(e[0], e[1], pr.lo + 0.4, pr.hi - 0.4, "roller", 0.0, 3.3)
+			var c: float = (pr.lo + pr.hi) / 2
+			var ew := minf(2.6, pr.hi - pr.lo - 1.2)
+			var op := BuildGen._add_op(e[0], e[1], c - ew / 2, c + ew / 2, "roller", 0.0, 3.0)
 			op["open_frac"] = [0.0, 0.0, 0.3, 1.0, 1.0][rng.randi() % 5]
-			BuildGen._add_op(e[2], e[3], pr.lo + 0.4, pr.hi - 0.4, "open", 0.0, 3.3)
+			op["grille"] = true
+			BuildGen._add_op(e[2], e[3], c - ew / 2, c + ew / 2, "open", 0.0, 3.0)
+			_glaze(e, pr.lo + 0.3, c - ew / 2 - 0.2, 0.12, 3.2)
+			_glaze(e, c + ew / 2 + 0.2, pr.hi - 0.3, 0.12, 3.2)
 		"concourse|super":
 			var e: Array = of.call("super")
 			var c: float = (pr.lo + pr.hi) / 2
 			both_open.call(c - 5.0, c + 5.0, 0.0, 3.4)
-			for s in [[pr.lo + 0.5, c - 5.3], [c + 5.3, pr.hi - 0.5]]:
-				var L: float = s[1] - s[0]
-				if L < 1.0: continue
-				var n := int(ceil(L / 2.8))
-				for j in n:
-					var x0: float = s[0] + L * j / n + 0.05
-					var wo := BuildGen._add_op(e[0], e[1], x0, s[0] + L * (j + 1) / n - 0.05, "window", 0.4, 3.0)
-					wo["fixed"] = true
+			_glaze(e, pr.lo + 0.5, c - 5.3, 0.12, 3.2)
+			_glaze(e, c + 5.3, pr.hi - 0.5, 0.12, 3.2)
 		"bigbox|concourse":
 			var c: float = (pr.lo + pr.hi) / 2
 			both_open.call(c - 3.5, c + 3.5, 0.0, 3.4)
+			var e: Array = of.call("bigbox")
+			_glaze(e, pr.lo + 0.5, c - 3.8, 0.12, 3.2)
+			_glaze(e, c + 3.8, pr.hi - 0.5, 0.12, 3.2)
 		"concourse|security", "hall|service", "hall|security", "hall|store", "hall|toilet", "store|unit", "super|super_store":
 			# the room that isn't the hall/concourse gets the leaf
 			var t: String = tb if ta in ["concourse", "hall", "unit", "super"] else ta
@@ -327,6 +332,18 @@ static func _between(p: Dictionary, pr: Dictionary, rng: RandomNumberGenerator) 
 		"concourse|lift", "carpark|lift":
 			var e: Array = of.call("lift")
 			BuildGen._add_op(e[0], e[1], (pr.lo + pr.hi) / 2 - 0.55, (pr.lo + pr.hi) / 2 + 0.55, "liftdoor", 0.0, 2.2)
+
+## Glass panes (fixed, breakable) from lo to hi in the wall between e[0] (which owns them) and e[2]
+static func _glaze(e: Array, lo: float, hi: float, y0: float, y1: float) -> void:
+	var L := hi - lo
+	if L < 0.9: return
+	var n := int(ceil(L / 2.8))
+	for j in n:
+		var a := lo + L * j / n + 0.05
+		var b := lo + L * (j + 1) / n - 0.05
+		var wo := BuildGen._add_op(e[0], e[1], a, b, "window", y0, y1)
+		wo["fixed"] = true
+		BuildGen._add_op(e[2], e[3], a, b, "open", y0, y1)
 
 # ------------------------------------------------------------------------------------------------ the ramp
 ## Points along the ramp's centre line, foot to top: {pos, dir}
@@ -392,18 +409,78 @@ static func _ramp(p: Dictionary, g: BuildGen.Geo, lod: bool) -> void:
 		var bas := Basis(right, up, fwd)
 		var mid := (a + b) * 0.5
 		# the deck (a touch longer than its piece so they overlap round the turn)
-		g.box("tile:grey", Transform3D(bas, mid - up * 0.15), Vector3(LANE + (0.3 if i >= segs else 0.0), 0.3, L + 0.25))
+		g.box("rubber", Transform3D(bas, mid - up * 0.15), Vector3(LANE + (0.3 if i >= segs else 0.0), 0.3, L + 0.25))
 		if lod: continue
 		for sd in [-1.0, 1.0]:
 			var off: Vector3 = right * sd * (LANE / 2 + 0.08)
-			g.box(p.clad, Transform3D(bas, mid + off + up * 0.5), Vector3(0.16, 1.0, L + 0.2))
-			g.box("steel", Transform3D(bas, mid + off + up * 1.06), Vector3(0.07, 0.07, L + 0.2), false)
+			g.box("steel", Transform3D(bas, mid + off + up * 0.14), Vector3(0.12, 0.28, L + 0.2), false)
+			g.box("glass", Transform3D(bas, mid + off + up * 0.64), Vector3(0.03, 0.72, L + 0.2), false)
+			g.box("steel", Transform3D(bas, mid + off + up * 1.04), Vector3(0.07, 0.07, L + 0.2), false)
+			g.shapes.append([Transform3D(bas, mid + off + up * 0.52), Vector3(0.12, 1.04, L + 0.2)])
 		# yellow edge lines
 		for sd in [-1.0, 1.0]:
 			g.box("enamel:yellow", Transform3D(bas, mid + right * sd * (LANE / 2 - 0.12) + up * 0.005), Vector3(0.08, 0.01, L), false)
 		# a column under it now and then
 		if i % 3 == 1 and mid.y > 1.2:
 			g.aabb("concrete", Vector3(mid.x - 0.25, 0.0, mid.z - 0.25), Vector3(mid.x + 0.25, mid.y - 0.3, mid.z + 0.25))
+
+## The concourse as a 2020s mall: bulkheads stepping down to the shopfronts with downlights in them, dark inlay bands
+## in the polished floor, wayfinding signs and banners hung under the skylight, a few fallen ceiling panels
+static func _dress(p: Dictionary, g: BuildGen.Geo) -> void:
+	var hw: float = p.w / 2
+	var c0 := -CW / 2
+	var c1 := CW / 2
+	var top := UY + UH
+	var m: Dictionary = p.mall
+	for sd in [-1.0, 1.0]:
+		var zw := c0 if sd < 0 else c1                    # the shopfront line
+		var za := func(dep: float) -> Array:               # [z min, z max] of a strip dep deep off that wall
+			return [zw, zw + dep] if sd < 0 else [zw - dep, zw]
+		var b1: Array = za.call(1.5)
+		g.aabb("trim:white", Vector3(-hw, UY + 4.5, b1[0]), Vector3(hw, top, b1[1]), false)
+		var b2: Array = za.call(2.3)
+		g.aabb("trim:white", Vector3(-hw, UY + 5.4, b2[0]), Vector3(hw, top, b2[1]), false)
+		# downlights (dead) in the lower one
+		var x := -hw + 1.5
+		while x < hw - 1.0:
+			var zc: float = zw - sd * -0.75
+			g.aabb("steel", Vector3(x - 0.13, UY + 4.485, zc - 0.13), Vector3(x + 0.13, UY + 4.5, zc + 0.13), false)
+			g.aabb("dark", Vector3(x - 0.09, UY + 4.48, zc - 0.09), Vector3(x + 0.09, UY + 4.486, zc + 0.09), false)
+			x += 3.0
+		# a dark band in the floor along the shopfronts
+		var fb: Array = za.call(1.1)
+		var fa: Array = za.call(0.75)
+		g.aabb("terrazzo:charcoal", Vector3(-hw, UY, minf(fa[1], fb[1]) if sd < 0 else fb[0]), Vector3(hw, UY + 0.006, fb[1] if sd < 0 else maxf(fa[0], fb[0])), false)
+	# the stripe down the middle, and cross bands
+	g.aabb("terrazzo:charcoal", Vector3(-hw, UY, -0.22), Vector3(hw, UY + 0.006, 0.22), false)
+	var xb := -hw + 6.0
+	while xb < hw - 3.0:
+		g.aabb("terrazzo:charcoal", Vector3(xb - 0.15, UY, c0 + 1.1), Vector3(xb + 0.15, UY + 0.006, c1 - 1.1), false)
+		xb += 12.0
+	# hanging signs: which way to what
+	var brand := str(m.brand.name)
+	var texts := [brand + "   ·   FOOD COURT", "TOILETS   ·   LIFT   ·   CAR PARK", "EXIT   ·   " + brand]
+	var n := maxi(2, int(p.w / 30.0))
+	for k in n:
+		var x: float = -hw + float(p.w) * (k + 0.5) / n
+		g.aabb("steel:charcoal", Vector3(x - 0.04, UY + 3.5, -1.7), Vector3(x + 0.04, UY + 4.0, 1.7), false)
+		for rz in [-1.5, 1.5]:
+			ShopGen._rod(g, Vector3(x, UY + 4.0, rz), Vector3(x, top + 0.3, rz), 0.012)
+		for s in [1.0, -1.0]:
+			ShopGen._label(p, Vector3(x + s * 0.05, UY + 3.75, 0), texts[k % texts.size()], 0.26, 3.2, s * PI / 2, Color(0.95, 0.95, 0.92))
+		# a banner between them
+		var bx: float = x + float(p.w) / n * 0.5
+		if bx < hw - 4.0:
+			g.aabb(p.trim, Vector3(bx - 0.02, UY + 3.9, -0.7), Vector3(bx + 0.02, UY + 6.3, 0.7), false)
+			for s in [1.0, -1.0]:
+				ShopGen._label(p, Vector3(bx + s * 0.03, UY + 5.4, 0), str(m.name), 0.3, 1.2, s * PI / 2, Color(0.96, 0.95, 0.9))
+	# ceiling panels that have come down
+	for k in 9:
+		var hsh := absi(hash(Vector2i(k, int(p.seed) % 1000)))
+		var px: float = -hw + 3.0 + float(hsh % 1000) / 1000.0 * (float(p.w) - 6.0)
+		var pz := (-1.0 if (hsh >> 10) & 1 else 1.0) * (CW / 2 - 0.5 - float((hsh >> 11) % 100) / 100.0 * 1.6)
+		var bas := Basis(Vector3.UP, float((hsh >> 4) % 628) / 100.0) * Basis(Vector3.RIGHT, float((hsh >> 7) % 30) / 100.0)
+		g.box("trim:white", Transform3D(bas, Vector3(px, UY + 0.06, pz)), Vector3(0.6, 0.02, 1.2), false)
 
 # ------------------------------------------------------------------------------------------------ outside and on top
 static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, lod := false) -> void:
@@ -503,6 +580,7 @@ static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, 
 		return
 	# ---- inside: the ramp, car park columns and lines, the balustrade round the void, lift doors, signs over the units
 	_ramp(p, g, false)
+	_dress(p, g)
 	for r in p.floors[0].rooms:
 		if r.type != "carpark": continue
 		var x := -hw + COL

@@ -9,8 +9,8 @@ extends Node3D
 ## Trees, grass and camps keep off the lots (Buildings.blocked).
 
 const CELL := 200.0
-const FULL_R := 135.0
-const FULL_DROP := 175.0
+const FULL_R := 90.0
+const FULL_DROP := 120.0
 const LOD_R := 1150.0
 const LOD_DROP := 1300.0
 const RESPAWN_S := 1800.0          # half an hour away and the cupboards fill again
@@ -151,7 +151,7 @@ func _process(dt: float) -> void:
 	var bd := INF
 	for i in _want_full:
 		if full.has(i): continue
-		var d := Vector2(float(lots[i][1]) - me.x, float(lots[i][2]) - me.z).length()
+		var d := _lot_dist(i, me)
 		if d < bd:
 			bd = d
 			best = i
@@ -170,15 +170,15 @@ func _update_sets(me: Vector3) -> void:
 	for gx in range(mc.x - cr, mc.x + cr + 1):
 		for gz in range(mc.y - cr, mc.y + cr + 1):
 			for i in cells.get(Vector2i(gx, gz), []):
-				var d := Vector2(float(lots[i][1]) - me.x, float(lots[i][2]) - me.z).length()
+				var d := _lot_dist(i, me)
 				if d < FULL_R and not full.has(i):
 					_want_full[i] = true
 	for i in full.keys():
-		var d := Vector2(float(lots[i][1]) - me.x, float(lots[i][2]) - me.z).length()
+		var d := _lot_dist(i, me)
 		if d > FULL_DROP:
 			_drop_full(i)
 	for i in _want_full.keys():
-		var d := Vector2(float(lots[i][1]) - me.x, float(lots[i][2]) - me.z).length()
+		var d := _lot_dist(i, me)
 		if d > FULL_DROP:
 			_want_full.erase(i)
 	# LOD cells in and out
@@ -550,6 +550,12 @@ func _mall_life(i: int, p: Dictionary, b: Node3D) -> void:
 		z.goal = z.global_position
 		crowd.append(z)
 	_hordes[i] = crowd
+
+## How far a lot is, for deciding whether to build it in full: to its middle, less most of its half-size for a big one
+## (a mall's edge is a long way from its middle)
+func _lot_dist(i: int, me: Vector3) -> float:
+	var l: Array = lots[i]
+	return Vector2(float(l[1]) - me.x, float(l[2]) - me.z).length() - maxf(0.0, maxf(float(l[4]), float(l[5])) * 0.5 - 12.0)
 
 func _drop_full(i: int) -> void:
 	_nav.erase(i)
