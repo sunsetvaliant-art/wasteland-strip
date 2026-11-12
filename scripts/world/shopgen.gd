@@ -13,6 +13,7 @@ const UY := 4.5          # the upstairs floor
 const UH := 3.0
 const AWN_Y := 3.0       # awning soffit
 const AWN_D := 2.8
+const CORR := 1.35       # the passage upstairs
 const STRIP := 1.1       # the side passage to the stairs on a two-storey one
 const SUBS := ["general", "general", "chemist", "hardware", "grocer", "grocer", "cafe", "cafe", "newsagent", "clothes", "clothes", "sports"]
 const TITLES := {
@@ -132,6 +133,14 @@ static func upper_rooms(w: float, d: float, rng: RandomNumberGenerator, flip: bo
 	if lz0 > s1 + 0.05:
 		rooms.append({"x0": sa, "z0": s1, "x1": sb, "z1": lz0, "type": "hall"})
 	rooms.append({"x0": -w / 2, "z0": lz0, "x1": w / 2, "z1": d / 2, "type": "lounge"})
+	# a passage beside the stairwell (railed off from it) from the landing to the lounge: every room opens off it
+	if w - STRIP - CORR >= 2.6:
+		if flip:
+			rooms.append({"x0": sb, "z0": -d / 2, "x1": sb + CORR, "z1": lz0, "type": "hall"})
+			xa = sb + CORR
+		else:
+			rooms.append({"x0": sa - CORR, "z0": -d / 2, "x1": sa, "z1": lz0, "type": "hall"})
+			xb = sa - CORR
 	var run := lz0 + d / 2
 	var seq: Array = ["kitchen", "bath", "bed"] if run > 7.5 else ["kitchen", "bed"]
 	if run > 11.0: seq = ["kitchen", "bed", "bath", "bed"]
