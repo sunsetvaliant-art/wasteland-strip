@@ -35,6 +35,17 @@ func _init() -> void:
 	var boxes := BuildProps.furnish(p, b, r2)
 	print("BUILT mall ", Time.get_ticks_msec() - t0, " ms, containers ", boxes.size(), " rollers ", p._rollers.size(), " windows ", p._windows.size(), " doors ", b.find_children("*", "BuildDoor", true, false).size())
 	for f in p.floors:
+		var ne := 0
+		var shut := 0
+		for r in f.rooms:
+			var any := false
+			for side in ["N", "S", "W", "E"]:
+				for op in r.ops[side]:
+					if op.kind in ["open", "door", "doorx", "roller"] and float(op.y0) < 0.3: any = true
+					if r.type == "concourse" and op.get("ext", false) and op.kind == "open": ne += 1
+			if not any and r.type != "void": shut += 1
+		print("CHECK floor ", f.y, " rooms ", f.rooms.size(), " mall entrances ", ne, " rooms with no way in ", shut)
+	for f in p.floors:
 		print("FLOOR y=", f.y, " ", f.rooms.map(func(r): return "%s[%.0f..%.0f x %.0f..%.0f]" % [r.type, r.x0, r.x1, r.z0, r.z1]))
 	
 	for _k in 60:

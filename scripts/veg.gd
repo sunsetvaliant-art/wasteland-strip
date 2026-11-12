@@ -307,7 +307,10 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			if layer == "grass" or layer == "scan":
 				basis = basis.rotated(Vector3(rng.randf() - 0.5, 0, rng.randf() - 0.5).normalized(), rng.randf() * 0.15)
 			if not per.has(kind): per[kind] = []
-			per[kind].append(Transform3D(basis, Vector3(x, h - 0.05, z)))
+			var sink := 0.05
+			if layer == "grass": sink = 0.07 + 0.11 * sc        # cards: wide flat quads, so on any slope the low side shows
+			elif layer == "scan": sink = 0.04 + 0.03 * sc
+			per[kind].append(Transform3D(basis, Vector3(x, h - sink, z)))
 			# bananas, bamboo and palms come in clumps; ferns in drifts
 			var extra := 0
 			if layer == "tree" and kind in ["banana", "bamboo", "palms", "palm4"]: extra = rng.randi_range(1, 3)

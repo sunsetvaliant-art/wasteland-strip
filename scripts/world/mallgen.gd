@@ -250,6 +250,29 @@ static func openings(p: Dictionary, rng: RandomNumberGenerator) -> void:
 		var rooms: Array = p.floors[fl].rooms
 		for pr in BuildGen._pairs(rooms):
 			_between(p, pr, rng)
+	# a ground-level mall: wherever one of its malls meets the open air there's a way in (glass doors, long gone)
+	if int(p.mall.get("fl", 1)) == 0:
+		var rooms0: Array = p.floors[0].rooms
+		for r in rooms0:
+			if r.type != "concourse": continue
+			for side in ["N", "S", "W", "E"]:
+				for sp in _bare(rooms0, r, side):
+					var L: float = float(sp[1]) - float(sp[0])
+					if L < 4.0: continue
+					var busy := false
+					for op in r.ops[side]:
+						if float(op.a) < float(sp[1]) and float(op.b) > float(sp[0]): busy = true
+					if busy: continue
+					var c: float = (float(sp[0]) + float(sp[1])) / 2
+					var hwid := minf(2.5, L / 2 - 0.5)
+					var eo := BuildGen._add_op(r, side, c - hwid, c + hwid, "open", 0.0, 3.2)
+					eo["ext"] = true
+					p.ext_doors.append({"room": r, "side": side, "c": c, "front": true})
+					for e in [[float(sp[0]) + 0.3, c - hwid - 0.2], [c + hwid + 0.2, float(sp[1]) - 0.3]]:
+						if e[1] - e[0] > 0.9:
+							var wo := BuildGen._add_op(r, side, e[0], e[1], "window", 0.3, 3.2)
+							wo["fixed"] = true
+	_open_up(p, rng)
 	# ---- outside
 	var g: Array = p.floors[0].rooms
 	for r in g:
@@ -352,6 +375,61 @@ static func openings(p: Dictionary, rng: RandomNumberGenerator) -> void:
 		pts.append(s.pos)
 	pts.append(Vector3(float(rp.xb), UY, float(rp.zt) - 0.8))
 	p["nav_extra"] = [[ramp_room, conc, [Vector3(float(rp.xa), 0.0, float(rp.za) - 0.6)] + pts]]
+
+## Every room must be reachable: anything the rules above left shut in gets a door to a neighbour that isn't (or,
+## failing that, to the outside)
+static func _open_up(p: Dictionary, rng: RandomNumberGenerator) -> void:
+	for fl in p.floors.size():
+		var rooms: Array = p.floors[fl].rooms
+		var pairs := BuildGen._pairs(rooms)
+		var through := func(r: Dictionary, side: String, lo: float, hi: float) -> bool:
+			for op in r.ops[side]:
+				if op.kind in ["open", "door", "doorx", "roller", "arch", "bay"] and float(op.y0) < 0.3 and float(op.a) < hi and float(op.b) > lo: return true
+			return false
+		var reached := {}
+		for r in rooms:
+			if r.type in ["concourse", "carpark", "lobby", "foodcourt"]: reached[r.id] = true
+			for side in ["N", "S", "W", "E"]:
+				for op in r.ops[side]:
+					if op.get("ext", false) and op.kind in ["open", "door", "roller"] and float(op.y0) < 0.3: reached[r.id] = true
+		for _pass in rooms.size() + 2:
+			var grew := false
+			for pr in pairs:
+				var ra: bool = reached.has(pr.a.id)
+				var rb: bool = reached.has(pr.b.id)
+				if ra == rb: continue
+				if through.call(pr.a, pr.sa, pr.lo, pr.hi) or through.call(pr.b, pr.sb, pr.lo, pr.hi):
+					reached[pr.a.id] = true
+					reached[pr.b.id] = true
+					grew = true
+			if grew: continue
+			# stuck: knock a door through the widest wall between a reached room and one that isn't
+			var best := {}
+			for pr in pairs:
+				if reached.has(pr.a.id) == reached.has(pr.b.id): continue
+				if pr.a.type in ["void", "lift"] or pr.b.type in ["void", "lift"]: continue
+				if pr.hi - pr.lo < BuildGen.DOOR_W + 0.6: continue
+				if best.is_empty() or pr.hi - pr.lo > best.hi - best.lo: best = pr
+			if best.is_empty(): break
+			var inside: bool = reached.has(best.a.id)
+			var shut: Dictionary = best.b if inside else best.a
+			var c: float = (best.lo + best.hi) / 2 - BuildGen.DOOR_W / 2
+			var op := BuildGen._add_op(shut, best.sb if inside else best.sa, c, c + BuildGen.DOOR_W, "door", 0.0, BuildGen.DOOR_H)
+			op["leaf"] = true
+			BuildGen._add_op(best.a if inside else best.b, best.sa if inside else best.sb, c, c + BuildGen.DOOR_W, "doorx", 0.0, BuildGen.DOOR_H)
+			reached[shut.id] = true
+		# still shut in (no neighbour at all): a door to the open air
+		for r in rooms:
+			if reached.has(r.id) or r.type in ["void", "lift", "stair", "ramp"]: continue
+			for side in ["S", "N", "E", "W"]:
+				var sp: Array = _bare(rooms, r, side)
+				if sp.is_empty() or float(sp[0][1]) - float(sp[0][0]) < 2.0: continue
+				var c: float = (float(sp[0][0]) + float(sp[0][1])) / 2 - BuildGen.DOOR_W / 2
+				var op := BuildGen._add_op(r, side, c, c + BuildGen.DOOR_W, "door", 0.0, BuildGen.DOOR_H)
+				op["leaf"] = true
+				op["ext"] = true
+				reached[r.id] = true
+				break
 
 static func _between(p: Dictionary, pr: Dictionary, rng: RandomNumberGenerator) -> void:
 	var a: Dictionary = pr.a

@@ -550,7 +550,25 @@ func _delete_aimed() -> void:
 
 func _drop_player() -> void:
 	var p: Player = main.player
-	p.global_position = _aim_point() + Vector3(0, 0.3, 0)
+	# wherever you're looking, however far: the ground only has collision near the player, so past that walk the
+	# line of sight along the height map
+	var r := _aim()
+	var at: Vector3
+	if r:
+		at = r.position
+	else:
+		var o := cam.global_position
+		var d := -cam.global_transform.basis.z
+		at = Vector3(o.x, main.height_at(o.x, o.z), o.z)
+		var t := 2.0
+		while t < 30000.0:
+			var q := o + d * t
+			if q.y <= main.height_at(q.x, q.z):
+				at = Vector3(q.x, main.height_at(q.x, q.z), q.z)
+				break
+			t += maxf(2.0, t * 0.01)
+	if main.buildings: main.buildings.build_near_now(at, 30.0)
+	p.global_position = at + Vector3(0, 0.5, 0)
 	p.velocity = Vector3.ZERO
 
 func _undo() -> void:
@@ -837,12 +855,71 @@ func _build_ui() -> void:
 	var mk := []
 	for k in MARKERS: mk.append({"type": "marker", "key": k, "name": k.replace("_", " ").capitalize() + (" spawn" if not k.ends_with("spawn") else "")})
 	_palette_page(tabs, "NPCs & spawns", mk)
+	_world_page(tabs)
 	inspector = PanelContainer.new()
 	inspector.theme = theme
 	inspector.position = Vector2(1460, 110)
 	inspector.custom_minimum_size = Vector2(380, 0)
 	inspector.visible = false
 	ui.add_child(inspector)
+
+## Fly speed, the time of day and the weather
+func _world_page(tabs: TabContainer) -> void:
+	var vb := VBoxContainer.new()
+	vb.name = "World"
+	tabs.add_child(vb)
+	var row := func(label: String) -> HBoxContainer:
+		var hb := HBoxContainer.new()
+		var l := Label.new()
+		l.text = label
+		l.custom_minimum_size = Vector2(170, 40)
+		hb.add_child(l)
+		vb.add_child(hb)
+		return hb
+	var r1: HBoxContainer = row.call("Fly speed (m/s)")
+	var sp := SpinBox.new()
+	sp.min_value = 1
+	sp.max_value = 5000
+	sp.step = 1
+	sp.value = speed
+	sp.custom_minimum_size = Vector2(160, 40)
+	sp.value_changed.connect(func(v): speed = v)
+	r1.add_child(sp)
+	for v in [5, 25, 100, 400, 1500]:
+		var b := Button.new()
+		b.text = str(v)
+		b.custom_minimum_size = Vector2(60, 40)
+		b.pressed.connect(func():
+			speed = float(v)
+			sp.set_value_no_signal(v))
+		r1.add_child(b)
+	var r2: HBoxContainer = row.call("Time of day")
+	var tl := Label.new()
+	var sl := HSlider.new()
+	sl.min_value = 0.0
+	sl.max_value = 23.95
+	sl.step = 0.05
+	sl.value = SkyCycle.inst.tod if SkyCycle.inst else 12.0
+	sl.custom_minimum_size = Vector2(280, 40)
+	tl.text = "%02d:%02d" % [int(sl.value), int(fmod(sl.value, 1.0) * 60.0)]
+	sl.value_changed.connect(func(v):
+		if SkyCycle.inst: SkyCycle.inst.tod = v
+		tl.text = "%02d:%02d" % [int(v), int(fmod(v, 1.0) * 60.0)])
+	r2.add_child(sl)
+	r2.add_child(tl)
+	var r3: HBoxContainer = row.call("Weather")
+	for w in ["clear", "cloudy", "rain", "storm", "fog"]:
+		var b := Button.new()
+		b.text = w.capitalize()
+		b.custom_minimum_size = Vector2(72, 40)
+		b.pressed.connect(func():
+			if SkyCycle.inst: SkyCycle.inst.set_weather(w, 1800.0))
+		r3.add_child(b)
+	var note := Label.new()
+	note.text = "The weather you pick holds for half an hour. P drops the player wherever you're looking, any distance."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.custom_minimum_size = Vector2(520, 60)
+	vb.add_child(note)
 
 func _palette_page(tabs: TabContainer, title: String, items: Array) -> void:
 	var sc := ScrollContainer.new()

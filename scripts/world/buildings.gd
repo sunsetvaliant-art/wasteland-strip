@@ -48,6 +48,7 @@ func setup(m) -> void:
 	lots = d.lots
 	towns = d.get("towns", [])
 	lots_ver = str(d.get("ver", ""))
+	_level_malls()
 	for i in lots.size():
 		var l: Array = lots[i]
 		var c := Vector2i(floori(float(l[1]) / CELL), floori(float(l[2]) / CELL))
@@ -102,6 +103,48 @@ static func near_any(x: float, z: float, r: float) -> bool:
 		if blocked(x + o.x, z + o.y, r * 0.5):
 			return true
 	return false
+
+## A mall's too big to sit on sloping ground (its floor ended up metres above one end): level the terrain under each,
+## with a 25 m skirt easing back to the lie of the land, before anything's built or grown
+func _level_malls() -> void:
+	if main == null or main.get("terrain") == null: return
+	var data = main.terrain.data
+	var changed := false
+	for i in lots.size():
+		var l: Array = lots[i]
+		if str(l[0]) != "mall": continue
+		var w := float(l[4])
+		var d := float(l[5])
+		var basis := Basis(Vector3.UP, float(l[3]))
+		var c := Vector3(float(l[1]), 0, float(l[2]))
+		var hs := []
+		for sx in 7:
+			for sz in 7:
+				var wp: Vector3 = c + basis * Vector3((sx / 6.0 - 0.5) * w, 0, (sz / 6.0 - 0.5) * d)
+				var h := float(data.get_height(wp))
+				if not is_nan(h): hs.append(h)
+		if hs.is_empty(): continue
+		hs.sort()
+		var level: float = maxf(hs[hs.size() / 2], 1.2)
+		_floor[i] = level + 0.12
+		var r := sqrt(w * w + d * d) * 0.5 + 30.0
+		var inv := basis.inverse()
+		var x := snappedf(c.x - r, 5.0)
+		while x <= c.x + r:
+			var z := snappedf(c.z - r, 5.0)
+			while z <= c.z + r:
+				var lp: Vector3 = inv * (Vector3(x, 0, z) - c)
+				var out := maxf(maxf(absf(lp.x) - w / 2, absf(lp.z) - d / 2), 0.0)
+				if out < 29.0:
+					var p := Vector3(x, 0, z)
+					var h0 := float(data.get_height(p))
+					if not is_nan(h0):
+						var k := clampf((out - 4.0) / 25.0, 0.0, 1.0)
+						data.set_height(p, lerpf(level, h0, k * k * (3.0 - 2.0 * k)))
+						changed = true
+				z += 5.0
+			x += 5.0
+	if changed: data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
 
 func _plan(i: int) -> Dictionary:
 	var l: Array = lots[i]

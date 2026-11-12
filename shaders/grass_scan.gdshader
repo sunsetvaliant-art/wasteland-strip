@@ -9,6 +9,7 @@ uniform float height = 0.2;              // model-space height of the clump (for
 uniform float wind = 0.1;
 uniform vec3 dry : source_color = vec3(0.86, 0.78, 0.5);
 uniform float alpha_cut = 0.4;
+uniform vec3 ground : source_color = vec3(0.50, 0.47, 0.24);     // what the paddock under it looks like from above
 // the near (dense) and far (light) sets hand over at a ring round the camera: each shrinks away on its side of it
 uniform float near_hide = 0.0;
 uniform float far_hide = 10000.0;
@@ -29,14 +30,16 @@ void vertex() {
 	VERTEX.x += s * k * k * height * 4.0;
 	VERTEX.z += s * 0.6 * k * k * height * 4.0;
 	VERTEX *= keep;
+	// lit as ground cover (up-facing), not blade by blade: two-sided blades went black on their backs
+	NORMAL = normalize(mix(NORMAL, vec3(0.0, 1.0, 0.0), 0.85));
 }
 void fragment() {
 	vec4 a = texture(albedo_tex, UV);
 	if (a.a < alpha_cut) discard;
 	// some clumps have gone off in the heat
 	vec3 col = mix(a.rgb, a.rgb * dry * 1.25, smoothstep(0.55, 0.95, var_k) * 0.7);
-	ALBEDO = col * (0.75 + 0.35 * bend);
-	NORMAL_MAP = texture(normal_tex, UV).rgb;
+	col = mix(col * 1.7, ground, mix(0.55, 0.22, bend));
+	ALBEDO = col * (0.85 + 0.3 * bend);
 	ROUGHNESS = texture(rough_tex, UV).g * 0.9;
 	SPECULAR = 0.3;
 	BACKLIGHT = col * 0.45;

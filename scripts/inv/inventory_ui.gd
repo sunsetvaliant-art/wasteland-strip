@@ -130,7 +130,7 @@ func _build_near() -> void:
 	near_grid = Items.new_grid(6, 8)
 	for pk in get_tree().get_nodes_in_group("pickups"):
 		if not (pk as Node3D).has_meta("items"): continue
-		if (pk as Node3D).global_position.distance_to(player.global_position) > 3.0: continue
+		if (pk as Node3D).global_position.distance_to(player.global_position) > 4.5: continue
 		for s in pk.get_meta("items"):
 			var spot := Inventory.free_spot(near_grid, s)
 			if spot.is_empty(): break
@@ -308,6 +308,10 @@ func _return_held() -> void:
 func _drop_world(stacks: Array) -> void:
 	var f: Vector3 = -player.global_transform.basis.z
 	WorldItem.spawn(main, stacks, player.global_position + f * 0.7 + Vector3(0, 1.0, 0), f * 1.5)
+	# what you've just put down shows under "on the ground near me" straight away
+	if open and container == null:
+		_build_near.call_deferred()
+		root.queue_redraw.call_deferred()
 
 func _quick_move(s: Dictionary, r: Dictionary) -> void:
 	if r.type == "slot":

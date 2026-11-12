@@ -6,6 +6,7 @@ uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat
 uniform float wind = 0.1;
 uniform vec3 dry : source_color = vec3(0.86, 0.78, 0.5);
 uniform float alpha_cut = 0.45;
+uniform vec3 ground : source_color = vec3(0.50, 0.47, 0.24);
 uniform float near_hide = 0.0;
 uniform float far_hide = 10000.0;
 varying float var_k;
@@ -37,6 +38,7 @@ void fragment() {
 	vec4 a = texture(atlas, vec2((frame + clamp(UV.x, 0.01, 0.99)) * 0.25, UV.y));
 	if (a.a < alpha_cut) discard;
 	vec3 col = mix(a.rgb, a.rgb * dry * 1.25, smoothstep(0.55, 0.95, var_k) * 0.7);
+	col = mix(col * 1.7, ground, mix(0.55, 0.22, bend));
 	ALBEDO = col;
 	ROUGHNESS = 0.85;
 	SPECULAR = 0.25;
