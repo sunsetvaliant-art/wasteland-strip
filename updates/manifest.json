@@ -209,6 +209,13 @@
    "date": "2026-11-12",
    "notes": "Flats over the shops are a proper floor plan now: a passage runs from the top of the stairs past the stairwell to the lounge, and every room upstairs opens off it.",
    "size": 208688
+  },
+  {
+   "file": "patch_0.2.0_0027.pck",
+   "version": "0.2.27",
+   "date": "2026-11-12",
+   "notes": "Sunnyvale rebuilt from the real centre's floor plans. Ground: shops along the street, a lobby wrapping round the ramp, the bottle shop, car park west, east and under the supermarket, lift and stairs on the west wall, loading dock. Upstairs: the mall runs in a C round the open ramp well under skylights, variety store and shops on the street side, toilets and shops down the west, furniture and electrical store on the east, and the supermarket across the whole south half.",
+   "size": 75904
   }
  ],
  "full": {
