@@ -258,6 +258,13 @@
    "date": "2026-11-13",
    "notes": "Fixes. Twin City: the ground under it is levelled so it no longer sits behind a wall, every mall now has a way in from outside (there were none), and every shop has a door. Weapons and anything else you drop show under on the ground near me straight away. Oracle mode: a World tab in the palette with fly speed in m/s, time of day and weather, and P drops the player wherever you look at any distance. Grass: no longer black (lit like the ground and toned to it) and sunk so it stops floating on slopes.",
    "size": 132224
+  },
+  {
+   "file": "patch_0.2.0_0034.pck",
+   "version": "0.2.34",
+   "date": "2026-11-13",
+   "notes": "Kicked zombies now go down in a heap and tumble (a proper ragdoll), lie there a moment, then climb back to their feet and come at you again; a brick or a thrown weapon knocks them over too, and you can finish them on the ground. Brutes only stagger unless it is a flying kick. Your character's leg now kicks and the arm swings when you hit. New sky: drifting clouds that thicken with the weather, stars and a moon at night.",
+   "size": 195996
   }
  ],
  "full": {
