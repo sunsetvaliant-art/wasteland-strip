@@ -44,15 +44,62 @@ for ty in range(ty0, ty1 + 1):
     for tx in range(tx0, tx1 + 1):
         mosaic[(ty - ty0) * 256:(ty - ty0 + 1) * 256, (tx - tx0) * 256:(tx - tx0 + 1) * 256] = fetch(tx, ty)
 H = map_coordinates(mosaic, [(FY - ty0) * 256 - 0.5, (FX - tx0) * 256 - 0.5], order=1, mode="nearest")
-sea = H < 0.35
-H = gaussian_filter(np.where(sea, 0.0, H), 1.6)          # a DSM: take the roofs and tree tops down a bit
-H = np.where(gaussian_filter(sea.astype(float), 1.2) > 0.6, 0.0, np.maximum(H, 0.0))
+# ---- the lidar (NSW Spatial Services 1 m DEM, the user's WASTELAND/DATA_2634501.zip; the tiles for this strip are in
+# /home/claude/lidar, pulled out of the zip by range requests with /home/claude/lidar_tools/rz.py). Where it has data
+# it replaces the public tiles; north of the border (Queensland) it has none.
+import glob, re
+def utm56(lat, lon):
+    a = 6378137.0; f = 1 / 298.257222101; k0 = 0.9996; e2 = f * (2 - f); ep2 = e2 / (1 - e2)
+    la = np.radians(lat); lo = np.radians(lon) - math.radians(153.0)
+    N = a / np.sqrt(1 - e2 * np.sin(la) ** 2); T = np.tan(la) ** 2; C = ep2 * np.cos(la) ** 2; A = np.cos(la) * lo
+    M = a * ((1 - e2 / 4 - 3 * e2 ** 2 / 64 - 5 * e2 ** 3 / 256) * la - (3 * e2 / 8 + 3 * e2 ** 2 / 32 + 45 * e2 ** 3 / 1024) * np.sin(2 * la)
+             + (15 * e2 ** 2 / 256 + 45 * e2 ** 3 / 1024) * np.sin(4 * la) - (35 * e2 ** 3 / 3072) * np.sin(6 * la))
+    E = k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T ** 2 + 72 * C - 58 * ep2) * A ** 5 / 120) + 500000.0
+    Nn = k0 * (M + N * np.tan(la) * (A ** 2 / 2 + (5 - T + 9 * C + 4 * C ** 2) * A ** 4 / 24 + (61 - 58 * T + T ** 2 + 600 * C - 330 * ep2) * A ** 6 / 720)) + 10000000.0
+    return E, Nn
+LID = np.full(H.shape, np.nan)
+tiles_l = glob.glob("/home/claude/lidar/*_1m.tif")
+if tiles_l:
+    import tifffile
+    UE, UN = utm56(LAT, LON)
+    for fn in tiles_l:
+        m = re.search(r"_(\d{3})(\d{4})_56_0002_0002_1m", fn)
+        e0, n0 = int(m.group(1)) * 1000.0, int(m.group(2)) * 1000.0
+        sel = (UE >= e0) & (UE < e0 + 2000) & (UN >= n0) & (UN < n0 + 2000)
+        if not sel.any(): continue
+        A = tifffile.imread(fn).astype(np.float64)
+        A[(A < -100) | (A > 2000)] = np.nan
+        # 5 m block means of the 1 m cells (NaN where a block is mostly empty)
+        B = A[:2000, :2000].reshape(400, 5, 400, 5)
+        cnt = np.isfinite(B).sum(axis=(1, 3))
+        B5 = np.where(cnt >= 13, np.nansum(B, axis=(1, 3)) / np.maximum(cnt, 1), np.nan)
+        col = np.clip(((UE[sel] - e0) / 5.0).astype(int), 0, 399)
+        row = np.clip(((n0 + 2000 - UN[sel]) / 5.0).astype(int), 0, 399)
+        LID[sel] = B5[row, col]
+    print("lidar covers", round(float(np.isfinite(LID).mean()), 3), "of the strip; mean difference from the public tiles where both have land",
+          round(float(np.nanmean((LID - H)[np.isfinite(LID) & (H > 1)])), 2))
+    # the public tiles ride high (roofs, trees, a different datum): drop them by the typical difference, then feather
+    # the two together over about 30 m so there's no step at the border
+    off = float(np.nanmedian((LID - H)[np.isfinite(LID) & (H > 1)]))
+    Hp = np.where(H > 0.35, np.maximum(H + off, 0.6), H)
+    have = np.isfinite(LID).astype(float)
+    ms = gaussian_filter(have, 6.0)
+    ms = np.where(have > 0, np.clip((ms - 0.5) * 2.0, 0, 1), 0.0)
+    H = np.where(have > 0, LID * ms + Hp * (1 - ms), Hp)
+    H = np.where(np.isfinite(H), H, Hp)
+    print("public tiles lowered by", round(off, 2))
+sea = (H < 0.35) & ~np.isfinite(LID) | (np.isfinite(LID) & (LID < 0.15))
+Hs = gaussian_filter(np.where(sea, 0.0, H), 1.6)         # the public tiles are a DSM: take the roofs and tree tops down a bit
+H = np.where(np.isfinite(LID), np.where(sea, 0.0, H), Hs)  # the lidar is bare earth: as it is
+H = np.where((gaussian_filter(sea.astype(float), 1.2) > 0.6) & ~np.isfinite(LID), 0.0, np.maximum(H, 0.0))
 # meet the old ground along the seam: its last row, carried north and faded out over 80 m
 T = 6401
 old = np.memmap(f"{GAME}/data/height_roads.r16", "<u2", "r", shape=(T, T))
 edge = old[0, int((XA - X0) / 5):int((XB - X0) / 5) + 1].astype(np.float64) / 65535 * 900 - 60
 k = np.clip((Z0 - zs) / 80.0, 0, 1)[:, None]
 k = k * k * (3 - 2 * k)
+print("seam: mean |lidar - old map edge| along the first row north of the edge:", round(float(np.nanmean(np.abs(LID[-1] - edge))), 2), "m")
+k = np.where(np.isfinite(LID), np.clip((Z0 - zs) / 15.0, 0, 1)[:, None] * np.ones_like(H), k)      # the lidar lines up with the old ground: a short blend
 H = edge[None, :] * (1 - k) + H * k
 # ease the west and east ends of the strip down to nothing so it has no cliff
 ex = np.clip(np.minimum(xs - XA, XB - xs) / 150.0, 0, 1)[None, :]

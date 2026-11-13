@@ -177,3 +177,13 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
   searsia_lucida were tried and dropped: 0.4-2 million triangles each, too heavy to scatter.
 - Still to do: servo generator on OSM fuel sites, caravan-park cabins, the sugar mill; main-street shops up north;
   Twin City outline + car park; Sexton Hill (needs the spot); smarter AI; lidar for the north.
+
+## 0.2.40 (2026-11-13): the lidar up north, Bay Mall's car park
+- The user's lidar zip is reachable by HTTP range requests (it was shared by link): /home/claude/lidar_tools/rz.py opens
+  the zip remotely and pulls single tiles (names: <region>201309-LID1-AHD_<EEE><NNNN>_56_0002_0002_1m.tif, 2 km MGA56
+  tiles, LZW float GeoTIFF; pip imagecodecs). The ten tiles for the north strip are in /home/claude/lidar. bake_north.py
+  uses them where they have data (60% of the strip: the NSW side); Queensland stays on the public tiles, lowered 2.3 m
+  and feathered. The same route can fetch tiles for anywhere else (e.g. to re-cut Sexton Hill).
+- MallGen._deck_carpark: three open decks with drivable ramps, drawn for BAY MALL at its south-east (geometry only).
+- USER CORRECTION: Tweed City has NO multi-level car park; it has underground parking. Tweed Mall has the multi-level.
+  Underground parking at Twin City is not built (needs a hole in the terrain).

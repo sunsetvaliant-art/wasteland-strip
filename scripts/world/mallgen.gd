@@ -849,6 +849,57 @@ static func _roof_room(p: Dictionary, g: BuildGen.Geo, r: Dictionary, top_h: flo
 	if not lod:
 		ShopGen._rod(g, _uv(r, ax, 1.0, ridge, W / 2), _uv(r, ax, L - 1.0, ridge, W / 2), 0.05)
 
+## A car park of open concrete decks: ground, and two levels over it, each reached by a ramp up the +x side that a
+## car can take; columns on a grid, a low wall round every deck
+static func _deck_carpark(g: BuildGen.Geo, x0: float, z0: float, x1: float, z1: float, lod: bool) -> void:
+	var LH := 3.2
+	var RW := 5.0                       # the ramps' strip
+	var RL := 24.0
+	var xs := x1 - RW
+	for L: int in [1, 2]:
+		var y: float = L * LH
+		g.aabb("concrete", Vector3(x0, y - 0.25, z0), Vector3(xs, y, z1))
+		# the ramp strip: deck except where this level's ramp comes up through it
+		var ra: float = z0 + 6.0 if L == 1 else z1 - 6.0 - RL
+		var rb := ra + RL
+		if ra - z0 > 0.1: g.aabb("concrete", Vector3(xs, y - 0.25, z0), Vector3(x1, y, ra))
+		if z1 - rb > 0.1: g.aabb("concrete", Vector3(xs, y - 0.25, rb), Vector3(x1, y, z1))
+		# the ramp from the level below: up toward +z for the first, back toward -z for the second
+		var lo := Vector3((xs + x1) / 2, y - LH, ra if L == 1 else rb)
+		var hi := Vector3((xs + x1) / 2, y, rb if L == 1 else ra)
+		var mid := (lo + hi) / 2
+		var run := hi - lo
+		var bas := Basis.looking_at(run.normalized(), Vector3.UP)
+		g.box("concrete", Transform3D(bas, mid - Vector3(0, 0.12, 0)), Vector3(RW - 0.3, 0.25, run.length() + 0.4))
+		g.box("enamel:yellow", Transform3D(bas, mid + Vector3(-(RW - 0.3) / 2, 0.3, 0)), Vector3(0.12, 0.6, run.length()), true)
+		# a wall between the ramp and the deck beside it, and round the deck's edges
+		g.aabb("concrete", Vector3(xs - 0.12, y, ra), Vector3(xs, y + 1.0, rb))
+		g.aabb("concrete", Vector3(x0 - 0.15, y, z0 - 0.15), Vector3(x0, y + 1.0, z1 + 0.15))
+		g.aabb("concrete", Vector3(x1, y, z0 - 0.15), Vector3(x1 + 0.15, y + 1.0, z1 + 0.15))
+		g.aabb("concrete", Vector3(x0, y, z0 - 0.15), Vector3(x1, y + 1.0, z0))
+		g.aabb("concrete", Vector3(x0, y, z1), Vector3(x1, y + 1.0, z1 + 0.15))
+	# columns
+	var x := x0 + 0.4
+	while x < xs + 0.1:
+		var z := z0 + 0.4
+		while z < z1:
+			g.aabb("concrete", Vector3(x - 0.3, 0.0, z - 0.3), Vector3(x + 0.3, 2 * LH - 0.25, z + 0.3), not lod)
+			z += 8.1
+		x += (xs - x0 - 0.8) / 3.0
+	var z2 := z0 + 0.4
+	while z2 < z1:
+		g.aabb("concrete", Vector3(x1 - 0.5, 0.0, z2 - 0.3), Vector3(x1, 2 * LH - 0.25, z2 + 0.3), not lod)
+		z2 += 8.1
+	if lod: return
+	# bay lines on every level
+	for L in 3:
+		var y: float = L * LH + 0.012
+		var zz := z0 + 3.0
+		while zz < z1 - 2.0:
+			g.aabb("enamel:white", Vector3(x0 + 0.5, y, zz - 0.05), Vector3(x0 + 5.5, y + 0.006, zz + 0.05), false)
+			g.aabb("enamel:white", Vector3(xs - 6.0, y, zz - 0.05), Vector3(xs - 1.0, y + 0.006, zz + 0.05), false)
+			zz += 2.7
+
 ## The parts of a room's side that no other room on its floor shares: [[lo, hi], ...]
 static func _bare(rooms: Array, r: Dictionary, side: String) -> Array:
 	var si := BuildGen._side_info(r, side)
@@ -959,6 +1010,11 @@ static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, 
 				var a := float(op.a) - 0.5
 				var b := float(op.b) + 0.5
 				BuildGen._roof_quad(g, "concrete", Vector3(x, 0.0, a), Vector3(x, 0.0, b), Vector3(x + outx * run, gy - 0.05, b), Vector3(x + outx * run, gy - 0.05, a))
+	# Bay Mall's multi-level car park: three levels of concrete deck beside the south end, ramps up one side
+	if str(m.name) == "BAY MALL":
+		var ex := w / 833.0
+		var sz := d / 1175.0
+		_deck_carpark(g, (800.0 - 508.5) * ex, (1480.0 - 1302.5) * sz, (925.0 - 508.5) * ex, (1885.0 - 1302.5) * sz, lod)
 	if lod:
 		return
 	# ---- inside: the ramp, car park columns and lines, the balustrade round the void, lift doors, signs over the units
