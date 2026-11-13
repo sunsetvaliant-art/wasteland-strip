@@ -98,3 +98,17 @@ Delivery: two halves. Half 1 = world + loot. Half 2 = base/crafting/scavs/trader
   ferns in drifts, understory and edge scrub up about 30-80%, sizes 0.6-1.7x.
 - NOT done: new ground and grass textures and new plant species (need new CC0 assets downloaded: ask the user first);
   frame-rate cost of the extra plants is unmeasured on the user's GTX 1650 Ti.
+
+## 0.2.33-0.2.36 (2026-11-13)
+- 0033: Buildings._level_malls (terrain flattened under malls, 25 m skirt); MallGen entrances on every bare concourse
+  end for ground-level malls + _open_up (no room without a way in); dropped items refresh "near me"; Forge "World" tab
+  (fly speed, time, weather), P drops the player at any distance; grass lit as ground cover and sunk.
+- 0034: NPC.knock_down / _down_tick / _stand_up (temporary ragdoll, then gets up; killable on the floor);
+  BodyMods.kick / strike (procedural leg and arm); shaders/sky.gdshader (clouds, stars, moon) driven by SkyCycle.
+- 0035: ground TINT pulled green; veg "cane" layer (painted cane cards in the cane mask, 210 m).
+- 0036: place_buildings.py: houses squared to the street within 35 degrees, 2.2 m off the road edge, 0.5 m apart;
+  town sheds only as occasional back-yard garden sheds; hamlets are houses not one farm and sheds. 33,111 lots
+  (sheds 6,351 -> 3,590). Every building's seed changed, so the whole valley re-rolled.
+- STILL TO DO from the user's 2026-11-13 list: Twin City rebuilt with angled walls, high roofs and its true outline;
+  map extended north + Tweed Mall; the Sexton Hill cutting; new downloaded plant models and ground textures
+  (the user has approved downloading); a multi-level car park.

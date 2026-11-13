@@ -347,7 +347,7 @@ def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
         if area < 45: return garden_shed(area, cx, cz)                # the backyard shed
         if area < 360: return house_or(area, False, spread, h)
         return "two_storey" if aspect < 1.7 else "brick"              # flats, units: sheds and workshops are for farms and industrial land
-    if area < 60: return "shed"
+    if area < 60: return "shed" if farm else garden_shed(area, cx, cz)     # off the farms a small outbuilding is someone's garden shed
     if area > 380 or aspect > 2.4: return "machine_shed" if area > 150 and rng.random() < 0.45 else "shed"
     return "rural?"                                                   # house or shed: decided by the farm it's on
 
@@ -359,6 +359,7 @@ def do(pts, tag, b=None, h=-1.0):
     cx, cz = float(ctr[0]), float(ctr[1])
     spread = spread_of(cx, cz, a, la, lb)
     kind = classify(tag, area, la, lb, cx, cz, spread, b, h)
+    if kind == "rural?" and False: pass
     if kind == "skip": stats["town_shed_skipped"] += 1; return
     if kind == "shop":
         front, w, d = facing(cx, cz, a, la, lb, shop=True)
@@ -406,9 +407,11 @@ if rural_q:
     for i in range(len(C)): groups[fnd(i)].append(i)
     for g in groups.values():
         g.sort(key=lambda i: -(rural_q[i][6] if max(rural_q[i][4], rural_q[i][5]) / max(0.1, min(rural_q[i][4], rural_q[i][5])) < 2.0 else rural_q[i][6] * 0.3))
+        homes = [i for i in g if 85 < rural_q[i][6] < 340 and max(rural_q[i][4], rural_q[i][5]) / max(0.1, min(rural_q[i][4], rural_q[i][5])) < 1.9]
+        hamlet = len(homes) >= 3                 # a cluster of house-sized buildings is a few houses, not one farm and its sheds
         for rank, i in enumerate(g):
             pts, cx, cz, a, la, lb, area, spread, hh = rural_q[i]
-            if rank == 0 or (rank == 1 and area > 110 and rng.random() < 0.35):
+            if rank == 0 or (rank == 1 and area > 110 and rng.random() < 0.35) or (hamlet and i in homes and rng.random() < 0.8):
                 kind = house_or(area, True, spread, hh)
             else:
                 kind = "shed" if area < 300 else "machine_shed"
