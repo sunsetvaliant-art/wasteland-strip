@@ -238,6 +238,8 @@ def in_osm(x, z):
     return False
 # real buildings come in all sizes; the generator has its limits: [w min, w max], [d min, d max]
 FIT = {"qlder": ((8.5, 16), (7.5, 14)), "cottage": ((7, 12), (6, 11)), "brick": ((8.5, 19), (7.5, 15)), "two_storey": ((8.5, 15), (8, 13)),
+       "pub": ((12, 30), (10, 22)), "school": ((14, 44), (10, 20)), "church": ((7, 14), (10, 26)), "hospital": ((14, 44), (10, 22)), "police": ((9, 24), (9, 16)),
+       "fire": ((10, 22), (8, 16)), "post": ((7, 16), (7, 16)), "motel": ((14, 46), (6.5, 9)), "club": ((10, 30), (10, 26)),
        "shed": ((3, 24), (3, 36)), "machine_shed": ((6, 30), (5, 16)), "workshop": ((8, 45), (8, 60)), "warehouse": ((15, 70), (15, 90)), "dairy": ((10, 22), (6, 12))}
 def nudge(cx, cz, yaw, w2, d2):
     """the game's roads run a little wider than the real ones: a building over the edge of one steps back off it;
@@ -328,6 +330,18 @@ def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
     res = in_lu(cx, cz, ["residential"]); ind = in_lu(cx, cz, ["industrial"]); com = in_lu(cx, cz, ["retail", "commercial"])
     farm = in_lu(cx, cz, ["farmland", "farmyard", "orchard", "meadow"])
     town = (res or density(cx, cz) >= 7) and not farm
+    am = (b or {}).get("amenity", ""); nm = (b or {}).get("name", "").lower()
+    civic = None
+    if am in ("pub", "bar", "biergarten") or tag == "pub" or "hotel" in nm and tag in ("yes", "hotel", "commercial", "retail") and area < 1500: civic = "pub"
+    elif am in ("school", "kindergarten", "college", "university") or tag in ("school", "kindergarten", "college", "university"): civic = "school"
+    elif am == "place_of_worship" or tag in ("church", "chapel", "cathedral", "religious", "mosque", "temple"): civic = "church"
+    elif am in ("hospital", "clinic", "doctors") or tag in ("hospital", "clinic"): civic = "hospital"
+    elif am == "police" or "police" in nm: civic = "police"
+    elif am == "fire_station" or tag == "fire_station" or "fire station" in nm or "rural fire" in nm: civic = "fire"
+    elif am == "post_office" or tag == "post_office": civic = "post"
+    elif tag == "motel" or "motel" in nm or "motor inn" in nm: civic = "motel"
+    elif am in ("community_centre", "social_club", "townhall", "social_centre", "licensed_club", "events_venue") or tag in ("civic", "public") or any(k_ in nm for k_ in ("rsl", "bowls club", "bowling club", "community hall", "services club", "school of arts", "memorial hall", "golf club", "surf club", "surf life saving", "sports club")): civic = "club"
+    if civic and area >= 60: return civic
     if tag in ("house", "detached", "residential", "semidetached_house", "bungalow", "cabin", "terrace", "farm"):
         return house_or(area, not town, spread, h)
     if tag in ("shed", "barn", "farm_auxiliary", "stable", "cowshed"):
@@ -341,7 +355,7 @@ def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
     if tag in ("retail", "commercial", "office", "supermarket", "service", "hotel", "post_office") or (com and tag == "yes"):
         return "shop" if area < 1600 and max(la, lb) < 60 else ("workshop" if area < 2500 else "warehouse")
     if tag in ("school", "church", "hospital", "fire_station", "public", "civic", "kindergarten", "motel", "apartments", "train_station"):
-        return "brick" if area < 260 else "workshop"
+        return "brick" if area < 260 else "two_storey"
     # untagged
     if town:
         if area < 45: return garden_shed(area, cx, cz)                # the backyard shed

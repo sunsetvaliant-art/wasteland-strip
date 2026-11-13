@@ -15,7 +15,7 @@ const DOOR_W := 0.86
 const DOOR_H := 2.05
 const RISE := 0.18           # stair rise and going
 const GOING := 0.27
-const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop", "mall", "tower"]
+const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop", "mall", "tower", "pub", "school", "church", "hospital", "police", "fire", "post", "motel", "club"]
 
 # ------------------------------------------------------------------------------------------------ materials
 # key: [texture id, metres the texture covers, roughness scale]
@@ -263,6 +263,8 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			p.floors.append({"y": 0.0, "h": 2.6, "rooms": _hall_layout(w, d, 1.2, rng, false, false) if rng.randf() < 0.5 else _open_layout(w, d, rng)})
 		"tower":
 			TowerGen.plan_into(p, w, d, rng, sub)
+		"pub", "school", "church", "hospital", "police", "fire", "post", "motel", "club":
+			CivicGen.plan_into(p, kind, w, d, rng)
 		"two_storey":
 			p.raised = 0.3
 			p.h = 2.6
@@ -601,6 +603,8 @@ static func _ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
 				op["ext"] = true
 		"shop":
 			ShopGen.ext_doors(p, rng)
+		"pub", "school", "church", "hospital", "police", "fire", "post", "motel", "club":
+			CivicGen.ext_doors(p, rng)
 		"tower":
 			for r in rooms:
 				if r.type == "lobby":
@@ -751,7 +755,13 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0, rd.get("grille", false))
 	if p.kind == "tower":
 		TowerGen.lifts(p, root)
-	if p.kind in ["shop", "mall", "tower"]:
+	if p.has("sign"):
+		# its name over the door, on a board
+		if not p.has("_labels"): p["_labels"] = []
+		var vd: float = float(p.verandah.depth) if p.verandah != null else 0.0
+		var sy: float = float(p.h) - 0.45 if vd == 0.0 else float(p.h) - 0.75
+		ShopGen._label(p, Vector3(0, sy, d / 2 + T_OUT + vd + 0.05), str(p.sign), 0.34, minf(w - 1.0, 9.0), 0.0, Color(0.1, 0.1, 0.12))
+	if p.kind in ["shop", "mall", "tower"] or p.has("sign"):
 		ShopGen.labels(p, root)
 	return root
 

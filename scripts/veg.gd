@@ -21,6 +21,10 @@ const DEF := {
 	"coconut": {"beach": 1.0, "town": 0.5, "wet": 0.15}, "palms": {"beach": 0.8, "wet": 0.5, "town": 0.5, "forest": 0.35, "open": 0.12}, "palm4": {"town": 0.7, "beach": 0.4, "wet": 0.4, "forest": 0.3, "open": 0.1},
 	"banana": {"wet": 0.8, "town": 0.6, "forest": 0.2, "open": 0.15}, "bamboo": {"wet": 1.0, "forest": 0.2, "open": 0.08, "town": 0.15}, "jacaranda": {"town": 0.8, "open": 0.45},
 	"fern": {"under": 1.0, "edge": 0.15}, "fern2": {"under": 1.0, "edge": 0.35}, "monstera": {"under": 0.7, "edge": 0.1}, "elephant": {"under": 0.7, "wet": 0.2, "edge": 0.2},
+	# Poly Haven plants added 2026-11-13 (tools/bake_veg.gd PH): more kinds under the trees and along the edges
+	"pachira": {"wet": 0.4, "town": 0.4, "forest": 0.12}, "calathea": {"under": 0.7}, "fern3": {"under": 0.9, "edge": 0.3}, "anthurium": {"under": 0.2},
+	"shrub2": {"edge": 0.6, "under": 0.2}, "shrub3": {"edge": 0.7, "under": 0.15}, "nettle": {"edge": 0.35}, "periwinkle": {"edge": 0.25},
+	"stump": {"under": 0.12, "edge": 0.08}, "mossrock": {"under": 0.15},
 	"bush1": {"edge": 1.0, "under": 0.5}, "shrub1": {"edge": 0.8, "under": 0.25}, "shrub4": {"edge": 0.8, "under": 0.25}, "weed": {"edge": 0.7},
 }
 const TREES := ["jungle", "island1", "rubberfig", "ghostgum", "tree2", "coconut", "palms", "palm4", "banana", "bamboo", "jacaranda"]

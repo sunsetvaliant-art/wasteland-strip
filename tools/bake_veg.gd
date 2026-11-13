@@ -7,10 +7,21 @@ const HEIGHTS := {"jungle": 18.0, "island1": 13.0, "rubberfig": 13.0, "ghostgum"
 	"palms": 12.0, "palm4": 9.0, "banana": 4.5, "bamboo": 10.0, "jacaranda": 12.0, "fern": 1.3, "fern2": 1.1,
 	"monstera": 2.4, "elephant": 1.7, "bush1": 1.5, "shrub1": 1.9, "shrub4": 1.4, "weed": 0.9}
 
+# Poly Haven plants (CC0) added 2026-11-13: key -> [model id under assets/ph/nature, height in metres]
+const PH := {"pachira": ["pachira_aquatica_01", 3.2], "calathea": ["calathea_orbifolia_01", 0.9],
+	"anthurium": ["anthurium_botany_01", 0.8], "fern3": ["fern_02", 1.0], "periwinkle": ["periwinkle_plant", 0.45],
+	"shrub2": ["shrub_02", 1.6], "shrub3": ["shrub_03", 1.2], "nettle": ["nettle_plant", 0.7], "stump": ["tree_stump_01", 0.7], "mossrock": ["rock_moss_set_01", 0.8]}
+
 func _init() -> void:
 	await process_frame
-	for key in HEIGHTS:
-		var ps: PackedScene = load("res://assets/veg/%s.glb" % key)
+	var only := OS.get_environment("VEG_ONLY")
+	var todo := {}
+	for key in HEIGHTS: todo[key] = ["", HEIGHTS[key]]
+	for key in PH: todo[key] = PH[key]
+	for key in todo:
+		if only == "new" and not PH.has(key): continue
+		var src: String = "res://assets/veg/%s.glb" % key if str(todo[key][0]) == "" else "res://assets/ph/nature/%s/%s.gltf" % [todo[key][0], todo[key][0]]
+		var ps: PackedScene = load(src) if ResourceLoader.exists(src) else null
 		if ps == null:
 			print("missing ", key); continue
 		var inst := ps.instantiate()
@@ -37,7 +48,7 @@ func _init() -> void:
 				var b := xf * tmp.get_aabb()
 				aabb = b if first else aabb.merge(b)
 				first = false
-		var scale: float = HEIGHTS[key] / max(aabb.size.y, 0.001)
+		var scale: float = float(todo[key][1]) / max(aabb.size.y, 0.001)
 		var fix := Transform3D(Basis.from_scale(Vector3.ONE * scale), Vector3(-aabb.get_center().x * scale, -aabb.position.y * scale, -aabb.get_center().z * scale))
 		var im := ImporterMesh.new()
 		for mat in by_mat:

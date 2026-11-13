@@ -104,6 +104,22 @@ const FIX := {
 #   ceiling: hung from it   on:K on top of K   front:K in front of K   chairs:K round K   bench: the kitchen bench run
 #   high: hung on a wall
 const RULES := {
+	# the town's buildings (CivicGen)
+	"classroom": [["desk", "wall", 1.0], ["schoolchair", "front:desk", 1.0], ["dtable|ktable", "center", 1.0], ["schoolchair", "chairs:dtable|ktable", 1.0], ["ktable", "center", 0.9],
+		["schoolchair", "chairs:ktable", 1.0], ["bookshelf", "wall", 0.9], ["bookshelf", "wall", 0.6], ["drawers", "wall", 0.6], ["clock", "high", 0.9], ["picture", "high", 0.7],
+		["fluoro", "ceiling", 1.0], ["trashbag", "corner", 0.3]],
+	"reception": [["shop_counter", "wall", 1.0], ["schoolchair", "wall", 0.9], ["schoolchair", "wall", 0.7], ["drawers", "wall", 0.8], ["bookshelf", "wall", 0.5], ["clock", "high", 0.8],
+		["picture", "high", 0.6], ["fluoro", "ceiling", 1.0], ["side_table", "corner", 0.5]],
+	"ward": [["bed|daybed", "wall", 1.0], ["bed|daybed", "wall", 1.0], ["bed|daybed", "wall", 0.8], ["nightstand", "wall", 1.0], ["nightstand", "wall", 0.8], ["drawers", "wall", 0.7],
+		["schoolchair", "corner", 0.6], ["fluoro", "ceiling", 1.0], ["clock", "high", 0.4], ["trashbag", "corner", 0.3]],
+	"dispensary": [["shop_counter", "wall", 1.0], ["chem_shelf", "wall", 1.0], ["chem_shelf", "wall", 1.0], ["chem_shelf", "center", 0.8], ["fridge", "wall", 0.7], ["fluoro", "ceiling", 1.0]],
+	"cell": [["daybed|bed", "wall", 1.0], ["stool", "corner", 0.4]],
+	"armoury": [["safe", "wall", 1.0], ["mil_crate", "wall", 0.9], ["mil_crate", "corner", 0.6], ["hw_rack", "wall", 0.8], ["drawers", "wall", 0.7], ["fluoro", "ceiling", 1.0]],
+	"nave": [["dtable", "wall", 1.0], ["schoolchair", "center", 1.0], ["schoolchair", "center", 1.0], ["schoolchair", "center", 1.0], ["schoolchair", "center", 1.0], ["schoolchair", "center", 0.9],
+		["schoolchair", "center", 0.9], ["schoolchair", "center", 0.8], ["schoolchair", "center", 0.8], ["bookshelf", "wall", 0.5], ["picture", "high", 0.8], ["fan", "ceiling", 0.6]],
+	"clubroom": [["bar", "wall", 1.0], ["bar_shelf", "wall", 1.0], ["dtable|ktable", "center", 1.0], ["dchair|pchair", "chairs:dtable|ktable", 1.0], ["ktable", "center", 1.0],
+		["pchair|monobloc", "chairs:ktable", 1.0], ["dtable", "center", 0.8], ["monobloc|pchair", "chairs:dtable", 1.0], ["stool", "front:bar", 1.0], ["fridge", "wall", 0.8],
+		["fan", "ceiling", 0.9], ["picture", "high", 0.8], ["clock", "high", 0.6], ["tvcab", "wall", 0.5], ["tv", "on:tvcab", 0.9]],
 	"lounge": [["sofa|sofa1", "wall", 1.0], ["coffee", "front:sofa", 0.8], ["armchair", "corner", 0.8], ["tvcab", "wall", 0.85], ["tv", "on:tvcab", 0.9],
 		["bookshelf", "wall", 0.5], ["fan", "ceiling", 0.6], ["picture", "high", 0.8], ["clock", "high", 0.4], ["side_table", "corner", 0.4], ["boombox", "on:side_table", 0.4]],
 	"kitchen": [["bench", "bench", 1.0], ["fridge", "wall", 1.0], ["pantry|dresser", "wall", 0.8], ["ktable", "center", 0.75], ["dchair|pchair", "chairs:ktable", 1.0],

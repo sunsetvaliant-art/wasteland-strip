@@ -165,3 +165,15 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
 - BAY MALL moved to the real Tweed Mall block: centre (13798, -17250).
 - Not done up there: road mask / car surface (cars feel grass on the north roads), veg masks (plants use the clamped
   edge values), civic buildings, shops along the main streets, the airport.
+
+## 0.2.39 (2026-11-13): the town's buildings, more plants
+- scripts/world/civicgen.gd (CivicGen): kinds pub, school, church, hospital, police, fire, post, motel, club; plans in
+  house-generator rooms; new room types with BuildProps RULES (classroom, reception, ward, dispensary, cell, armoury,
+  nave, clubroom); p.sign = the name over the door. place_buildings.py / place_north.py classify from OSM amenity /
+  building / name (civic check runs first). Counts: school 26, club 27, motel 18, church 14, fire 11, hospital 5,
+  police 4, post 3, pub 2 (most pubs are shop-row "pub" fronts already).
+- Plants: tools/bake_veg.gd PH map (Poly Haven CC0 from assets/ph/nature): pachira, calathea, fern3, anthurium, shrub2,
+  shrub3, nettle, periwinkle, stump, mossrock -> assets/veg/*.res, in Vegetation.DEF. island_tree_02/03 and
+  searsia_lucida were tried and dropped: 0.4-2 million triangles each, too heavy to scatter.
+- Still to do: servo generator on OSM fuel sites, caravan-park cabins, the sugar mill; main-street shops up north;
+  Twin City outline + car park; Sexton Hill (needs the spot); smarter AI; lidar for the north.
