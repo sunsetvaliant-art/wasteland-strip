@@ -272,6 +272,13 @@
    "date": "2026-11-13",
    "notes": "Greener ground: the open country and the forest floor were dry gold, now the green of the wet subtropics, and the grass on top is toned to match. Sugar cane: the cane paddocks from the map now grow standing cane, three metres tall in rows, out to about 200 m.",
    "size": 43024
+  },
+  {
+   "file": "patch_0.2.0_0036.pck",
+   "version": "0.2.36",
+   "date": "2026-11-13",
+   "notes": "Towns re-laid. Houses are turned square to their street, sit clear of the road and clear of each other. Sheds are for farms and industrial land now; in town there is only the odd small garden shed down a back yard, and clusters of houses in the country are houses, not one farm and a row of sheds. About 2,700 fewer sheds. Every building was re-rolled for this, so houses look different and cupboards, boards and anything you built inside an old house start fresh.",
+   "size": 1826908
   }
  ],
  "full": {
