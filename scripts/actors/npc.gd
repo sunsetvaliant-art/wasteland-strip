@@ -35,6 +35,7 @@ var react_t := 0.0
 var attack_t := 0.0
 var swing_t := -1.0
 var stagger := 0.0
+var _mask0 := 1 | (1 << 2)
 var knock_t := 0.0             # kicked: flying backwards, not walking
 var breed := "walker"          # walker, runner (quick and frail), brute (slow, huge, hits like a truck)
 var hit_dmg := 1.0
@@ -153,6 +154,18 @@ func _setup_scav() -> void:
 # ---------------------------------------------------------------- brain
 func _physics_process(dt: float) -> void:
 	if dead:
+		return
+	if down_t > 0.0:
+		_down_tick(dt)
+		return
+	if rise_t > 0.0:
+		# coming back up off the floor: stiff as a board, then it's after you again
+		rise_t -= dt
+		rig.rotation.x = -PI / 2 * smoothstep(0.0, 1.0, clampf(rise_t / 0.9, 0.0, 1.0))
+		velocity = Vector3.ZERO
+		if rise_t <= 0.0:
+			rig.rotation.x = 0.0
+			stagger = 0.4
 		return
 	if puppet:
 		_puppet_step(dt)
@@ -657,9 +670,87 @@ func take_hit(parts: Dictionary, dir: Vector3, point: Vector3, force: float, att
 		state = "chase"
 		last_seen = (attacker as Node3D).global_position
 
+var down_t := 0.0              # knocked off its feet: a ragdoll for this long, then it gets up
+var rise_t := 0.0
+
+## Knocked flat: the body goes limp and tumbles, and after a while it picks itself up where it ended
+func knock_down(vel: Vector3, secs: float) -> void:
+	if dead or puppet or down_t > 0.0: return
+	if rise_t > 0.0:
+		rise_t = 0.0
+		rig.rotation.x = 0.0
+	down_t = secs
+	velocity = vel
+	collision_layer = 0
+	collision_mask = 0
+	shape.disabled = true
+	rig.frozen = true
+	rig.mods.ik.clear()
+	ragdoll = Ragdoll.new()
+	ragdoll.name = "Ragdoll"
+	get_parent().add_child(ragdoll)
+	ragdoll.owner_actor = self
+	ragdoll.build(rig, vel)
+	rig.mods.ragdoll = ragdoll
+	ragdoll.push("chest" if ragdoll.bodies.has("chest") else "pelvis", vel * 14.0, global_position + Vector3(0, 1.2, 0))
+	_say("zattack")
+
+func _down_tick(dt: float) -> void:
+	down_t -= dt
+	if not (ragdoll and is_instance_valid(ragdoll) and ragdoll.bodies.has("pelvis")):
+		down_t = 0.0
+		_stand_up(global_position, face_dir)
+		return
+	var pel: RigidBody3D = ragdoll.bodies["pelvis"]
+	global_position = Vector3(pel.global_position.x, global_position.y, pel.global_position.z)      # so a boot or a blade can find it
+	# stay down while it's still rolling
+	if down_t <= 0.0 and pel.linear_velocity.length() > 1.2 and down_t > -3.0:
+		return
+	if down_t <= 0.0:
+		var head_p: Vector3 = (ragdoll.bodies["head"] as Node3D).global_position if ragdoll.bodies.has("head") and is_instance_valid(ragdoll.bodies["head"]) else pel.global_position + Vector3(0, 0, -0.6)
+		var lie := head_p - pel.global_position
+		lie.y = 0.0
+		lie = lie.normalized() if lie.length() > 0.05 else Vector3(0, 0, -1)
+		_stand_up(pel.global_position - lie * 0.9, lie)
+
+func _stand_up(at: Vector3, lie: Vector3) -> void:
+	down_t = 0.0
+	if ragdoll and is_instance_valid(ragdoll): ragdoll.queue_free()
+	ragdoll = null
+	rig.mods.ragdoll = null
+	rig.frozen = false
+	var gy: float = main.height_at(at.x, at.z) if main and main.has_method("height_at") else at.y
+	global_position = Vector3(at.x, maxf(at.y - 0.25, gy) if absf(at.y - gy) > 0.6 else gy, at.z)
+	face_dir = lie
+	rotation.y = atan2(-lie.x, -lie.z)
+	rig.rotation.x = -PI / 2
+	rise_t = 0.9
+	velocity = Vector3.ZERO
+	collision_layer = LAYER
+	collision_mask = _mask0
+	shape.disabled = false
+	state = "chase"
+
 func die(impulse: Vector3, point: Vector3, part: String, cuts: Array, launch := Vector3.ZERO) -> void:
 	if dead:
 		return
+	if down_t > 0.0 and ragdoll and is_instance_valid(ragdoll):
+		# killed on the floor: the heap it already is stays where it is
+		down_t = 0.0
+		dead = true
+		if not puppet and main and main.net: main.net.npc_died(self, impulse, point, part, cuts)
+		remove_from_group("npcs")
+		if label: label.text = ""
+		_say("zdie" if kind == "zombie" else "hit_flesh")
+		ragdoll.push(part if ragdoll.bodies.has(part) else "chest", impulse, point)
+		for c in cuts:
+			_cut_corpse(c, impulse * 0.08 + Vector3.UP * 3.0)
+		add_to_group("corpses")
+		_cull_corpses()
+		return
+	if rise_t > 0.0:
+		rise_t = 0.0
+		rig.rotation.x = 0.0
 	if launch != Vector3.ZERO:
 		velocity = launch
 	if not puppet and main and main.net: main.net.npc_died(self, impulse, point, part, cuts)
@@ -697,6 +788,10 @@ func _cut_corpse(part: String, imp: Vector3) -> void:
 
 ## Shooting a body that's already down: it moves, and enough of it comes apart
 func corpse_hit(part: String, dmg: float, dir: Vector3) -> void:
+	if not dead and down_t > 0.0:
+		# hit while it's on the floor: it's still alive and it still hurts
+		take_hit({part: dmg}, dir, global_position, 2.0, null)
+		return
 	corpse_dmg[part] = float(corpse_dmg.get(part, 0.0)) + dmg
 	if SEVER_AT.has(part) and corpse_dmg[part] >= float(SEVER_AT[part]) * 0.8:
 		_cut_corpse(part, dir * 5.0 + Vector3.UP * 2.0)

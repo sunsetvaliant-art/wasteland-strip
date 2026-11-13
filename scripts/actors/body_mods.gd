@@ -14,6 +14,8 @@ var look_pitch := 0.0                # + = up
 var hip_yaw := 0.0                   # legs swung toward the direction of travel, chest stays put
 var hunch := 0.0                     # zombie stoop, radians
 var head_tilt := Vector2.ZERO        # zombie head loll (roll, yaw)
+var kick := 0.0                      # 0..1: the right leg thrown out in front, the body leaning back off it
+var strike := 0.0                    # 0..1 through a swing of the right arm: wound up over the shoulder, then down across
 var air := 0.0                       # 0 on the ground .. 1 in the air: knees come up, feet tuck, arms out a little
 const AIR_SIGN := 1.0
 var ik := {}                         # "L"/"R" -> {"target": Node3D, "pole": Vector3 (world dir), "w": float, "rot": Basis (hand basis offset) or null}
@@ -62,6 +64,24 @@ func _lean(sk: Skeleton3D) -> void:
 		if cb >= 0: _rotate_global(sk, cb, Basis(up, -hip_yaw * 0.45))
 	if air > 0.001:
 		_air_pose(sk)
+	if kick > 0.001:
+		var hinge := Vector3(1, 0, 0)
+		var th := _bone("RightUpLeg")
+		var sh := _bone("RightLeg")
+		var sp := _bone("Spine")
+		if th >= 0: _rotate_global(sk, th, Basis(hinge, -1.45 * kick * AIR_SIGN))
+		if sh >= 0: _rotate_global(sk, sh, Basis(hinge, 0.9 * (1.0 - kick) * kick * 4.0 * AIR_SIGN))
+		if sp >= 0: _rotate_global(sk, sp, Basis(hinge, 0.28 * kick * AIR_SIGN))
+	if strike > 0.001:
+		var hinge2 := Vector3(1, 0, 0)
+		var ua := _bone("RightArm")
+		var fa := _bone("RightForeArm")
+		var up2 := 1.0 - smoothstep(0.25, 0.6, strike)          # raised, then brought down
+		var a := lerpf(0.9, -2.3 * AIR_SIGN, up2) if strike < 0.98 else 0.0
+		if ua >= 0: _rotate_global(sk, ua, Basis(hinge2, a * sin(minf(strike * 1.2, 1.0) * PI) * 0.9))
+		if fa >= 0: _rotate_global(sk, fa, Basis(hinge2, -0.5 * up2 * AIR_SIGN))
+		var sp2 := _bone("Spine1")
+		if sp2 >= 0: _rotate_global(sk, sp2, Basis(Vector3.UP, (0.5 - smoothstep(0.2, 0.7, strike)) * 0.7 * sin(strike * PI)))
 	if abs(look_yaw) < 0.0005 and abs(look_pitch) < 0.0005 and hunch == 0.0 and head_tilt == Vector2.ZERO:
 		return
 	if OS.get_environment("NOCHAIN") != "":

@@ -31,12 +31,27 @@ var _indoor := false
 var _indoor_t := 0.0
 var _rng := RandomNumberGenerator.new()
 var _sky: ProceduralSkyMaterial
+var sky_sh: ShaderMaterial
 
 func setup(m) -> void:
 	main = m
 	inst = self
 	_rng.randomize()
 	_sky = main.env.sky.sky_material as ProceduralSkyMaterial
+	# our own sky over the top of it: clouds that move, stars, a moon
+	sky_sh = ShaderMaterial.new()
+	sky_sh.shader = load("res://shaders/sky.gdshader")
+	var fn := FastNoiseLite.new()
+	fn.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	fn.fractal_octaves = 5
+	fn.frequency = 0.006
+	var nt := NoiseTexture2D.new()
+	nt.width = 512
+	nt.height = 512
+	nt.seamless = true
+	nt.noise = fn
+	sky_sh.set_shader_parameter("noise", nt)
+	main.env.sky.sky_material = sky_sh
 	moon = DirectionalLight3D.new()
 	moon.light_color = Color(0.62, 0.7, 0.95)
 	moon.light_energy = 0.0
@@ -181,6 +196,17 @@ func _apply_light(dt: float) -> void:
 	_sky.ground_horizon_color = hor
 	_sky.ground_bottom_color = Color(0.16, 0.2, 0.15).lerp(Color(0.02, 0.02, 0.02), night)
 	_sky.sun_curve = 0.08
+	if sky_sh:
+		sky_sh.set_shader_parameter("top", top)
+		sky_sh.set_shader_parameter("horizon", hor)
+		sky_sh.set_shader_parameter("ground", Color(0.16, 0.2, 0.15).lerp(Color(0.02, 0.02, 0.02), night))
+		sky_sh.set_shader_parameter("night", night)
+		sky_sh.set_shader_parameter("cover", clampf(maxf(cloud, 0.16) + fogd * 0.2, 0.0, 1.0))
+		sky_sh.set_shader_parameter("wind", 1.0 + rain * 2.5)
+		var cc := Color(1.0, 1.0, 1.0).lerp(Color(0.5, 0.52, 0.56), cloud * 0.9).lerp(Color(1.0, 0.7, 0.5), dusk_t * 0.6)
+		sky_sh.set_shader_parameter("cloud_col", cc.lerp(Color(0.06, 0.07, 0.1), night) + Color(_flash, _flash, _flash) * 0.6)
+		sky_sh.set_shader_parameter("sun_col", main.sun.light_color)
+		sky_sh.set_shader_parameter("moon_dir", moon.global_basis.z)
 	var env: Environment = main.env
 	env.ambient_light_energy = lerpf(1.0, 0.34, night) * (1.0 - 0.15 * cloud) + _flash * 1.5
 	env.ambient_light_color = Color(0.58, 0.6, 0.58).lerp(Color(0.32, 0.36, 0.5), night)

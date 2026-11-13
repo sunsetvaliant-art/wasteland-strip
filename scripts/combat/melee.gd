@@ -60,6 +60,9 @@ func _selftest() -> void:
 	cool = 0.0
 	kick()
 	print("PROBE after kick ", zs.map(func(z): return [z.dead, int(z.hp), snappedf(z.stagger, 0.1), z.velocity.round()] if is_instance_valid(z) else "freed"))
+	print("PROBE down ", zs.map(func(z): return snappedf(z.down_t, 0.1) if is_instance_valid(z) else -1.0))
+	await get_tree().create_timer(6.5).timeout
+	print("PROBE up again ", zs.map(func(z): return [z.dead, snappedf(z.down_t, 0.1), snappedf(z.rise_t, 0.1), z.global_position.round(), z.state] if is_instance_valid(z) else "freed"))
 	_strike(WEAPONS.sledge)
 	print("PROBE after sledge ", zs.map(func(z): return [z.dead, int(z.hp)] if is_instance_valid(z) else "freed"))
 	player.inv.add(Items.fresh("brick", 2))
@@ -137,6 +140,9 @@ func tick(dt: float) -> void:
 	if kick_t >= 0.0:
 		kick_t += dt
 		if kick_t > 0.45: kick_t = -1.0
+	# the body does it too: the leg out for a kick, the arm through a swing
+	player.rig.mods.kick = sin(clampf(kick_t / 0.45, 0.0, 1.0) * PI) if kick_t >= 0.0 else move_toward(player.rig.mods.kick, 0.0, dt * 6.0)
+	player.rig.mods.strike = clampf(swing / float(WEAPONS[weapon].time), 0.0, 1.0) if swing >= 0.0 else 0.0
 	_climb_tick(dt)
 	# a slide: low and fast, bowling over what's in the way
 	if slide_t > 0.0:
@@ -233,9 +239,13 @@ func kick() -> void:
 func _shove(n, dir: Vector3, speed: float, stun: float, parts: Dictionary) -> void:
 	n.take_hit(parts, dir, n.global_position + Vector3(0, 1.1, 0), 4.0, player)
 	if is_instance_valid(n) and not n.dead:
-		n.stagger = maxf(n.stagger, stun)
-		n.velocity = dir * speed + Vector3(0, 2.2, 0)
-		n.set("knock_t", stun * 0.6)
+		# off its feet: it goes down in a heap and has to get up again (a brute only staggers unless it's a flying kick)
+		if n.has_method("knock_down") and (n.breed != "brute" or speed > 9.0):
+			n.knock_down(dir * speed + Vector3(0, 2.5, 0), stun + 1.2)
+		else:
+			n.stagger = maxf(n.stagger, stun)
+			n.velocity = dir * speed + Vector3(0, 2.2, 0)
+			n.set("knock_t", stun * 0.6)
 
 ## Alt: a quick hop the way you're moving (back if you're standing still)
 func dodge() -> void:

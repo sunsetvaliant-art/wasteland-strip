@@ -34,7 +34,10 @@ func _land(body) -> void:
 		var part: String = body.rig.part_at(pos, dir) if body.rig else "chest"
 		var dmg := float(spec.get("dmg", 20.0))
 		body.take_hit({part: dmg * (1.5 if part == "head" and spec.get("blade", false) else 1.0)}, dir, pos, 5.0, who)
-		if is_instance_valid(body) and not body.dead: body.stagger = maxf(body.stagger, 0.6)
+		if is_instance_valid(body) and not body.dead:
+			# something heavy at speed takes them off their feet
+			if dmg >= 30.0 and rb.linear_velocity.length() > 6.0 and body.breed != "brute": body.knock_down(dir * 4.5 + Vector3(0, 1.5, 0), 2.2)
+			else: body.stagger = maxf(body.stagger, 0.6)
 	Hearing.emit(get_tree(), pos, float(spec.get("loud", 12.0)), "thump", who)
 	rb.collision_mask = 1
 	if spec.get("fire", false):
