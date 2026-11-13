@@ -293,6 +293,13 @@
    "date": "2026-11-13",
    "notes": "The map now runs three kilometres further north, past the border: the real coastline and beaches, the real streets, about 2,400 buildings where the real ones stand, and Bay Mall moved to where Tweed Mall really is on Wharf Street. New building: beachfront towers of five to fourteen storeys with a foyer you can walk into and a lift (F at the panel in the car) to one floor part-way up and to the roof. The ground up there is from public elevation data for now, not the lidar.",
    "size": 2213908
+  },
+  {
+   "file": "patch_0.2.0_0039.pck",
+   "version": "0.2.39",
+   "date": "2026-11-13",
+   "notes": "The town's buildings, where OpenStreetMap says the real ones are: schools (rows of classrooms off a corridor), churches, hospitals and clinics (wards, a dispensary), police stations (cells, an armoury), fire stations (engine bay with roller doors, bunks), post offices, motels (a row of rooms each with its own door), halls and clubs, and stand-alone pubs, each with its name over the door and its own furniture and loot. Ten more kinds of plant under the trees and along the edges. Buildings were re-rolled again for this, so cupboards and boards start fresh.",
+   "size": 23918648
   }
  ],
  "full": {
