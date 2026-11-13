@@ -50,8 +50,21 @@ func setup(m) -> void:
 		push_warning("no road index")
 		return
 	var lines := _read_lines()
+	# the roads north of the old map edge (tools/bake_north.py): tiles of their own, no bridges
+	var north := _read_lines("res://assets/roads/lines_north.bin")
+	for k in north:
+		if lines.has(k): lines[k] = lines[k] + north[k]
+		else: lines[k] = north[k]
 	print("ROADS flush tiles ", lines.size())
 	_index_segments(lines)
+	var listed := {}
+	for t in idx.tiles:
+		listed[Vector2i(floori((float(t.x) - X0) / 1024.0), floori((float(t.z) - Z0) / 1024.0))] = true
+	for k in north:
+		if listed.has(k): continue
+		var td0 := {"pos": Vector3(X0 + k.x * 1024.0 + 512.0, 0, Z0 + k.y * 1024.0 + 512.0), "mi": null, "mesh": null, "body": null, "names": [], "lines": lines[k], "flush": null}
+		tiles.append(td0)
+		_by_key[k] = td0
 	for t in idx.tiles:
 		var key := Vector2i(floori((float(t.x) - X0) / 1024.0), floori((float(t.z) - Z0) / 1024.0))
 		var td := {"pos": Vector3(t.x, 0, t.z), "mi": null, "mesh": null, "body": null, "names": t.names, "lines": lines.get(key, []), "flush": null}
@@ -90,9 +103,9 @@ const X0 := -8960.0
 const Z0 := -16960.0
 
 ## lines.bin: per tile, the road pieces: half-width, surface, marking style, wildness, then points (x, z, along, end fade, curve)
-func _read_lines() -> Dictionary:
+func _read_lines(path := "res://assets/roads/lines.bin") -> Dictionary:
 	var out := {}
-	var f := FileAccess.open("res://assets/roads/lines.bin", FileAccess.READ)
+	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return out
 	var nt := f.get_32()

@@ -131,3 +131,37 @@ Kingscliff. Built by a MallGen in the same style as the house and shop generator
   +0.1 m with base_depth 5 (water.gdshader) so it shades as deep water.
 - Tweed Mall refs: docs/ref/tweed_mall_*.jpg (Google indoor map with 50 m scale bar, satellite, 3D). Still needs the
   map extended north (it's at about z = -17036, the map ends at -16960).
+
+## 0.2.37 (2026-11-13): the wall, angled rows, Bay Mall
+- THE "HUGE WALL": BuildGen._outer_skin clad the whole lot rectangle. For kind "mall" it now leaves open every stretch
+  of the lot edge with no room behind it. (This, not the terrain, was what boxed Twin City in.)
+- Angled walls without angled rooms: a row of shops is its own lot ("mall" lot tagged "NAME/P" -> MallGen._pavilion,
+  4.3 m high, shopfronts on its +z side) placed at any yaw INSIDE the big mall's lot. Twin City's court
+  (px 1110..1370 x 532..640, one "concourse" with court=true) holds two such rows at 22 degrees along the real
+  diagonal mall. Positions are computed in tools/add_malls.py (see the comment there). Buildings._level_malls puts
+  "/"-tagged malls 2 cm proud of the host floor.
+- UH is 8.5 m now (all malls).
+- BAY MALL = Tweed Mall: MallGen._bay_mall, px of docs/ref/tweed_mall_gmaps_indoor.jpg at 0.213 m/px, lot
+  ["mall", 13522, -17036, 0, 177.4, 250.3]. main.gd _extend_north() makes land for z -16960..-17410, x 12950..14150
+  at load (terrain3D set_height; the region files already reach z = -20480).
+- NEXT (user, 2026-11-13 10:07): extend the map ~3 km north (to about z = -19960) with a coastline, beachfront units,
+  shacks, 12-storey motels (enterable foyer, a lift to the roof and one middle floor); pubs, schools, churches,
+  hospitals etc. as their own generators; look at the Sexton Hill cutting and bridge (about x 14240, z -12150) and fix
+  it; more plant species (downloads approved: Poly Haven CC0); smarter zombie / scav AI; Twin City still to match the
+  screenshots more closely (true outline with the angled west wings, multi-level car park).
+
+## 0.2.38 (2026-11-13): three kilometres north
+- tools/bake_north.py: heights for x 8480..15360, z -19960..-16960 from the AWS terrarium tiles (zoom 14) blended into
+  the old edge -> assets/world/north_h.bin (main.gd _extend_north writes it into Terrain3D at start, ~0.8 s);
+  OSM roads -> assets/roads/lines_north.bin (roads.gd reads it beside lines.bin); OSM buildings -> data/north/bld.json.
+  data/north/osm.json is the Overpass extract (overpass.private.coffee worked; overpass-api.de did not).
+  THE USER'S LIDAR (Drive: WASTELAND/DATA_2634501.zip, 2.97 GB) can't be fetched through the Drive tool (it returns
+  file contents into the conversation). If the user makes it "anyone with the link" it could be pulled with curl and
+  swapped in for the terrarium heights in bake_north.py.
+- tools/place_north.py: OSM + Microsoft footprints (data/north/ms.json, cut from /tmp/claude-0/msb/*.csv.gz) -> lots
+  north of the edge (2,397: houses, 42 towers). Called from place_buildings.py before add_malls.py.
+- Kind "tower" (scripts/world/towergen.gd): foyer, one floor part-way up, roof; BuildLift (F) moves between them;
+  facade bands and balconies on the rest. Lot tag = storeys.
+- BAY MALL moved to the real Tweed Mall block: centre (13798, -17250).
+- Not done up there: road mask / car surface (cars feel grass on the north roads), veg masks (plants use the clamped
+  edge values), civic buildings, shops along the main streets, the airport.

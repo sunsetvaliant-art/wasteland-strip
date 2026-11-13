@@ -15,7 +15,7 @@ const DOOR_W := 0.86
 const DOOR_H := 2.05
 const RISE := 0.18           # stair rise and going
 const GOING := 0.27
-const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop", "mall"]
+const KINDS := ["qlder", "cottage", "brick", "two_storey", "shed", "machine_shed", "dairy", "workshop", "warehouse", "shop", "mall", "tower"]
 
 # ------------------------------------------------------------------------------------------------ materials
 # key: [texture id, metres the texture covers, roughness scale]
@@ -261,6 +261,8 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			p.clad = "brick"
 			p.roof = {"type": "hip", "pitch": deg_to_rad(rng.randf_range(20, 25)), "mat": "roof_tile" if rng.randf() < 0.6 else "tin"}
 			p.floors.append({"y": 0.0, "h": 2.6, "rooms": _hall_layout(w, d, 1.2, rng, false, false) if rng.randf() < 0.5 else _open_layout(w, d, rng)})
+		"tower":
+			TowerGen.plan_into(p, w, d, rng, sub)
 		"two_storey":
 			p.raised = 0.3
 			p.h = 2.6
@@ -599,6 +601,12 @@ static func _ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
 				op["ext"] = true
 		"shop":
 			ShopGen.ext_doors(p, rng)
+		"tower":
+			for r in rooms:
+				if r.type == "lobby":
+					var op := _add_op(r, "S", -1.6, 1.6, "open", 0.0, 2.6)
+					op["ext"] = true
+					p.ext_doors.append({"room": r, "side": "S", "c": 0.0, "front": true})
 		"dairy":
 			for r in rooms:
 				if r.type == "milking":
@@ -628,7 +636,7 @@ static func _windows(p: Dictionary, rng: RandomNumberGenerator) -> void:
 		return
 	for f in p.floors:
 		for r in f.rooms:
-			if r.type in ["void", "stair"]: continue
+			if r.type in ["void", "stair", "lift"] or r.get("nowin", false): continue
 			for side in ["N", "S", "W", "E"]:
 				if not _ext_side(p, r, side): continue
 				if p.get("open_front", false) and side == "S": continue
@@ -688,6 +696,9 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 	elif p.kind == "mall":
 		if cut == INF:
 			MallGen.top(p, g, top_h, ground)
+	elif p.kind == "tower":
+		if cut == INF:
+			TowerGen.top(p, g)
 	elif cut == INF:
 		_roof(p, g, top_h)
 	_ext_steps(p, g, ground)
@@ -738,7 +749,9 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		ro.transform = rd.xf
 		root.add_child(ro)
 		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0, rd.get("grille", false))
-	if p.kind in ["shop", "mall"]:
+	if p.kind == "tower":
+		TowerGen.lifts(p, root)
+	if p.kind in ["shop", "mall", "tower"]:
 		ShopGen.labels(p, root)
 	return root
 
@@ -809,6 +822,9 @@ static func build_lod(p: Dictionary, g: Geo, ground: Callable) -> void:
 		return
 	if p.kind == "mall":
 		MallGen.top(p, g, top_y, ground, true)
+		return
+	if p.kind == "tower":
+		TowerGen.top(p, g, true)
 		return
 	_roof(p, g, top_y)
 

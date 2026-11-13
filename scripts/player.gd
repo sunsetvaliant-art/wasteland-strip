@@ -375,6 +375,7 @@ func _look_target() -> Node:
 			return null
 		if n is RigidBody3D and n.get_meta("carryable", false) and not InventoryUI.is_container(n): return n
 		if n is BasePiece and (n as BasePiece).kind != "crate": return null
+		if n is BuildLift: return n
 		if n is Boards or n is BuildDoor or n is BuildWindow or n is BuildRoller or InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
 		n = n.get_parent()
 	return null
@@ -394,6 +395,9 @@ func _update_interact() -> void:
 		interact_target = t
 		if t is RigidBody3D and t.get_meta("carryable", false) and not InventoryUI.is_container(t):
 			interact_hint = "Middle mouse  pick it up"
+			return
+		if t is BuildLift:
+			interact_hint = (t as BuildLift).hint()
 			return
 		if t is BuildDoor or t is BuildWindow or t is BuildRoller or t is Boards:
 			interact_hint = t.hint()
@@ -424,6 +428,9 @@ func _interact() -> void:
 			return
 		if t is BuildWindow or t is BuildRoller:
 			t.toggle()
+			return
+		if t is BuildLift:
+			(t as BuildLift).use(self)
 			return
 		if t is Boards:
 			if inv.count("hammer") < 1:

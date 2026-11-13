@@ -9,7 +9,7 @@ MALLS = [
     ["TWIN CITY", 13940.68, -14048.52, -1.7325, 378.3, 244.7, 20261112],
     # Tweed Mall: 177 m east-west, 250 m north-south, front (+z) south; it straddles the old north edge of the map
     # (z = -16960), which main.gd's _extend_north carries on for it
-    ["BAY MALL", 13522.0, -17036.0, 0.0, 177.4, 250.3, 20261115],
+    ["BAY MALL", 13798.0, -17250.0, 0.0, 177.4, 250.3, 20261115],          # OSM: the Tweed Mall block is x 13671..13926, z -17396..-17099
     # the two rows of shops along its diagonal mall, standing in the court at 22 degrees (worked out in docs/MALLS.md)
     ["TWIN CITY/P", 13973.82, -14094.14, -1.3524, 58.0, 13.0, 20261113],
     ["TWIN CITY/P", 13958.07, -14049.66, -4.494, 58.0, 13.0, 20261114],

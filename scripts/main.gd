@@ -330,30 +330,33 @@ func _build_environment() -> void:
 	sun.light_angular_distance = 0.6
 	add_child(sun)
 
-## North of the old map edge (z = -16960) there was nothing. The land is carried on for 450 m across the peninsula
-## the border town stands on (x 12,950 to 14,150), as flat as the last of the real ground, easing off to the sea at
-## its edges, so the big mall up there has something to stand on.
+## North of the old map edge (z = -16960): three kilometres more, the border towns and their beaches. The heights
+## come from assets/world/north_h.bin (tools/bake_north.py: public elevation tiles until the lidar for it is in hand),
+## written into the terrain as the game starts; the region files already reach that far.
 func _extend_north() -> void:
 	var data = terrain.data
-	if data == null: return
-	var changed := 0
-	var x := 12950.0
-	while x <= 14150.0:
-		var edge := float(data.get_height(Vector3(x, 0, -16955.0)))
-		if is_nan(edge): edge = 2.5
-		var land := clampf(edge, 2.2, 6.0)
-		var side := clampf(minf(x - 12950.0, 14150.0 - x) / 60.0, 0.0, 1.0)
-		var z := -16960.0
-		while z >= -17410.0:
-			var t := clampf((-16960.0 - z) / 40.0, 0.0, 1.0)
-			var far := clampf((z + 17410.0) / 50.0, 0.0, 1.0)
-			var h := lerpf(edge, land, t) * side * far
-			data.set_height(Vector3(x, 0, z), h)
-			changed += 1
-			z -= 5.0
-		x += 5.0
-	if changed > 0: data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
-	print("PROBE terrain extended north: ", changed, " points, sample ", data.get_height(Vector3(13522, 0, -17100)))
+	var f := FileAccess.open("res://assets/world/north_h.bin", FileAccess.READ)
+	if data == null or f == null: return
+	var t0 := Time.get_ticks_msec()
+	var xa := f.get_float()
+	var zn := f.get_float()
+	var w := f.get_32()
+	var h := f.get_32()
+	var sp := f.get_float()
+	var buf := f.get_buffer(w * h * 2)
+	var sand: bool = data.has_method("set_control_base_id")
+	var i := 0
+	for r in h:
+		var z := zn + r * sp
+		for c in w:
+			var v := (float(buf.decode_u16(i)) - 1000.0) * 0.01
+			i += 2
+			var p := Vector3(xa + c * sp, 0, z)
+			data.set_height(p, v)
+			if sand and v < 2.2: data.set_control_base_id(p, 4)          # beach and dune
+	data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
+	if sand: data.update_maps(Terrain3DRegion.TYPE_CONTROL)
+	print("PROBE terrain north: ", w * h, " points in ", Time.get_ticks_msec() - t0, " ms, at the mall ", data.get_height(Vector3(13798, 0, -17250)))
 
 # ---------------------------------------------------------------- terrain
 func _build_terrain() -> void:

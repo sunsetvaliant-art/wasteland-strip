@@ -536,4 +536,5 @@ import hashlib
 ver = hashlib.md5(json.dumps(lots, separators=(",", ":")).encode()).hexdigest()[:12]      # saves know which town they were
 json.dump({"lots": lots, "towns": towns, "ver": ver}, open(f"{GAME}/assets/world/buildings.json", "w"), separators=(",", ":"))
 import subprocess, sys
+subprocess.run([sys.executable, f"{GAME}/tools/place_north.py"], check=True)       # the country north of the old edge
 subprocess.run([sys.executable, f"{GAME}/tools/add_malls.py"], check=True)      # the malls OSM doesn't name
