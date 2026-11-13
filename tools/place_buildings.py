@@ -249,10 +249,10 @@ def nudge(cx, cz, yaw, w2, d2):
             r_ = road_dist(c[0], c[1], 60.0, service=False)
             if worst is None or r_[0] < worst[0][0]: worst = (r_, c)
         (rdist, px, pz, tx, tz), c = worst
-        if rdist >= 0.2: break
-        back = 0.45 - rdist
+        if rdist >= 2.2: break
+        back = 2.6 - rdist
         moved += back
-        if moved > 10.0: SITE["on_road"] += 1; REJ.append((cx, cz, w2, d2, yaw, "road")); return None
+        if moved > 14.0: SITE["on_road"] += 1; REJ.append((cx, cz, w2, d2, yaw, "road")); return None
         nx_, nz_ = -tz, tx                        # off the road, toward the corner
         if (c[0] - px) * nx_ + (c[1] - pz) * nz_ < 0: nx_, nz_ = -nx_, -nz_
         cx += nx_ * back; cz += nz_ * back
@@ -268,14 +268,21 @@ def place(kind, cx, cz, front, w, d, spread):
     sh = (d - d2) / 2
     if kind == "qlder": sh = (d - d2) / 2 - 1.2
     cx += fx * sh; cz += fz * sh
+    # square to the street: the satellite outlines come in a few degrees off, and a house a few degrees off its road
+    # looks drunk. Within 45 m of a road, and within 35 degrees of square to it, it's turned square.
+    rd_, px_, pz_, tx_, tz_ = road_dist(cx, cz, 60.0, service=False)
+    if rd_ < 45.0:
+        best_ = max(((tx_, tz_), (-tx_, -tz_), (-tz_, tx_), (tz_, -tx_)), key=lambda v: v[0] * fx + v[1] * fz)
+        if best_[0] * fx + best_[1] * fz > 0.82:
+            fx, fz = best_; stats["squared"] += 1
     yaw = math.atan2(fx, fz)
     nz = nudge(cx, cz, yaw, w2, d2)
     if nz is None: return False
     cx, cz = nz
-    if overlaps(cx, cz, yaw, w2, d2, -0.6): stats["x_overlap"] += 1; REJ.append((cx, cz, w2, d2, yaw, "overlap")); return False
+    if overlaps(cx, cz, yaw, w2, d2, 0.5): stats["x_overlap"] += 1; REJ.append((cx, cz, w2, d2, yaw, "overlap")); return False
     if kind in ("brick", "cottage", "two_storey") and spread > 3.0: kind = "qlder"      # the hillside block: up on stumps
     steep = 10.0 if kind == "qlder" else 7.0
-    if not site_ok(cx, cz, yaw, w2, d2, road_clear=0.1, max_spread=steep, min_h=0.3): REJ.append((cx, cz, w2, d2, yaw, "site")); return False
+    if not site_ok(cx, cz, yaw, w2, d2, road_clear=1.8, max_spread=steep, min_h=0.3): REJ.append((cx, cz, w2, d2, yaw, "site")); return False
     add(kind, cx, cz, yaw, w2, d2); return True
 def facing(cx, cz, a, la, lb, shop=False):
     """the front: the side looking at the nearest road (for a shop, the best street)"""
@@ -310,6 +317,11 @@ def house_or(area, rural, spread, h=-1.0):
     else: k = "qlder" if r < 0.22 else ("cottage" if r < 0.45 else "brick")
     if k == "two_storey" and spread > 2.5: k = "qlder"
     return k
+def garden_shed(area, cx, cz):
+    """in town a shed is a small one down the back yard: well back from the street, and only now and then"""
+    if area > 40: return "skip"
+    if road_dist(cx, cz, 80.0, service=False)[0] < 16.0: return "skip"
+    return "shed" if rng.random() < 0.5 else "skip"
 def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
     """what a building is, from what OSM says, the land it's on, how many neighbours it has, its size and shape"""
     aspect = max(la, lb) / max(0.1, min(la, lb))
@@ -319,6 +331,7 @@ def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
     if tag in ("house", "detached", "residential", "semidetached_house", "bungalow", "cabin", "terrace", "farm"):
         return house_or(area, not town, spread, h)
     if tag in ("shed", "barn", "farm_auxiliary", "stable", "cowshed"):
+        if town and not ind: return garden_shed(area, cx, cz)
         return "shed" if area < 450 else "machine_shed"
     if tag == "roof": return "machine_shed"
     if tag in ("industrial", "warehouse", "manufacture") or (ind and tag == "yes"):
@@ -331,10 +344,9 @@ def classify(tag, area, la, lb, cx, cz, spread, b=None, h=-1.0):
         return "brick" if area < 260 else "workshop"
     # untagged
     if town:
-        if area < 45: return "shed"                                   # the backyard shed
+        if area < 45: return garden_shed(area, cx, cz)                # the backyard shed
         if area < 360: return house_or(area, False, spread, h)
-        if area < 800: return "two_storey" if aspect < 1.7 else "brick"   # flats, units
-        return "workshop"
+        return "two_storey" if aspect < 1.7 else "brick"              # flats, units: sheds and workshops are for farms and industrial land
     if area < 60: return "shed"
     if area > 380 or aspect > 2.4: return "machine_shed" if area > 150 and rng.random() < 0.45 else "shed"
     return "rural?"                                                   # house or shed: decided by the farm it's on
@@ -347,6 +359,7 @@ def do(pts, tag, b=None, h=-1.0):
     cx, cz = float(ctr[0]), float(ctr[1])
     spread = spread_of(cx, cz, a, la, lb)
     kind = classify(tag, area, la, lb, cx, cz, spread, b, h)
+    if kind == "skip": stats["town_shed_skipped"] += 1; return
     if kind == "shop":
         front, w, d = facing(cx, cz, a, la, lb, shop=True)
         if w >= 4.0 and d >= 6.0:

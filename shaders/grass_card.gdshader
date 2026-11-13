@@ -4,9 +4,9 @@ render_mode cull_disabled, diffuse_burley, specular_schlick_ggx;
 // time in flat light, so this lights them). Same wind, dry patches and hand-over ring as the real clumps.
 uniform sampler2D atlas : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform float wind = 0.1;
-uniform vec3 dry : source_color = vec3(0.86, 0.78, 0.5);
+uniform vec3 dry : source_color = vec3(0.92, 0.88, 0.6);
 uniform float alpha_cut = 0.45;
-uniform vec3 ground : source_color = vec3(0.50, 0.47, 0.24);
+uniform vec3 ground : source_color = vec3(0.27, 0.38, 0.13);
 uniform float near_hide = 0.0;
 uniform float far_hide = 10000.0;
 varying float var_k;

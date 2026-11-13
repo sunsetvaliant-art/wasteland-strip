@@ -80,7 +80,9 @@ func setup(t: Terrain3D) -> void:
 		"tree": {"cell": 256.0, "r": TREE_R, "cells": {}},
 		"small": {"cell": 64.0, "r": UNDER_R, "cells": {}},
 		"grass": {"cell": 16.0, "r": GRASS_R + 8.0, "cells": {}},
+		"cane": {"cell": 32.0, "r": 210.0, "cells": {}},
 	}
+	_make_cane()
 	if scan_meshes.size():
 		layers["scan"] = {"cell": 8.0, "r": SCAN_R, "cells": {}}
 		_make_cards()
@@ -229,7 +231,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 	var x0 := key.x * cs
 	var z0 := key.y * cs
 	var per := {}     # key -> Array[Transform3D]
-	var step: float = {"tree": 8.0, "small": 2.6, "grass": 0.42, "scan": 0.34}[layer]
+	var step: float = {"tree": 8.0, "small": 2.6, "grass": 0.42, "scan": 0.34, "cane": 1.55}[layer]
 	var nn := int(cs / step)
 	for i in nn:
 		for j in nn:
@@ -242,6 +244,12 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			var kind := ""
 			var sc := 1.0
 			match layer:
+				"cane":
+					# the cane paddocks: stools in rows a pace and a half apart, standing three metres
+					if m2.g < 0.4: continue
+					x = x0 + (i + 0.5) * step + rng.randf_range(-0.12, 0.12)
+					kind = "_cane"
+					sc = rng.randf_range(0.82, 1.2)
 				"tree":
 					var p := m.r * 0.95 + m.g * 0.26 + m.b * 0.14 + m.a * 0.42 + 0.05
 					if m2.g > 0.4: p *= 0.05      # cane paddocks stay open
@@ -296,9 +304,9 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			var clear := road_clearance(x, z)
 			if clear < 6.0 and Roads.inst:
 				clear = Roads.inst.edge_dist(x, z)        # near a road: the exact distance from its seal
-			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2, "scan": 0.3}[layer]:
+			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2, "scan": 0.3, "cane": 2.5}[layer]:
 				continue
-			if Buildings.blocked(x, z, {"tree": 3.0, "small": 0.8, "grass": 0.0, "scan": 0.0}[layer]):
+			if Buildings.blocked(x, z, {"tree": 3.0, "small": 0.8, "grass": 0.0, "scan": 0.0, "cane": 1.5}[layer]):
 				continue
 			var h := _height(x, z)
 			if is_nan(h):
@@ -331,7 +339,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 		if kind.begins_with("_scan"):
 			mm.mesh = scan_meshes[int(kind.substr(5))].mesh
 		else:
-			mm.mesh = card_mesh if kind == "_card" else meshes[kind]
+			mm.mesh = card_mesh if kind == "_card" else (cane_mesh if kind == "_cane" else meshes[kind])
 		var xs: Array = per[kind]
 		mm.instance_count = xs.size()
 		for k in xs.size():
@@ -341,6 +349,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 		mmi.visibility_range_end = layers[layer].r + 40.0
 		mmi.visibility_range_end_margin = 30.0
 		mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		if layer == "cane": mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		if layer == "grass" or layer == "scan":
 			# no cell-by-cell cut-off (that made rings): the shaders thin the grass out clump by clump
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -371,6 +380,76 @@ func _apply_hand_over() -> void:
 
 ## Photograph four of the fuller grass_medium_01 clumps side by side (flat ambient light, so the scene lights the
 ## cards later), then make the crossed-card mesh that shows them. Takes a couple of frames; the card layer waits.
+## Sugar cane: a painted stool of it (jointed stalks, long arching leaves) on two crossed cards three metres tall
+var cane_mesh: ArrayMesh
+func _make_cane() -> void:
+	var S := 512
+	var img := Image.create(S, S, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0.3, 0.45, 0.15, 0.0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4711
+	var line := func(a: Vector2, b: Vector2, wd: float, col: Color) -> void:
+		var n := int(a.distance_to(b)) + 1
+		for k in n + 1:
+			var p := a.lerp(b, float(k) / n)
+			var hw := int(ceil(wd * S / 256.0 / 2.0))
+			for dx in range(-hw, hw + 1):
+				var px := int(p.x) + dx
+				var py := int(p.y)
+				if px >= 0 and px < S and py >= 0 and py < S:
+					img.set_pixel(px, py, col.darkened(absf(dx) / maxf(hw, 1.0) * 0.25))
+	# leaves first (behind), then the stalks
+	var stalks := []
+	for k in 11:
+		stalks.append([rng.randf_range(0.14, 0.86) * S, rng.randf_range(0.5, 0.72), rng.randf_range(-0.07, 0.07)])
+	for st in stalks:
+		var top := Vector2(st[0] + st[2] * S, S * (1.0 - st[1]))
+		for l in rng.randi_range(7, 10):
+			var side := -1.0 if rng.randf() < 0.5 else 1.0
+			var from := Vector2(lerpf(st[0], top.x, rng.randf_range(0.6, 1.0)), lerpf(S * 0.98, top.y, rng.randf_range(0.6, 1.0)))
+			var reach := rng.randf_range(0.14, 0.36) * S
+			var rise := rng.randf_range(0.1, 0.34) * S
+			var col := Color(0.2, 0.42, 0.1).lerp(Color(0.48, 0.62, 0.2), rng.randf())
+			if rng.randf() < 0.18: col = Color(0.62, 0.55, 0.28)          # a dead one
+			var prev := from
+			for sgm in 9:
+				var t := (sgm + 1) / 9.0
+				# up and out, then drooping over
+				var p := from + Vector2(side * reach * t, -rise * sin(t * PI * 0.72) / sin(PI * 0.72) * (1.0 - 0.5 * t * t))
+				line.call(prev, p, lerpf(5.0, 1.0, t), col)
+				prev = p
+	for st in stalks:
+		var base := Vector2(st[0], S - 1)
+		var top := Vector2(st[0] + st[2] * S, S * (1.0 - st[1]))
+		var col := Color(0.62, 0.68, 0.3).lerp(Color(0.5, 0.4, 0.5), rng.randf() * 0.4)
+		line.call(base, top, 5.0, col)
+		var nodes := 9
+		for j in nodes:
+			var p := base.lerp(top, (j + 0.5) / nodes)
+			line.call(p + Vector2(-6, 0), p + Vector2(6, 0), 1.0, col.darkened(0.35))
+	img.fix_alpha_edges()
+	img.generate_mipmaps()
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = ImageTexture.create_from_image(img)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.4
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.roughness = 0.8
+	m.backlight_enabled = true
+	m.backlight = Color(0.25, 0.35, 0.1)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for a in [0.3, 0.3 + PI * 0.5]:
+		var d := Vector3(cos(a), 0, sin(a)) * 1.25
+		var q := [[-d, Vector2(0, 1)], [d, Vector2(1, 1)], [d + Vector3(0, 3.1, 0), Vector2(1, 0)], [-d + Vector3(0, 3.1, 0), Vector2(0, 0)]]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			st2.set_normal(Vector3(0, 1, 0))
+			st2.set_uv(q[idx][1])
+			st2.add_vertex(q[idx][0])
+	st2.set_material(m)
+	cane_mesh = st2.commit()
+
 func _make_cards() -> void:
 	var picks: Array = []
 	for i in scan_meshes.size():

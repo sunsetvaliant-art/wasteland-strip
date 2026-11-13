@@ -7,9 +7,9 @@ uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap;
 uniform sampler2D rough_tex : hint_default_white, filter_linear_mipmap;
 uniform float height = 0.2;              // model-space height of the clump (for the bend)
 uniform float wind = 0.1;
-uniform vec3 dry : source_color = vec3(0.86, 0.78, 0.5);
+uniform vec3 dry : source_color = vec3(0.92, 0.88, 0.6);
 uniform float alpha_cut = 0.4;
-uniform vec3 ground : source_color = vec3(0.50, 0.47, 0.24);     // what the paddock under it looks like from above
+uniform vec3 ground : source_color = vec3(0.27, 0.38, 0.13);     // what the paddock under it looks like from above
 // the near (dense) and far (light) sets hand over at a ring round the camera: each shrinks away on its side of it
 uniform float near_hide = 0.0;
 uniform float far_hide = 10000.0;
