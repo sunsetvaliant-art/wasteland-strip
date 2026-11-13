@@ -300,6 +300,13 @@
    "date": "2026-11-13",
    "notes": "The town's buildings, where OpenStreetMap says the real ones are: schools (rows of classrooms off a corridor), churches, hospitals and clinics (wards, a dispensary), police stations (cells, an armoury), fire stations (engine bay with roller doors, bunks), post offices, motels (a row of rooms each with its own door), halls and clubs, and stand-alone pubs, each with its name over the door and its own furniture and loot. Ten more kinds of plant under the trees and along the edges. Buildings were re-rolled again for this, so cupboards and boards start fresh.",
    "size": 23918648
+  },
+  {
+   "file": "patch_0.2.0_0040.pck",
+   "version": "0.2.40",
+   "date": "2026-11-13",
+   "notes": "The ground north of the old map edge now comes from your lidar wherever it has data (the New South Wales side, about 60 percent of the new strip); across the border it stays on public elevation data, matched and blended in. Bay Mall has its multi-level car park: three open concrete decks with ramps you can drive up. Buildings up north were re-placed on the new ground.",
+   "size": 1997280
   }
  ],
  "full": {
