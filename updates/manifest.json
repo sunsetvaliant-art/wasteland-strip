@@ -286,6 +286,13 @@
    "date": "2026-11-13",
    "notes": "Malls. The wall that boxed in Twin City is gone (the game was walling the whole block, not the building). Twin City now has its diagonal mall: a high glass-roofed court with two rows of shops standing at the real angle, and all mall roofs are higher. Bay Mall, the big centre at the north end by the border, is built from the real Tweed Mall floor plan: the long mall down the middle, three cross malls, three supermarkets, the big store on the east, about 45 shops and a food court. The land now carries on north of the old map edge for it to stand on.",
    "size": 1952608
+  },
+  {
+   "file": "patch_0.2.0_0038.pck",
+   "version": "0.2.38",
+   "date": "2026-11-13",
+   "notes": "The map now runs three kilometres further north, past the border: the real coastline and beaches, the real streets, about 2,400 buildings where the real ones stand, and Bay Mall moved to where Tweed Mall really is on Wharf Street. New building: beachfront towers of five to fourteen storeys with a foyer you can walk into and a lift (F at the panel in the car) to one floor part-way up and to the roof. The ground up there is from public elevation data for now, not the lidar.",
+   "size": 2213908
   }
  ],
  "full": {
