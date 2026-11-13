@@ -279,6 +279,13 @@
    "date": "2026-11-13",
    "notes": "Towns re-laid. Houses are turned square to their street, sit clear of the road and clear of each other. Sheds are for farms and industrial land now; in town there is only the odd small garden shed down a back yard, and clusters of houses in the country are houses, not one farm and a row of sheds. About 2,700 fewer sheds. Every building was re-rolled for this, so houses look different and cupboards, boards and anything you built inside an old house start fresh.",
    "size": 1826908
+  },
+  {
+   "file": "patch_0.2.0_0037.pck",
+   "version": "0.2.37",
+   "date": "2026-11-13",
+   "notes": "Malls. The wall that boxed in Twin City is gone (the game was walling the whole block, not the building). Twin City now has its diagonal mall: a high glass-roofed court with two rows of shops standing at the real angle, and all mall roofs are higher. Bay Mall, the big centre at the north end by the border, is built from the real Tweed Mall floor plan: the long mall down the middle, three cross malls, three supermarkets, the big store on the east, about 45 shops and a food court. The land now carries on north of the old map edge for it to stand on.",
+   "size": 1952608
   }
  ],
  "full": {
