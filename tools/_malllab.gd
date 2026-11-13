@@ -58,6 +58,12 @@ func _init() -> void:
 		await _shot("plan" + ("_up" if OS.get_environment("UPPER") != "" else ""))
 		quit()
 		return
+	if nm == "BAY MALL":
+		for s3 in [["bm_air", Vector3(-hw - 40, 110, hd + 90), Vector3(0, 0, 0)], ["bm_mall", Vector3(10.5, 1.7, hd - 95), Vector3(10.5, 3.0, -hd)], ["bm_cross", Vector3(-30, 1.7, -7), Vector3(40, 2.0, -7)]]:
+			cam.look_at_from_position(s3[1], s3[2], Vector3.UP)
+			await _shot(s3[0])
+		quit()
+		return
 	if not p.has("ramp"):
 		var P := func(px: float, py: float, y: float) -> Vector3: return Vector3((px - 1303.5) * 0.452, y, (py - 637.5) * 0.452)
 		var sh := [

@@ -1009,6 +1009,18 @@ static func _outer_skin(p: Dictionary, g: Geo, _doors: Array) -> void:
 			var a := -w / 2 - T_OUT if si.axis == "x" else -d / 2
 			var b := w / 2 + T_OUT if si.axis == "x" else d / 2
 			var shed: bool = p.kind in ["shed", "machine_shed", "workshop", "warehouse"]
+			if p.kind == "mall":
+				# a mall needn't fill its block: no wall along the stretches of the edge where there's no room behind it
+				var spans := []
+				for r in f.rooms:
+					if r.type != "void" and _ext_side(p, r, side):
+						spans.append([float(r.x0), float(r.x1)] if si.axis == "x" else [float(r.z0), float(r.z1)])
+				spans.sort_custom(func(u, v): return u[0] < v[0])
+				var at: float = a
+				for sp in spans + [[b, b]]:
+					if float(sp[0]) - at > 0.05:
+						ops.append({"a": at, "b": float(sp[0]), "kind": "open", "y0": 0.0, "y1": 999.0})
+					at = maxf(at, float(sp[1]))
 			_cut_wall(g, p.clad, si, a, b, bot, h + (fy - bot), ops, -T_OUT, 0.0 if not shed else 0.04)
 			# roller doors: their own nodes (BuildRoller), a steel header over each
 			for op in ops:

@@ -55,6 +55,7 @@ func _ready() -> void:
 	add_child(sky)
 	sky.setup(self)
 	_build_terrain()
+	_extend_north()
 	if OS.get_environment("WATER_OFF") == "":
 		_build_water()
 	_build_backdrop()
@@ -328,6 +329,31 @@ func _build_environment() -> void:
 	sun.shadow_normal_bias = 1.2
 	sun.light_angular_distance = 0.6
 	add_child(sun)
+
+## North of the old map edge (z = -16960) there was nothing. The land is carried on for 450 m across the peninsula
+## the border town stands on (x 12,950 to 14,150), as flat as the last of the real ground, easing off to the sea at
+## its edges, so the big mall up there has something to stand on.
+func _extend_north() -> void:
+	var data = terrain.data
+	if data == null: return
+	var changed := 0
+	var x := 12950.0
+	while x <= 14150.0:
+		var edge := float(data.get_height(Vector3(x, 0, -16955.0)))
+		if is_nan(edge): edge = 2.5
+		var land := clampf(edge, 2.2, 6.0)
+		var side := clampf(minf(x - 12950.0, 14150.0 - x) / 60.0, 0.0, 1.0)
+		var z := -16960.0
+		while z >= -17410.0:
+			var t := clampf((-16960.0 - z) / 40.0, 0.0, 1.0)
+			var far := clampf((z + 17410.0) / 50.0, 0.0, 1.0)
+			var h := lerpf(edge, land, t) * side * far
+			data.set_height(Vector3(x, 0, z), h)
+			changed += 1
+			z -= 5.0
+		x += 5.0
+	if changed > 0: data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
+	print("PROBE terrain extended north: ", changed, " points, sample ", data.get_height(Vector3(13522, 0, -17100)))
 
 # ---------------------------------------------------------------- terrain
 func _build_terrain() -> void:

@@ -15,7 +15,7 @@ extends RefCounted
 
 const GH := 3.8          # ground (car park and street shops), floor to ceiling
 const UY := 4.2          # the first floor
-const UH := 6.5          # high ceilings: a sense of scale
+const UH := 8.5          # high ceilings: a sense of scale
 const CW := 9.0          # concourse width
 const FS := 12.0         # depth of the street shops
 const RAMP_W := 16.0     # the ramp's bay
@@ -47,8 +47,12 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 	p.stair_rise = UY
 	var brand: Dictionary = BRANDS[rng.randi() % BRANDS.size()]
 	p.mall = {"name": parts[0] if parts[0] != "" else "SUNNYVALE", "brand": brand, "units": [], "fl": 1, "y": UY}
-	if p.mall.name == "TWIN CITY":
+	if parts.size() > 1 and parts[1] == "P":
+		_pavilion(p, w, d, rng)
+	elif p.mall.name == "TWIN CITY":
 		_twin_city(p, w, d, rng)
+	elif p.mall.name == "BAY MALL":
+		_bay_mall(p, w, d, rng)
 	else:
 		_sunnyside(p, w, d, rng)
 	for r in p.floors[int(p.mall.fl)].rooms:
@@ -187,11 +191,11 @@ static func _twin_city(p: Dictionary, w: float, d: float, rng: RandomNumberGener
 	for k in 3:
 		R.call(990, 532 + 68.0 * k / 3, 1020, 532 + 68.0 * (k + 1) / 3, "fc_kitchen")
 	R.call(1020, 532, 1110, 600, "foodcourt", mall)
-	R.call(1110, 532, 1130, 600, "concourse", mall)
-	row.call(1130, 532, 1330, 600, 5)
-	R.call(1330, 532, 1370, 600, "concourse", mall)
-	R.call(1020, 600, 1210, 640, "concourse", mall)
-	R.call(1210, 600, 1370, 640, "concourse", mall)
+	# the court: one high glass-roofed hall. The real centre's diagonal mall crosses it corner to corner between two
+	# rows of shops standing at that angle; those rows are lots of their own (tools/add_malls.py, "TWIN CITY/P"),
+	# turned 22 degrees, so their walls really are on the angle
+	R.call(1110, 532, 1370, 640, "concourse", {"open_above": true, "court": true})
+	R.call(1020, 600, 1110, 640, "concourse", mall)
 	# the shops between the long mall and the cinemas, the cinemas
 	row.call(1370, 532, 1595, 572, 4)
 	R.call(1370, 572, 1420, 640, "cine_lobby", {"title": "REGAL CINEMAS"})
@@ -210,6 +214,81 @@ static func _twin_city(p: Dictionary, w: float, d: float, rng: RandomNumberGener
 	R.call(1250, 750, 1348, 760, "store")
 	row.call(1250, 760, 1348, 905, 3, false)
 	p.floors.append({"y": 0.0, "h": UH, "rooms": g})
+
+## The real Tweed Mall (docs/ref/tweed_mall_gmaps_indoor.jpg: Google's indoor map, 0.213 m a pixel by its scale bar),
+## squared off, as BAY MALL. One level, 250 m north to south: the long mall down the middle from the supermarket at
+## the north end to the south doors, three cross malls off it to the west doors, the big store on the east and the
+## east doors; a supermarket at the north-west corner and another at the south-west; shops between. Local x = east,
+## front (+z) = south.
+static func _bay_mall(p: Dictionary, w: float, d: float, rng: RandomNumberGenerator) -> void:
+	var ex := w / 833.0
+	var sz := d / 1175.0
+	p.h = UH
+	p.mall.fl = 0
+	p.mall.y = 0.0
+	var g := []
+	var R := func(x0: float, y0: float, x1: float, y1: float, type: String, extra := {}) -> Dictionary:
+		var r := {"x0": snappedf((x0 - 508.5) * ex, 0.01), "z0": snappedf((y0 - 1302.5) * sz, 0.01), "x1": snappedf((x1 - 508.5) * ex, 0.01), "z1": snappedf((y1 - 1302.5) * sz, 0.01), "type": type}
+		r.merge(extra)
+		g.append(r)
+		return r
+	var kinds := []
+	var kind := func() -> Dictionary:
+		if kinds.is_empty(): kinds = UNIT_KINDS.duplicate()
+		var k: Array = kinds.pop_at(rng.randi() % kinds.size())
+		return {"sub": k[1], "title": k[0]}
+	var row := func(x0: float, y0: float, x1: float, y1: float, n: int, along_x := true) -> void:
+		for k in n:
+			if along_x: R.call(x0 + (x1 - x0) * k / n, y0, x0 + (x1 - x0) * (k + 1) / n, y1, "unit", kind.call())
+			else: R.call(x0, y0 + (y1 - y0) * k / n, x1, y0 + (y1 - y0) * (k + 1) / n, "unit", kind.call())
+	var mall := {"open_above": true}
+	# the malls
+	R.call(555, 870, 610, 1720, "concourse", mall)
+	R.call(335, 940, 555, 975, "concourse", mall)
+	R.call(310, 1235, 555, 1270, "concourse", mall)
+	R.call(610, 1235, 665, 1270, "concourse", mall)
+	R.call(430, 1510, 555, 1570, "concourse", mall)
+	R.call(610, 1510, 735, 1570, "concourse", mall)
+	# the anchors
+	R.call(92, 740, 335, 1025, "super", {"title": "SAVEMART", "tint": "navy"})
+	R.call(455, 715, 740, 870, "super", {"title": "FRESHWAY", "tint": "maroon"})
+	R.call(665, 1045, 925, 1460, "bigbox", {"title": "K-SAVE"})
+	R.call(155, 1570, 430, 1890, "super", {"title": "GREENGATE", "tint": "heritage"})
+	# shops
+	row.call(335, 880, 455, 940, 2)
+	row.call(455, 870, 555, 940, 2)
+	row.call(335, 975, 445, 1045, 3)
+	R.call(335, 1045, 390, 1100, "toilet")
+	R.call(390, 1045, 445, 1100, "toilet")
+	R.call(335, 1100, 445, 1165, "store")
+	row.call(335, 1165, 445, 1235, 3)
+	row.call(445, 975, 555, 1235, 6, false)
+	row.call(610, 870, 665, 1235, 8, false)
+	row.call(310, 1270, 445, 1340, 3)
+	R.call(310, 1340, 445, 1440, "store")
+	row.call(445, 1270, 555, 1510, 5, false)
+	row.call(610, 1270, 665, 1510, 5, false)
+	row.call(430, 1570, 555, 1720, 3, false)
+	R.call(610, 1570, 735, 1650, "foodcourt")
+	for k in 3:
+		R.call(735, 1570 + 80.0 * k / 3, 775, 1570 + 80.0 * (k + 1) / 3, "fc_kitchen")
+	row.call(610, 1650, 735, 1720, 2)
+	p.floors.append({"y": 0.0, "h": UH, "rooms": g})
+
+## A row of shops standing free under a bigger roof (or in the open): shopfronts along the front, a low flat roof.
+## Its lot can be turned to any angle, which is how a mall gets a row of shops off the square.
+static func _pavilion(p: Dictionary, w: float, d: float, rng: RandomNumberGenerator) -> void:
+	p.h = 4.3
+	p.mall.fl = 0
+	p.mall.y = 0.0
+	p.mall["pavilion"] = true
+	var g := []
+	var kinds := UNIT_KINDS.duplicate()
+	var n := maxi(1, int(round(w / 8.0)))
+	for k in n:
+		var kd: Array = kinds.pop_at(rng.randi() % kinds.size())
+		g.append({"x0": snappedf(-w / 2 + w * k / n, 0.01), "z0": -d / 2, "x1": snappedf(-w / 2 + w * (k + 1) / n, 0.01), "z1": d / 2, "type": "unit", "sub": kd[1], "title": kd[0]})
+	p.floors.append({"y": 0.0, "h": 4.3, "rooms": g})
 
 ## Split a..b into bays between lo and hi wide
 static func _cut(a: float, b: float, lo: float, hi: float, rng: RandomNumberGenerator) -> Array:
@@ -250,6 +329,22 @@ static func openings(p: Dictionary, rng: RandomNumberGenerator) -> void:
 		var rooms: Array = p.floors[fl].rooms
 		for pr in BuildGen._pairs(rooms):
 			_between(p, pr, rng)
+	# a free-standing row: glass shopfronts straight onto whatever it stands in
+	if p.mall.get("pavilion", false):
+		for r in p.floors[0].rooms:
+			var a := float(r.x0)
+			var b := float(r.x1)
+			var c := (a + b) / 2
+			var op := BuildGen._add_op(r, "S", c - 1.3, c + 1.3, "roller", 0.0, 3.0)
+			op["open_frac"] = [0.0, 0.3, 1.0, 1.0][rng.randi() % 4]
+			op["grille"] = true
+			op["ext"] = true
+			p.ext_doors.append({"room": r, "side": "S", "c": c, "front": true})
+			for e in [[a + 0.3, c - 1.5], [c + 1.5, b - 0.3]]:
+				if e[1] - e[0] > 0.9:
+					var wo := BuildGen._add_op(r, "S", e[0], e[1], "window", 0.12, 3.2)
+					wo["fixed"] = true
+			r["_fronts"] = [{"side": "S", "lo": a, "hi": b}]
 	# a ground-level mall: wherever one of its malls meets the open air there's a way in (glass doors, long gone)
 	if int(p.mall.get("fl", 1)) == 0:
 		var rooms0: Array = p.floors[0].rooms

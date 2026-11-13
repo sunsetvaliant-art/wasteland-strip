@@ -126,7 +126,7 @@ func _level_malls() -> void:
 		if hs.is_empty(): continue
 		hs.sort()
 		var level: float = maxf(hs[hs.size() / 2], 1.2)
-		_floor[i] = level + 0.12
+		_floor[i] = level + 0.12 + (0.02 if l.size() > 7 and str(l[7]).contains("/") else 0.0)      # a row standing inside another mall: just proud of its floor
 		var r := sqrt(w * w + d * d) * 0.5 + 30.0
 		var inv := basis.inverse()
 		var x := snappedf(c.x - r, 5.0)
@@ -590,6 +590,7 @@ func _mall_life(i: int, p: Dictionary, b: Node3D) -> void:
 			if r.type in ["concourse", "super", "foodcourt", "carpark", "bigbox", "lobby", "super_store"]:
 				spots.append([r, float(p.floors[fi].y)])
 	var crowd := []
+	if spots.is_empty(): return
 	for k in HORDE:
 		var e: Array = spots[rng.randi() % spots.size()]
 		var r: Dictionary = e[0]
