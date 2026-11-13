@@ -265,6 +265,13 @@
    "date": "2026-11-13",
    "notes": "Kicked zombies now go down in a heap and tumble (a proper ragdoll), lie there a moment, then climb back to their feet and come at you again; a brick or a thrown weapon knocks them over too, and you can finish them on the ground. Brutes only stagger unless it is a flying kick. Your character's leg now kicks and the arm swings when you hit. New sky: drifting clouds that thicken with the weather, stars and a moon at night.",
    "size": 195996
+  },
+  {
+   "file": "patch_0.2.0_0035.pck",
+   "version": "0.2.35",
+   "date": "2026-11-13",
+   "notes": "Greener ground: the open country and the forest floor were dry gold, now the green of the wet subtropics, and the grass on top is toned to match. Sugar cane: the cane paddocks from the map now grow standing cane, three metres tall in rows, out to about 200 m.",
+   "size": 43024
   }
  ],
  "full": {
