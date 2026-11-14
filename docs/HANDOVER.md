@@ -78,6 +78,17 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   through the Drive connector (base64 into the conversation).
 - Mixamo: driven through the user's Chrome (he must be signed in); downloads land in his Downloads folder, he drags
   them to Drive.
+- Bridges (0045): `tools/bake_bridges.gd` (headless -s) pulled every deck centreline out of the old baked road tiles
+  into assets/world/bridges.json; `BridgeKit` (scripts/world/bridge_kit.gd) rebuilds them at load (Roads._build_bridges)
+  and reshapes the terrain at the ends (conform). BRIDGE_OLD=1 brings the old baked decks back for comparison. Test:
+  `PT="*res://tools/_bridgetest.gd"` autoload (prints lips at every end; BRT_DUMP=ids dumps profiles). Terrain3D
+  get_height returns the nearest 5 m vertex, not the drawn surface: interpolate yourself when measuring.
+- 0045 features: InteractMenu (scripts/inv/interact_menu.gd), body loot (NPC._pockets, Items.LOOT zombie/scav),
+  stations in BasePiece (bench / fire / garden, `menu()`, state in meta "st", saved), chopping (Vegetation.chop, felled
+  saved in world.save), recipes with "station". Feature test: `PT="*res://tools/_featuretest.gd"` (FT lines;
+  InteractMenu.test_any_mouse lets headless runs show the menu). tools/fix_sheds.py turned town sheds into houses.
+- New class_name scripts need the class cache rebuilt before -s or autoload tests see them:
+  `godot --headless --path . --editor --quit`.
 - Tweed City v2 (0044): `python3 tools/trace_mall2.py docs/ref/2026/tweed_city_annotated.jpg assets/world/twin_city.json
   [debug.png]` reads the user's hand-coloured plan (key in the picture: red walls, green ways in, yellow toilet
   doors, purple covered, orange travelators down, pink cinema upstairs, grey stairs) and writes JSON v2; PolyMall.build2

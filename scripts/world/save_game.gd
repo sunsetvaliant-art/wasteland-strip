@@ -51,6 +51,7 @@ func world_state() -> Dictionary:
 				"xf": car.global_transform, "design": car.design, "inv": car.get_meta("inv", null), "care": car.get_meta("care", null)})
 	d["cars"] = cars
 	if main.get("base"): d["base"] = main.base.save_state()
+	if main.get("veg"): d["felled"] = main.veg.save_felled()
 	return d
 
 func char_state() -> Dictionary:
@@ -72,6 +73,8 @@ func load_world() -> void:
 		_restore_cars.call_deferred(d.cars)
 	if d.has("base"):
 		_restore_base.call_deferred(d.base)
+	if d.has("felled") and main.get("veg"):
+		main.veg.load_felled(d.felled)
 	print("SAVE world loaded")
 
 func _restore_base(arr: Array) -> void:

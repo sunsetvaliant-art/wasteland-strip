@@ -32,6 +32,7 @@ var saves: SaveGame
 var landmarks: Landmarks
 var net: Net
 var rg_roads: RgRoads
+var interact_menu: InteractMenu
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
@@ -131,6 +132,10 @@ func _ready() -> void:
 	car_care.name = "CarCare"
 	add_child(car_care)
 	car_care.setup(self)
+	interact_menu = InteractMenu.new()
+	interact_menu.name = "InteractMenu"
+	add_child(interact_menu)
+	interact_menu.setup(self)
 	base = BaseBuild.new()
 	base.name = "BaseBuild"
 	add_child(base)
@@ -519,7 +524,7 @@ func _build_hud() -> void:
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · wheel switch · H gun away / out   Hand to hand (gun away): LMB swing · Q kick · X throw · Alt dodge\nI inventory · N make · M build · K under the bonnet · F pick up / open · B bandage · MMB carry · F9 bug report\nDriving: W gas · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · wheel switch · H gun away / out   Hand to hand (gun away): LMB swing · Q kick · X throw · Alt dodge\nI inventory · N make · M build · K under the bonnet · F pick up / open · B bandage · MMB carry · F9 bug report\nDriving: W gas (Shift+W floors it) · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.position = Vector2(14, -90)

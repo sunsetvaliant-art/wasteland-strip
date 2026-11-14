@@ -107,7 +107,7 @@ func _process(_dt: float) -> void:
 	else:
 		pos = h.position
 	var k: String = BasePiece.KINDS[idx]
-	var g := 0.5 if k == "crate" else 1.5
+	var g := 0.5 if BasePiece.FIXED.has(k) else 1.5
 	_at = Vector3(snappedf(pos.x, g), pos.y + lift * 0.35 + (0.22 if k == "floor" else 0.0), snappedf(pos.z, g))
 	ghost.global_position = _at
 	ghost.rotation.y = rot * PI / 2
@@ -121,7 +121,7 @@ func _process(_dt: float) -> void:
 	for id in c:
 		parts.append("%d %s" % [int(c[id]), Items.def(id).name.to_lower()])
 	p.toast_text = "%s · %s · %s\nLMB build · wheel piece · Tab material · R turn · [ ] lower/raise · X pull down · M done" % [
-		BasePiece.NAMES[k], "wood" if k == "crate" else BasePiece.TIERS[tier_i], "free" if Settings.creative() else ", ".join(parts)]
+		BasePiece.NAMES[k], "-" if BasePiece.FIXED.has(k) else BasePiece.TIERS[tier_i], "free" if Settings.creative() else ", ".join(parts)]
 	p._toast_t = 0.5
 
 func _input(e: InputEvent) -> void:
@@ -201,10 +201,13 @@ func save_state() -> Array:
 	var out := []
 	for b in get_tree().get_nodes_in_group("base_pieces"):
 		if b is BasePiece and not b.is_queued_for_deletion():
-			out.append({"k": b.kind, "t": b.tier, "p": b.global_position, "y": b.rotation.y, "hp": b.hp, "inv": b.get_meta("inv", null)})
+			out.append({"k": b.kind, "t": b.tier, "p": b.global_position, "y": b.rotation.y, "hp": b.hp, "inv": b.get_meta("inv", null), "st": b.get_meta("st", null)})
 	return out
 
 func load_state(arr: Array) -> void:
 	for d in arr:
 		if not (str(d.get("k", "")) in BasePiece.KINDS): continue
-		spawn(str(d.k), str(d.get("t", "wood")), d.p, float(d.y), float(d.get("hp", -1.0)), d.get("inv", null))
+		var b := spawn(str(d.k), str(d.get("t", "wood")), d.p, float(d.y), float(d.get("hp", -1.0)), d.get("inv", null))
+		if b and d.get("st", null) is Dictionary:
+			b.set_meta("st", d.st)
+			b._refresh()

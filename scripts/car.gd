@@ -26,6 +26,7 @@ var driver = null
 var cab_view := false
 var steer_now := 0.0
 var throttle := 0.0
+var _wb := 0.0                                  # wheelbase, for the speed-sensitive steering limit
 var brake_in := 0.0
 var handbrake := false
 # driveline state
@@ -468,11 +469,27 @@ func _read_controls(dt: float) -> void:
 		brk = Input.get_action_strength("move_back")
 		steer_in = Input.get_action_strength("move_left") - Input.get_action_strength("move_right")
 		handbrake = Input.is_action_pressed("brake")
-	throttle = move_toward(throttle, thr, 6.0 * dt)
+	# throttle filter: a keyboard is all or nothing, so the pedal goes down over about half a second (quicker the
+	# further it's already in) and comes up fast. Shift held with W floors it at once, for a burnout.
+	var floor_it := driver != null and thr > 0.0 and Input.is_action_pressed("sprint")
+	if floor_it: throttle = thr
+	elif thr > throttle: throttle = move_toward(throttle, thr, (1.6 + 2.4 * throttle) * dt)
+	else: throttle = move_toward(throttle, thr, 6.0 * dt)
 	brake_in = move_toward(brake_in, brk, 8.0 * dt)
 	var v: float = abs(linear_velocity.dot(global_transform.basis.z))
-	var max_steer: float = lerp(0.62, 0.2, clamp(v / 38.0, 0.0, 1.0))
-	steer_now = move_toward(steer_now, steer_in * max_steer, (1.9 if steer_in != 0.0 else 2.6) * dt)
+	# steering filter: the lock you can use falls with speed so the fronts stay near their best slip angle instead
+	# of being thrown past it (that's the instant understeer): the angle that asks for about 0.9 g of cornering at
+	# this speed, plus a little slip, never more than full lock. The wheel also winds on slower the faster you go,
+	# and comes back to centre a bit quicker than it goes out.
+	if _wb <= 0.0:
+		var zs := []
+		for w in wheels: zs.append(float(w.mount.z))
+		_wb = maxf(2.0, zs.max() - zs.min()) if not zs.is_empty() else 2.7
+	var grip_lock := atan(_wb * 8.8 / maxf(v * v, 1.0)) + 0.07
+	var max_steer: float = clampf(grip_lock, 0.12, 0.62)
+	var k := clampf(v / 30.0, 0.0, 1.0)
+	var rate := lerpf(2.0, 0.7, k) if steer_in != 0.0 and signf(steer_in) == signf(steer_now) or steer_now == 0.0 else lerpf(3.2, 1.6, k)
+	steer_now = move_toward(steer_now, steer_in * max_steer, rate * dt)
 	if driver == null:
 		throttle = 0.0
 		handbrake = true

@@ -335,6 +335,13 @@
    "date": "2026-11-14",
    "notes": "Twin City built from your colour-keyed plan. Walls and shop fronts where you drew them, 12 ways in, 4 toilet blocks, covered walkways with posts round the outside shops. Three travelators go down to an underground car park under the whole centre (lit, columns, bay lines), and a car ramp comes down through the cinema building. Stairs inside the mall go up to the REGENT CINEMAS lobby and three cinemas with raked seats. Still rough: zombies inside walk straight at you, and the mall floor has no benches or kiosks yet.",
    "size": 362512
+  },
+  {
+   "file": "patch_0.2.0_0045.pck",
+   "version": "0.2.45",
+   "date": "2026-11-15",
+   "notes": "Bridges rebuilt: every bridge now comes from one modular kit (deck, concrete barriers with steel rails, girders, piers, abutments), the ground is shaped to meet each end and an approach slab runs into the road, so no more gap to get stuck in. Steering eases off with speed so the fronts stop washing out, and the throttle comes in smoothly (Shift + W floors it for a burnout). Look at things for a menu like Vein's: wheel to choose, left click to do it, right click hides it for 5 s (cars: drive / repair / boot; dead bodies: search them; windows and doors: open / barricade; stations). Bodies carry loot. New stations to build with M: workbench, campfire (cook, boil water, stew) and vegie garden. Chop trees with an axe for firewood, forage rocks and sticks crouched, make flint and steel, find lighters. 311 sheds in town streets are houses now.",
+   "size": 2408844
   }
  ],
  "full": {

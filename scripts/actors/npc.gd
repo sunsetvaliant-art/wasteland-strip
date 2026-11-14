@@ -838,6 +838,7 @@ func die(impulse: Vector3, point: Vector3, part: String, cuts: Array, launch := 
 		remove_from_group("npcs")
 		if label: label.text = ""
 		_say("zdie" if kind == "zombie" else "hit_flesh")
+		_pockets()
 		ragdoll.push(part if ragdoll.bodies.has(part) else "chest", impulse, point)
 		for c in cuts:
 			_cut_corpse(c, impulse * 0.08 + Vector3.UP * 3.0)
@@ -872,8 +873,16 @@ func die(impulse: Vector3, point: Vector3, part: String, cuts: Array, launch := 
 		_cut_corpse(c, impulse * 0.08 + Vector3.UP * 3.0)
 	if gun:
 		_drop_gun()
+	_pockets()
 	add_to_group("corpses")
 	_cull_corpses()
+
+## The body can be searched (look at it): what this one had on them
+func _pockets() -> void:
+	if has_meta("container"): return
+	set_meta("container", "zombie" if kind == "zombie" else "scav")
+	set_meta("container_name", "body")
+	set_meta("loot_seed", randi())
 
 func _cut_corpse(part: String, imp: Vector3) -> void:
 	if ragdoll == null or ragdoll.cut.has(part):

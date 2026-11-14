@@ -2,7 +2,45 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0044, 2026-11-14.
+Newest requests at the top of each section. Last updated: patch 0045, 2026-11-15.
+
+## Requested 2026-11-14 (late)
+### Bugs
+- [x] 0045 Bridges: terrain doesn't meet the decks, cars get stuck in the gap (bug report 2026-11-14 17:57 at x 474,
+      z -469). All 232 bridges rebuilt by the modular kit (scripts/world/bridge_kit.gd); the ground is reshaped to meet
+      each end and a 12 m approach slab runs down into the road. tools/_bridgetest.gd: lips over 8 cm at 27 of 464 ends
+      (was 163; the bug-report end 0.46 m -> 0.01 m). The 27 left are motorway interchanges, mostly where another
+      bridge passes overhead
+- [x] 0045 Driving: steering lock now falls with speed to what the tyres can use (0.30 rad at 36 km/h, 0.12 at
+      90+), winds on slower at speed and comes back quicker; throttle goes down over about half a second; Shift + W
+      floors it at once for a burnout. User to try it and say if it wants more or less
+- [x] 0045 Too many sheds where houses should be: 311 sheds in town streets turned into houses like their neighbours
+      (tools/fix_sheds.py). Rural sheds and garden sheds stay
+- [ ] Sheds: check 107 Commercial Road, Murwillumbah in game; user will F9 any more
+### Features
+- [x] 0045 Interaction menu like Vein (scripts/inv/interact_menu.gd), also on work stations and the ground: aim the crosshair at something and a small Windows-style right-click menu shows;
+      mouse wheel picks, left click does the highlighted (default) option; right click hides it on that object for 5
+      seconds so you can swing or shoot. Dead zombie: Open inventory. Car: Drive, Repair (opens the menu),
+      Inventory. Window: Barricade, Open / Close
+- [x] 0045 Zombies and scavs carry loot (rags, lighters, the odd key, bandage, drink, ammo); search the body
+- [ ] More guns (2020-era, free or licensed models, good sounds)
+- [x] 0045 Work stations you build with M: workbench (axe recipe), campfire (light with a lighter or flint and steel
+      plus 2 firewood; cook meat, boil creek water, hot stew), vegie garden (plant seeds, harvest vegies and seeds in
+      20 minutes). Saved with the base
+- [ ] More stations and recipes: kitchen stove, forge/welder, ammo press, water tank; animals for meat
+- [x] 0045 Chop trees with an axe (4 hits, machete 8): firewood and sticks, the tree falls, stays down (saved).
+      Crouch and look at the ground to forage rocks and sticks; flint and steel from a rock and scrap; lighters in
+      kitchens, servos, drawers, on bodies; fill a bottle at the water's edge
+- [ ] House types: 0-20 year old double brick estate homes (style variations within an estate, "council approved
+      fascia", shared fences); 1970s sandstone two-storey units along the beach (use building height data where
+      there is some to place single and two storey); 1960s timber beach shacks
+- [ ] Fences: side and back yard fences between houses; most Australian houses have no front fence, some a low
+      brick wall
+- [ ] Small shopping centres for Cabarita and Kingscliff. Caba: the entry is flush with the main street, a lift on
+      the west side of the mall goes down to the underground car park, which opens flush onto the road on the other
+      side of the block (built into the hill)
+- [ ] Pearl Street, Kingscliff (about No. 6): five-storey apartment block, two units long, garages on the ground
+      floor
 
 ## Requested 2026-11-14
 ### Bugs

@@ -65,12 +65,14 @@ func setup(m) -> void:
 		var td0 := {"pos": Vector3(X0 + k.x * 1024.0 + 512.0, 0, Z0 + k.y * 1024.0 + 512.0), "mi": null, "mesh": null, "body": null, "names": [], "lines": lines[k], "flush": null}
 		tiles.append(td0)
 		_by_key[k] = td0
+	# bridges: the modular kit (scripts/world/bridge_kit.gd) unless BRIDGE_OLD asks for the old baked decks
+	var kit := OS.get_environment("BRIDGE_OLD") == "" and FileAccess.file_exists("res://assets/world/bridges.json")
 	for t in idx.tiles:
 		var key := Vector2i(floori((float(t.x) - X0) / 1024.0), floori((float(t.z) - Z0) / 1024.0))
 		var td := {"pos": Vector3(t.x, 0, t.z), "mi": null, "mesh": null, "body": null, "names": t.names, "lines": lines.get(key, []), "flush": null}
 		tiles.append(td)
 		_by_key[key] = td
-		if str(t.get("file", "")) == "":
+		if str(t.get("file", "")) == "" or kit:
 			continue
 		var ps: PackedScene = load("res://assets/roads/" + t.file)
 		if ps == null:
@@ -88,6 +90,34 @@ func setup(m) -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		td.mi = mi
 		td.mesh = mesh
+
+	if kit: _build_bridges()
+
+func _build_bridges() -> void:
+	var t0 := Time.get_ticks_msec()
+	var data: Terrain3DData = main.terrain.data
+	BridgeKit.load_all()
+	var moved := BridgeKit.conform(data)
+	if moved > 0: data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.62, 0.64, 0.66); steel.metallic = 0.7; steel.roughness = 0.45
+	steel.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var built := BridgeKit.build(data, [road_mat, conc_mat, steel], X0, Z0)
+	for key in built:
+		var td: Dictionary = _by_key.get(key, {})
+		if td.is_empty():
+			td = {"pos": built[key].org, "mi": null, "mesh": null, "body": null, "names": [], "lines": [], "flush": null}
+			tiles.append(td); _by_key[key] = td
+		var mi := MeshInstance3D.new()
+		mi.mesh = built[key].mesh
+		mi.position = built[key].org
+		mi.visibility_range_end = DRAW
+		mi.visibility_range_end_margin = 200.0
+		mi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
+		add_child(mi)
+		td.mi = mi
+		td.mesh = mi.mesh
+	print("BRIDGES kit: %d bridges in %d tiles, %d ground points reshaped, %d ms" % [BridgeKit.bridges.size(), built.size(), moved, Time.get_ticks_msec() - t0])
 
 ## Points that need solid road under them: you, cars with someone in them, the Forge camera, and any car moving
 func _anchors() -> Array:

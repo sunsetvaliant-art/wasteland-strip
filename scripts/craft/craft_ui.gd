@@ -93,6 +93,7 @@ func _can(rc: Dictionary) -> bool:
 		if player.inv.count(k) < int(rc.needs[k]): return false
 	for t in rc.get("tools", []):
 		if player.inv.count(t) < 1: return false
+	if rc.has("station") and BasePiece.near(get_tree(), str(rc.station), player.global_position) == null: return false
 	return true
 
 func _fill() -> void:
@@ -123,6 +124,10 @@ func _show() -> void:
 		t += "\nWith:\n"
 		for k in rc.tools:
 			t += "   [color=%s]%s[/color]\n" % ["#9c6" if player.inv.count(k) > 0 else "#d66", Items.def(k).name]
+	if rc.has("station"):
+		var here := BasePiece.near(get_tree(), str(rc.station), player.global_position) != null
+		var nm := "a workbench" if rc.station == "bench" else "a lit campfire"
+		t += "\nAt:\n   [color=%s]%s%s[/color]\n" % ["#9c6" if here else "#d66", nm, "" if here else " (build one with M)"]
 	if rc.has("note"): t += "\n[i]%s[/i]\n" % rc.note
 	info.text = t
 	btn.disabled = not _can(rc)

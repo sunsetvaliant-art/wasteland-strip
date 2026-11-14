@@ -341,6 +341,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			var sink := 0.05
 			if layer == "grass": sink = 0.07 + 0.11 * sc        # cards: wide flat quads, so on any slope the low side shows
 			elif layer == "scan": sink = 0.04 + 0.03 * sc
+			if layer == "tree" and felled.has(Vector3i(roundi(x * 2.0), 0, roundi(z * 2.0))): continue
 			per[kind].append(Transform3D(basis, Vector3(x, h - sink, z)))
 			# bananas, bamboo and palms come in clumps; ferns in drifts
 			var extra := 0
@@ -352,6 +353,7 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 				var cx := x + cos(ca) * cr
 				var cz := z + sin(ca) * cr
 				if road_clearance(cx, cz) < (4.5 if layer == "tree" else 1.5) or Buildings.blocked(cx, cz, 3.0 if layer == "tree" else 0.8): continue
+				if layer == "tree" and felled.has(Vector3i(roundi(cx * 2.0), 0, roundi(cz * 2.0))): continue
 				var ch := _height(cx, cz)
 				if is_nan(ch): continue
 				per[kind].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc * rng.randf_range(0.7, 1.15)), Vector3(cx, ch - 0.05, cz)))
@@ -378,12 +380,16 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			mmi.visibility_range_end = 0.0
 		node.add_child(mmi)
+		if layer == "tree": node.set_meta("mm_" + kind, mmi)
 	# trunks you can't drive through: simple cylinders for the trees near the ground the player is on
 	if layer == "tree":
 		var body := StaticBody3D.new()
+		body.set_meta("trees", true)
 		for kind in per:
-			for xf: Transform3D in per[kind]:
+			for ki in (per[kind] as Array).size():
+				var xf: Transform3D = per[kind][ki]
 				var cs2 := CollisionShape3D.new()
+				cs2.set_meta("tree", [kind, ki, xf])
 				var cyl := CylinderShape3D.new()
 				cyl.radius = 0.3 * xf.basis.get_scale().x
 				cyl.height = 4.0
@@ -393,6 +399,61 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 		node.add_child(body)
 	add_child(node)
 	return node
+
+# ---------------------------------------------------------------- chopping trees
+## felled trees (x*2, 0, z*2 rounded): they don't grow back, saved with the world
+var felled := {}
+var _chops := {}                 # felled key -> hits so far
+
+const CHOPS := {"hatchet": 4, "machete": 8, "knife": 20}
+
+## A melee swing that hit a trunk shape: an axe takes a few goes, a machete more. Returns a message or ""
+func chop(cs: CollisionShape3D, weapon: String, who: Node3D) -> String:
+	if not cs.has_meta("tree") or not CHOPS.has(weapon):
+		return "You need an axe to chop that down"
+	var info: Array = cs.get_meta("tree")
+	var xf: Transform3D = info[2]
+	var key := Vector3i(roundi(xf.origin.x * 2.0), 0, roundi(xf.origin.z * 2.0))
+	_chops[key] = int(_chops.get(key, 0)) + 1
+	if int(_chops[key]) < int(CHOPS[weapon]):
+		return ""
+	_chops.erase(key)
+	felled[key] = true
+	# out of the multimesh and the collision, and over it goes
+	var cell: Node = cs.get_parent().get_parent()
+	var mmi: MultiMeshInstance3D = cell.get_meta("mm_" + str(info[0]), null)
+	var mesh: Mesh = null
+	if mmi:
+		mmi.multimesh.set_instance_transform(int(info[1]), Transform3D(Basis().scaled(Vector3.ONE * 0.0001), xf.origin))
+		mesh = mmi.multimesh.mesh
+	cs.disabled = true
+	if mesh: _topple(mesh, xf, who.global_position)
+	return "felled"
+
+func _topple(mesh: Mesh, xf: Transform3D, from: Vector3) -> void:
+	var pivot := Node3D.new()
+	add_child(pivot)
+	pivot.global_position = xf.origin
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.transform = Transform3D(xf.basis, Vector3.ZERO)
+	pivot.add_child(mi)
+	var away := Vector3(xf.origin.x - from.x, 0, xf.origin.z - from.z).normalized()
+	if away.length() < 0.1: away = Vector3.FORWARD
+	var axis := Vector3.UP.cross(away).normalized()
+	var tw := pivot.create_tween()
+	tw.tween_method(func(k: float): pivot.basis = Basis(axis, k * k * PI * 0.48), 0.0, 1.0, 2.2)
+	tw.tween_interval(8.0)
+	tw.tween_method(func(k: float): pivot.position.y = xf.origin.y - k * 3.0, 0.0, 1.0, 4.0)
+	tw.tween_callback(pivot.queue_free)
+
+func save_felled() -> Array:
+	var out := []
+	for k in felled: out.append([k.x, k.z])
+	return out
+
+func load_felled(a: Array) -> void:
+	for e in a: felled[Vector3i(int(e[0]), 0, int(e[1]))] = true
 
 func _apply_hand_over() -> void:
 	if OS.get_environment("GRASS_NOHIDE") != "": return

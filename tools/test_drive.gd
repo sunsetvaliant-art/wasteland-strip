@@ -39,5 +39,7 @@ func _init():
 	Input.action_press("move_left")
 	var yaw0: float = car.rotation.y
 	for i in 240: await physics_frame
+	var vv: float = car.linear_velocity.length()
+	print("TD turn: steer %.3f rad, front slip angle %.3f / %.3f rad, rear %.3f, lateral %.2f g" % [car.steer_now, car.wheels[0].slip_a, car.wheels[1].slip_a, car.wheels[2].slip_a, vv * absf(car.angular_velocity.y) / 9.81])
 	print("TD turning at %.0f km/h: yaw rate %.2f rad/s, roll %.1f deg, still upright: %s" % [car.speed_kmh(), car.angular_velocity.y, rad_to_deg(car.rotation.z), car.global_transform.basis.y.y > 0.8])
 	quit()

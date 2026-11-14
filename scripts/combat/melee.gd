@@ -139,7 +139,7 @@ func tick(dt: float) -> void:
 	weapon = _pick()
 	_show_weapon()
 	var free: bool = not player.armed() and player.carried == null and player.vehicle == null and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not BaseBuild.busy
-	if free and Input.is_action_just_pressed("fire") and swing < 0.0 and cool <= 0.0:
+	if free and Input.is_action_just_pressed("fire") and swing < 0.0 and cool <= 0.0 and not InteractMenu.blocking():
 		var w: Dictionary = WEAPONS[weapon]
 		if stamina >= float(w.stam) * 0.5 or creative:
 			swing = 0.0
@@ -235,6 +235,30 @@ func _strike(w: Dictionary) -> void:
 		# glass in the way goes
 		var t = player.interact_target
 		if t is BuildWindow: (t as BuildWindow).glass_hit(t.global_position, dir)
+		_try_chop(w, dir)
+
+## A swing at a tree trunk: wood with an axe (or a machete, slower)
+func _try_chop(w: Dictionary, dir: Vector3) -> void:
+	var cam: Camera3D = player.active_camera()
+	var from: Vector3 = cam.global_position if cam else player.global_position + Vector3(0, 1.5, 0)
+	var d: Vector3 = -cam.global_transform.basis.z if cam else dir
+	var reach := float(w.reach) + (0.6 if player.first_person else 3.2)
+	var h := player.get_world_3d().direct_space_state.intersect_ray(PhysicsRayQueryParameters3D.create(from, from + d * reach, 1, [player.get_rid()]))
+	if h.is_empty() or not (h.collider is StaticBody3D) or not (h.collider as Node).has_meta("trees"): return
+	if (h.position as Vector3).distance_to(player.global_position + Vector3(0, 1.0, 0)) > float(w.reach) + 1.2: return
+	var body: StaticBody3D = h.collider
+	var cs := body.shape_owner_get_owner(body.shape_find_owner(int(h.shape))) as CollisionShape3D
+	var veg = get_tree().current_scene.get("veg")
+	if cs == null or veg == null: return
+	_sfx("hit_blunt", 0.55 + randf() * 0.1)
+	Hearing.emit(get_tree(), player.global_position, 18.0, "chopping", player)
+	var r: String = veg.chop(cs, weapon, player)
+	if r == "felled":
+		var left: int = player.inv.add(Items.fresh("wood", randi_range(3, 5)))
+		player.inv.add(Items.fresh("stick", randi_range(1, 3)))
+		player._toast("Timber! Firewood and sticks" + (" (no room for all of it)" if left > 0 else ""))
+	elif r != "":
+		player._toast(r)
 
 ## Q: a boot in the chest. Off a sprint and off the ground it's a flying kick.
 func kick() -> void:

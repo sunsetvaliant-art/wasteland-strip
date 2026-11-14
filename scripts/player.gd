@@ -129,7 +129,8 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("crouch"):
 		crouching = not crouching
 	if e.is_action_pressed("interact"):
-		_interact()
+		if InteractMenu.inst and InteractMenu.inst.shown: InteractMenu.inst.run(InteractMenu.inst.sel)
+		else: _interact()
 	if e.is_action_pressed("inventory"):
 		var ui = get_tree().current_scene.get("inv_ui")
 		if ui: ui.toggle(null)
@@ -337,7 +338,7 @@ func _hold_gun(dt: float) -> void:
 		scope_view.set_active(ads > 0.85 and g.def.get("scope", 0.0) > 0.0, g, look, eye_pos)
 	# pulling the trigger
 	var auto: bool = g.def.action in ["semi", "revolver"]
-	var want := Input.is_action_just_pressed("fire") and not BaseBuild.busy
+	var want := Input.is_action_just_pressed("fire") and not BaseBuild.busy and not InteractMenu.blocking()
 	if want and low_ready < 0.3 and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not get_tree().paused:
 		var origin := eye_pos
 		var dir := (aim_point - eye_pos).normalized()
@@ -349,7 +350,7 @@ func _hold_gun(dt: float) -> void:
 			recoil += float(g.def.recoil) * randf_range(0.8, 1.2) * (0.6 if crouching else 1.0)
 			yaw += randf_range(-0.3, 0.3) * float(g.def.recoil) * 0.4
 			kick = float(g.def.kick)
-	if g.ammo <= 0 and g.reserve > 0 and g.reloading <= 0.0 and Input.is_action_just_pressed("fire"):
+	if g.ammo <= 0 and g.reserve > 0 and g.reloading <= 0.0 and Input.is_action_just_pressed("fire") and not InteractMenu.blocking():
 		g.start_reload()
 
 ## What's in front of you that F does something with: a box to open, something to pick up
@@ -654,9 +655,10 @@ func _respawn() -> void:
 	velocity = Vector3.ZERO
 	_apply_camera()
 
-func _try_get_in() -> void:
+func _try_get_in(only: Node = null) -> void:
 	for c in get_tree().get_nodes_in_group("vehicles"):
-		if c.global_position.distance_to(global_position) < 4.0 and c.driver == null:
+		if only != null and c != only: continue
+		if c.global_position.distance_to(global_position) < (5.0 if only else 4.0) and c.driver == null:
 			c.set_meta("player_car", true)          # saved with the world from now on
 			vehicle = c
 			c.driver = self

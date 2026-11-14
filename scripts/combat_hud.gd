@@ -74,7 +74,7 @@ func _draw() -> void:
 		if p.crouching:
 			_text(ec + Vector2(0, 40), "crouched", 12, Color(1, 1, 1, 0.6), true)
 	# what F does here, and the bandage / food you're using
-	if p.interact_hint != "":
+	if p.interact_hint != "" and not (InteractMenu.inst and InteractMenu.inst.shown):
 		_text(Vector2(c.x, c.y + 64), p.interact_hint, 18, Color(1, 0.92, 0.7), true)
 	if p._toast_t > 0.0:
 		p._toast_t -= get_process_delta_time()
