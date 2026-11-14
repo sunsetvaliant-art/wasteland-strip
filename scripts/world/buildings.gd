@@ -50,6 +50,7 @@ func setup(m) -> void:
 	lots_ver = str(d.get("ver", ""))
 	_clear_roads()
 	_clear_cliffs()
+	_house_styles()
 	_level_malls()
 	for i in lots.size():
 		var l: Array = lots[i]
@@ -172,6 +173,103 @@ func _clear_roads() -> void:
 		f.store_string(JSON.stringify(d, "", false, true))
 		print("BUILDINGS baked the cleared lot list")
 
+## House styles (0.2.46), set in the lot's sub field (l[7]) and baked like the road pass (BAKE_LOTS=1):
+##   cottage / qlder within 350 m of the sea (on the coast, not the river) -> "shack": a 1960s timber beach shack
+##   brick / two_storey within 220 m of the sea -> two_storey "units70": 1970s sandstone two-storey walk-up units
+##   brick in a run of brick neighbours (8 nearest, 6+ brick, lined up) -> "estate:<palette>": a newer double brick
+##     home; the palette is shared by an estate (300 m patch) and varies house to house within it
+##   6 Pearl Street, Kingscliff -> a five-storey block, two units long, garages on the ground floor
+func _house_styles() -> void:
+	if "+styles1" in lots_ver: return
+	var t0 := Time.get_ticks_msec()
+	var data: Terrain3DData = main.terrain.data if main and main.terrain else null
+	if data == null: return
+	var seadist := func(x: float, z: float) -> float:
+		var best := 9999.0
+		for k in 16:
+			var a := TAU * k / 16.0
+			var r := 20.0
+			while r <= 400.0:
+				var h := float(data.get_height(Vector3(x + cos(a) * r, 0, z + sin(a) * r)))
+				if not is_nan(h) and h < 0.15:
+					best = minf(best, r); break
+				r += 20.0
+		return best
+	var houses := []
+	for i in lots.size():
+		if str(lots[i][0]) in ["qlder", "cottage", "brick", "two_storey"] and lots[i].size() <= 7: houses.append(i)
+	_grid50.clear()
+	for i in lots.size():
+		var c := Vector2i(floori(float(lots[i][1]) / 50.0), floori(float(lots[i][2]) / 50.0))
+		if not _grid50.has(c): _grid50[c] = []
+		_grid50[c].append(i)
+	var counts := {"shack": 0, "units70": 0, "estate": 0}
+	var rng := RandomNumberGenerator.new()
+	for i in houses:
+		var l: Array = lots[i]
+		var x := float(l[1]); var z := float(l[2])
+		rng.seed = int(l[6]) + 77
+		var k := str(l[0])
+		# only the beach side of the map is coast (the sea is east of x 14000); the river flats inland stay as they are
+		if x > 14000.0:
+			var sd: float = seadist.call(x, z)
+			if k in ["cottage", "qlder"] and sd < 350.0 and rng.randf() < 0.45:
+				l[0] = "cottage"; l.append("shack"); counts.shack += 1; continue
+			if k in ["brick", "two_storey"] and sd < 220.0 and rng.randf() < 0.4:
+				l[0] = "two_storey"; l.append("units70")
+				l[4] = maxf(float(l[4]), 14.0); l[5] = maxf(float(l[5]), 10.0)
+				counts.units70 += 1; continue
+		if k == "brick":
+			var nb := _nearest_lots(x, z, 8, 120.0)
+			var brick := 0; var aligned := 0
+			for j in nb:
+				if str(lots[j][0]) == "brick": brick += 1
+				if absf(wrapf(float(lots[j][3]) - float(l[3]), -PI * 0.25, PI * 0.25)) < 0.12: aligned += 1
+			if brick >= 6 and aligned >= 5:
+				var patch := Vector2i(floori(x / 300.0), floori(z / 300.0))
+				l.append("estate:%d" % (absi(hash(patch)) % 4)); counts.estate += 1
+	# 6 Pearl Street, Kingscliff: the house lot nearest the low-numbered end of the street
+	var bi := -1; var bd := 70.0
+	for i in houses:
+		var dd := Vector2(float(lots[i][1]) - 16495.0, float(lots[i][2]) + 8505.0).length()
+		if dd < bd: bd = dd; bi = i
+	if bi >= 0:
+		var l: Array = lots[bi]
+		l[0] = "tower"; l[4] = 22.0; l[5] = 14.0
+		if l.size() > 7: l[7] = "5g"
+		else: l.append("5g")
+		print("BUILDINGS 6 Pearl Street: lot %d at %.0f, %.0f" % [bi, l[1], l[2]])
+	lots_ver += "+styles1"
+	print("BUILDINGS house styles: %d shacks, %d 70s units, %d estate homes in %d ms" % [counts.shack, counts.units70, counts.estate, Time.get_ticks_msec() - t0])
+	if OS.get_environment("BAKE_LOTS") != "":
+		var d = JSON.parse_string(FileAccess.get_file_as_string("res://assets/world/buildings.json"))
+		d.lots = lots
+		d.ver = lots_ver
+		var f := FileAccess.open(ProjectSettings.globalize_path("res://assets/world/buildings.json"), FileAccess.WRITE)
+		f.store_string(JSON.stringify(d, "", false, true))
+		print("BUILDINGS baked the styled lot list")
+
+## the n nearest lots to (x, z) within r (a plain scan of the 50 m buckets once _q exists, else of every lot)
+var _grid50 := {}
+func _nearest_lots(x: float, z: float, n: int, r: float) -> Array:
+	var cand := []
+	var ids := []
+	var g := ceili(r / 50.0)
+	var c0 := Vector2i(floori(x / 50.0), floori(z / 50.0))
+	for gx in range(-g, g + 1):
+		for gz in range(-g, g + 1):
+			ids.append_array(_grid50.get(c0 + Vector2i(gx, gz), []))
+	for i in ids:
+		var dx := float(lots[i][1]) - x; var dz := float(lots[i][2]) - z
+		if absf(dx) > r or absf(dz) > r: continue
+		var dd := dx * dx + dz * dz
+		if dd < 1.0: continue
+		cand.append([dd, i])
+	cand.sort_custom(func(a, b): return a[0] < b[0])
+	var out := []
+	for c in cand.slice(0, n): out.append(c[1])
+	return out
+
 ## No houses on cliffs: where the ground falls more than STEEP metres across a small building's lot nobody could have
 ## built (the steps down the low side ran to 60 and more, or stopped in mid-air). Those lots are left out. Baked into
 ## the lot list like the road pass (BAKE_LOTS=1), so it costs nothing at load.
@@ -241,6 +339,18 @@ func _level_malls() -> void:
 		if hs.is_empty(): continue
 		hs.sort()
 		var level: float = maxf(hs[hs.size() / 2], 1.2)
+		# a village centre built into a hill (sub "/S"): the floor at the lower street behind, the arcade floor level
+		# with the main street in front; the ground in front of it is left alone
+		var split := l.size() > 7 and str(l[7]).get_slice("/", 1).begins_with("S")
+		if split:
+			var hb := INF; var hf := -INF
+			for sx in 5:
+				var bx := (sx / 4.0 - 0.5) * w * 0.8
+				hb = minf(hb, float(data.get_height(c + basis * Vector3(bx, 0, -d / 2 - 4.0))))
+				hf = maxf(hf, float(data.get_height(c + basis * Vector3(bx, 0, d / 2 + 4.0))))
+			level = maxf(hb, 1.2)
+			var uy := clampf(hf - level, 3.0, 6.0)
+			l[7] = "%s/S%.2f" % [str(l[7]).get_slice("/", 0), uy]
 		_floor[i] = level + 0.12 + (0.02 if l.size() > 7 and str(l[7]).contains("/") else 0.0)      # a row standing inside another mall: just proud of its floor
 		var r := sqrt(w * w + d * d) * 0.5 + 30.0
 		var inv := basis.inverse()
@@ -250,6 +360,7 @@ func _level_malls() -> void:
 			while z <= c.z + r:
 				var lp: Vector3 = inv * (Vector3(x, 0, z) - c)
 				var out := maxf(maxf(absf(lp.x) - w / 2, absf(lp.z) - d / 2), 0.0)
+				if split and lp.z > d / 2 - 4.0: out = 99.0            # the street side stays as it is
 				if out < 29.0:
 					var p := Vector3(x, 0, z)
 					var h0 := float(data.get_height(p))
@@ -487,6 +598,8 @@ func _build_full(i: int) -> void:
 		box.set_meta("loot_gen", gen)
 	full[i] = b
 	b.set_meta("plan", p)
+	if str(lots[i][0]) in ["qlder", "cottage", "brick", "two_storey"]:
+		_yard(i, p, b, xf)
 	_project_car(i, p, b)
 	if p.kind == "mall":
 		_mall_life(i, p, b)
@@ -500,14 +613,122 @@ func _build_full(i: int) -> void:
 				board(n, int(boards[n.key].side), int(boards[n.key].n))
 	_nav.erase(i)
 
+# ------------------------------------------------------------------ yards: fences down the sides and across the back
+## Australian suburbia: a fence down each side and across the back yard, shared with the neighbours (it stands half
+## way between); no front fence, or now and then a low brick wall. Colorbond on brick and estate homes, timber palings
+## on the old weatherboard and fibro houses, a low brick wall round 70s units. Only in town (houses close by).
+const COLORBOND := ["tin:woodland", "tin:monument", "tin:surfmist", "tin:grey", "tin:basalt"]
+func _yard(i: int, p: Dictionary, b: Node3D, xf: Transform3D) -> void:
+	var l: Array = lots[i]
+	var x := float(l[1]); var z := float(l[2])
+	var near_houses := 0
+	var nbs := []
+	var c0 := Vector2i(floori(x / 50.0), floori(z / 50.0))
+	for gx in range(-1, 2):
+		for gz in range(-1, 2):
+			for j in _q.get(c0 + Vector2i(gx, gz), []):
+				if j == i or nbs.has(j): continue
+				nbs.append(j)
+				if str(lots[j][0]) in ["qlder", "cottage", "brick", "two_storey"] and Vector2(float(lots[j][1]) - x, float(lots[j][2]) - z).length() < 60.0:
+					near_houses += 1
+	if near_houses < 3: return
+	var w: float = float(p.w); var d: float = float(p.d)
+	var vd: float = float(p.verandah.depth) if p.verandah != null else 0.0
+	# which way is the street: the side whose outside is closest to a road
+	var dirs := [Vector2(0, 1), Vector2(0, -1), Vector2(1, 0), Vector2(-1, 0)]
+	var best := 0; var bd := INF
+	for k in 4:
+		var dv: Vector2 = dirs[k]
+		var lp := Vector3(dv.x * (w * 0.5 + 6.0), 0, dv.y * (d * 0.5 + 6.0))
+		var wp := xf * lp
+		var ed: float = Roads.inst.edge_dist(wp.x, wp.z) if Roads.inst else 99.0
+		if ed < bd: bd = ed; best = k
+	var f: Vector2 = dirs[best]                     # front, in the lot's frame
+	var sd := Vector2(f.y, -f.x)                    # across
+	var half_w := (w * 0.5) if absf(f.x) < 0.5 else (d * 0.5)
+	var half_d := (d * 0.5) if absf(f.x) < 0.5 else (w * 0.5)
+	if absf(f.x) < 0.5 and f.y > 0: half_d += vd
+	# how far to the neighbours each side and behind
+	var gap := [3.5, 3.5]; var back := 9.0
+	for j in nbs:
+		var lj: Array = lots[j]
+		var lp: Vector3 = xf.affine_inverse() * Vector3(float(lj[1]), xf.origin.y, float(lj[2]))
+		var v := Vector2(lp.x, lp.z)
+		var a := v.dot(f); var c := v.dot(sd)
+		var nh := minf(float(lj[4]), float(lj[5])) * 0.5
+		if absf(a) < half_d + 6.0 and absf(c) > half_w:
+			var g := clampf((absf(c) - half_w - nh) * 0.5, 0.8, 6.0)
+			var k := 0 if c > 0.0 else 1
+			gap[k] = minf(gap[k], g)
+		elif a < -half_d and absf(c) < half_w + 4.0:
+			back = minf(back, clampf((-a - half_d - nh) * 0.5, 3.0, 12.0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(l[6]) + 5150
+	var sub := str(l[7]) if l.size() > 7 else ""
+	var mk: String; var hgt := 1.8
+	if sub == "units70": mk = "brick"; hgt = 1.0
+	elif str(l[0]) in ["qlder", "cottage"]: mk = "timber"; hgt = 1.5
+	else: mk = COLORBOND[rng.randi() % COLORBOND.size()]
+	var gfn := _ground_fn(xf)
+	var g := BuildGen.Geo.new()
+	var to_l := func(a: float, c: float) -> Vector2: return f * a + sd * c
+	var front_a := half_d - 0.3
+	var rear_a := -half_d - back
+	var segs := [[to_l.call(front_a, half_w + gap[0]), to_l.call(rear_a, half_w + gap[0])],
+		[to_l.call(front_a, -half_w - gap[1]), to_l.call(rear_a, -half_w - gap[1])],
+		[to_l.call(rear_a, half_w + gap[0]), to_l.call(rear_a, -half_w - gap[1])]]
+	for sg in segs: _fence(g, i, xf, gfn, sg[0], sg[1], mk, hgt)
+	# now and then a low brick wall across the front, a gap for the driveway
+	if (str(l[0]) == "brick" or sub == "units70") and rng.randf() < 0.3 and bd > 3.0:
+		var fa := half_d + clampf(bd + 6.0 - 1.5 - (half_d - (d * 0.5 if absf(f.x) < 0.5 else w * 0.5)), 2.0, 7.0)
+		var c1: float = half_w + float(gap[0]); var c2: float = -half_w - float(gap[1])
+		var drive_left := rng.randf() < 0.5
+		var a0: float = c1 - (3.2 if drive_left else 0.0); var a1: float = c2 + (0.0 if drive_left else 3.2)
+		_fence(g, i, xf, gfn, to_l.call(fa, a0), to_l.call(fa, a1), "brick", 0.6, 0.2)
+	if g.sts.is_empty(): return
+	var mi := MeshInstance3D.new()
+	mi.mesh = g.commit()
+	mi.visibility_range_end = 140.0
+	b.add_child(mi)
+	var body := StaticBody3D.new()
+	for sh in g.shapes:
+		var cs := CollisionShape3D.new()
+		var bs := BoxShape3D.new()
+		bs.size = sh[1]
+		cs.shape = bs
+		cs.transform = sh[0]
+		body.add_child(cs)
+	b.add_child(body)
+
+## one run of fence in the lot's frame, panel by panel on the ground; panels over a road or in another building's way
+## are left out
+func _fence(g: BuildGen.Geo, i: int, xf: Transform3D, gfn: Callable, a: Vector2, c: Vector2, mk: String, hgt: float, thick := 0.05) -> void:
+	var L := a.distance_to(c)
+	if L < 0.5: return
+	var n := maxi(1, ceili(L / 2.4))
+	var dir := (c - a) / L
+	var yaw := atan2(dir.x, dir.y)
+	for k in n:
+		var p0 := a.lerp(c, float(k) / n); var p1 := a.lerp(c, float(k + 1) / n)
+		var m := (p0 + p1) * 0.5
+		var wp := xf * Vector3(m.x, 0, m.y)
+		if Roads.inst and Roads.inst.edge_dist(wp.x, wp.z) < 1.2: continue
+		var other := lot_at(wp, 0.4, true)
+		if other != -1 and other != i: continue
+		var gy: float = gfn.call(m.x, m.y)
+		var plen := p0.distance_to(p1)
+		g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x, gy - 0.1 + hgt * 0.5, m.y)), Vector3(thick, hgt + 0.2, plen))
+		if mk.begins_with("tin") or mk == "timber":
+			g.box("steel" if mk.begins_with("tin") else "timber", Transform3D(Basis(Vector3.UP, yaw), Vector3(p0.x, gy - 0.1 + hgt * 0.5 + 0.05, p0.y)), Vector3(0.09, hgt + 0.3, 0.09), false)
+
 # ------------------------------------------------------------------ getting about inside (for zombies and scavs)
 var _nav := {}       # lot -> {"edges": [[a, b, [local points a->b]]], "rooms": {id: room}, "floors": [y]}
 
 ## Which full-built building (lot index) a point is in or right by, else -1
-func lot_at(pt: Vector3, pad := 1.0) -> int:
+func lot_at(pt: Vector3, pad := 1.0, any := false) -> int:
 	var k := Vector2i(floori(pt.x / 50.0), floori(pt.z / 50.0))
 	for i in _q.get(k, []):
-		if not full.has(i): continue
+		if not any and not full.has(i): continue
 		var l: Array = lots[i]
 		var yaw := float(l[3])
 		var dx := pt.x - float(l[1])

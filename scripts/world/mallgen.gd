@@ -49,6 +49,8 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 	p.mall = {"name": parts[0] if parts[0] != "" else "SUNNYVALE", "brand": brand, "units": [], "fl": 1, "y": UY}
 	if parts.size() > 1 and parts[1] == "P":
 		_pavilion(p, w, d, rng)
+	elif parts.size() > 1 and (parts[1] == "V" or parts[1].begins_with("S")):
+		_village(p, w, d, rng, float(parts[1].substr(1)) if parts[1].begins_with("S") else 0.0)
 	elif p.mall.name == "TWIN CITY" and not PolyMall.data("twin_city").is_empty():
 		# traced from the real directory plan (angles, curves and all): scripts/world/polymall.gd
 		PolyMall.plan(p, w, d, rng, "twin_city")
@@ -294,6 +296,50 @@ static func _pavilion(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 		g.append({"x0": snappedf(-w / 2 + w * k / n, 0.01), "z0": -d / 2, "x1": snappedf(-w / 2 + w * (k + 1) / n, 0.01), "z1": d / 2, "type": "unit", "sub": kd[1], "title": kd[0]})
 	p.floors.append({"y": 0.0, "h": 4.3, "rooms": g})
 
+## A small village centre (Cabarita, Kingscliff): an arcade from the street back to the supermarket, shops down both
+## sides, toilets, a lift on the west side. uy > 0: built into a hill: the arcade is level with the main street in
+## front and a car park underneath opens flush onto the lower street behind (only there: the other sides are in the
+## ground), the lift goes down to it.
+static func _village(p: Dictionary, w: float, d: float, rng: RandomNumberGenerator, uy: float) -> void:
+	var hw := w / 2; var hd := d / 2
+	var C := 4.0
+	var sup_d := minf(14.0, d * 0.38)
+	var zs := -hd + sup_d                 # where the supermarket ends and the arcade starts
+	var L := 2.6
+	var RM := func(x0: float, z0: float, x1: float, z1: float, t: String, extra := {}) -> Dictionary:
+		var r := {"x0": snappedf(x0, 0.01), "z0": snappedf(z0, 0.01), "x1": snappedf(x1, 0.01), "z1": snappedf(z1, 0.01), "type": t}
+		r.merge(extra)
+		return r
+	p.mall.fl = 1 if uy > 0.0 else 0
+	p.mall.y = uy
+	p.mall["street_fl"] = p.mall.fl
+	p.h = 4.4
+	if uy > 0.0:
+		p.mall["carpark_sides"] = ["N"]
+		p.stair_rise = uy
+		var g := []
+		g.append(RM.call(-hw, hd - 6.0, hw, hd, "store"))                 # in the hill under the street front
+		g.append(RM.call(-C - L, zs, -C, zs + L, "lift"))
+		g.append(RM.call(-hw, -hd, hw, zs, "carpark"))
+		g.append(RM.call(-hw, zs, -C - L, hd - 6.0, "carpark"))
+		g.append(RM.call(-C, zs, hw, hd - 6.0, "carpark"))
+		g.append(RM.call(-C - L, zs + L, -C, hd - 6.0, "carpark"))
+		p.floors.append({"y": 0.0, "h": uy - 0.4, "rooms": g})
+	var u := []
+	u.append(RM.call(-hw, -hd, hw, zs, "super", {"title": p.mall.brand.name}))
+	u.append(RM.call(-C, zs, C, hd, "concourse", {"open_above": true}))
+	u.append(RM.call(-C - L, zs, -C, zs + L, "lift"))
+	u.append(RM.call(-hw, zs, -C - L, zs + L, "toilet"))
+	var kinds := UNIT_KINDS.duplicate()
+	for side in [-1.0, 1.0]:
+		var xa: float = -hw if side < 0.0 else C
+		var xb: float = -C if side < 0.0 else hw
+		var z0: float = zs + (L if side < 0.0 else 0.0)
+		for bay in _cut(z0, hd, 5.5, 8.0, rng):
+			var kd: Array = kinds.pop_at(rng.randi() % kinds.size()) if not kinds.is_empty() else ["SHOP", "general"]
+			u.append(RM.call(xa, bay[0], xb, bay[1], "unit", {"sub": kd[1], "title": kd[0]}))
+	p.floors.append({"y": uy, "h": 4.4, "rooms": u})
+
 ## Split a..b into bays between lo and hi wide
 static func _cut(a: float, b: float, lo: float, hi: float, rng: RandomNumberGenerator) -> Array:
 	var out := []
@@ -351,8 +397,9 @@ static func openings(p: Dictionary, rng: RandomNumberGenerator) -> void:
 					wo["fixed"] = true
 			r["_fronts"] = [{"side": "S", "lo": a, "hi": b}]
 	# a ground-level mall: wherever one of its malls meets the open air there's a way in (glass doors, long gone)
-	if int(p.mall.get("fl", 1)) == 0:
-		var rooms0: Array = p.floors[0].rooms
+	var sfl := int(p.mall.get("street_fl", 0 if int(p.mall.get("fl", 1)) == 0 else -1))
+	if sfl >= 0:
+		var rooms0: Array = p.floors[sfl].rooms
 		for r in rooms0:
 			if r.type != "concourse": continue
 			for side in ["N", "S", "W", "E"]:
@@ -411,6 +458,7 @@ static func openings(p: Dictionary, rng: RandomNumberGenerator) -> void:
 			"carpark":
 				for side in ["N", "W", "E", "S"]:
 					if not BuildGen._ext_side(p, r, side): continue
+					if p.mall.has("carpark_sides") and not (side in p.mall.carpark_sides): continue
 					var si := BuildGen._side_info(r, side)
 					var a: float = si.a
 					var b: float = si.b

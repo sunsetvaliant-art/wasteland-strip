@@ -8,14 +8,19 @@ const SH := 3.1           # storey height
 const NAMES := ["OCEAN VIEW", "THE SANDS", "PACIFIC TOWERS", "BORDER MOTOR INN", "SEA BREEZE", "POINT LOOKOUT", "TWIN TOWNS APARTMENTS", "KIRRA SURF", "THE ESPLANADE", "GREENMOUNT"]
 
 static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenerator, sub: String) -> void:
-	var levels := clampi(int(sub) if sub.is_valid_int() else rng.randi_range(8, 12), 5, 14)
+	# sub "5" = five storeys; "5g" = a five-storey residential block with garages across the ground floor
+	var garages := sub.ends_with("g")
+	var sl := sub.trim_suffix("g")
+	var levels := clampi(int(sl) if sl.is_valid_int() else rng.randi_range(8, 12), 5, 14)
 	var mid := maxi(2, levels / 2)
 	p.raised = 0.2
 	p.h = 3.4
 	p.clad = ["plaster:white", "plaster:cream", "plaster:sand", "plaster:pale_blue", "plaster:sage"][rng.randi() % 5]
 	p.trim = ["trim:navy", "trim:charcoal", "trim:white", "trim:maroon"][rng.randi() % 4]
 	p.roof = {"type": "flat", "mat": "concrete"}
-	p.tower = {"levels": levels, "mid": mid, "name": NAMES[rng.randi() % NAMES.size()]}
+	p.tower = {"levels": levels, "mid": mid, "name": "" if garages else NAMES[rng.randi() % NAMES.size()], "garages": garages}
+	if garages:
+		p.clad = ["plaster:white", "plaster:cream", "plaster:sand"][rng.randi() % 3]
 	var bz := -d / 2 + 2.8        # the back strip (lift and services) ends here
 	var lift := func(h: float) -> Dictionary: return {"x0": -1.4, "z0": -d / 2, "x1": 1.4, "z1": bz, "type": "lift", "h": h}
 	# the foyer
@@ -74,7 +79,16 @@ static func top(p: Dictionary, g: BuildGen.Geo, lod := false) -> void:
 	g.aabb(p.trim, Vector3(-4.0, 3.0, d / 2 + T), Vector3(4.0, 3.25, d / 2 + T + 2.4))
 	if not lod:
 		if not p.has("_labels"): p["_labels"] = []
-		ShopGen._label(p, Vector3(0, 3.12, d / 2 + T + 2.42), str(tw.name), 0.2, 7.0, 0.0, Color(0.96, 0.95, 0.9))
+		if str(tw.name) != "": ShopGen._label(p, Vector3(0, 3.12, d / 2 + T + 2.42), str(tw.name), 0.2, 7.0, 0.0, Color(0.96, 0.95, 0.9))
+	if tw.get("garages", false):
+		# garages across the front of the ground floor: roller doors with a strip of wall between
+		var ng := maxi(2, int(w / 3.4))
+		for gi in ng:
+			var gx0 := -w / 2 + 0.4 + (w - 0.8) * gi / ng + 0.15
+			var gx1 := -w / 2 + 0.4 + (w - 0.8) * (gi + 1) / ng - 0.15
+			g.aabb("tin:grey", Vector3(gx0, 0.05, d / 2 + T), Vector3(gx1, 2.3, d / 2 + T + 0.04), false)
+			for k in 8:
+				g.aabb("steel", Vector3(gx0, 0.25 + k * 0.27, d / 2 + T + 0.04), Vector3(gx1, 0.28 + k * 0.27, d / 2 + T + 0.05), false)
 
 ## The lift's panels: one in the car at every stop
 static func lifts(p: Dictionary, root: Node3D) -> void:

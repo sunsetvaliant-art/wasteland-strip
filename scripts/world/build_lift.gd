@@ -7,14 +7,14 @@ var stops: Array = []
 var names: Array = []
 var at := 0
 
-func setup(s: Array, n: Array, i: int, depth: float) -> void:
+func setup(s: Array, n: Array, i: int, depth: float, panel := Vector3.INF) -> void:
 	stops = s
 	names = n
 	at = i
 	collision_layer = 1
 	collision_mask = 0
 	var st: Vector3 = stops[i]
-	position = Vector3(1.1, st.y + 1.2, -depth / 2 + 0.25)
+	position = Vector3(1.1, st.y + 1.2, -depth / 2 + 0.25) if panel == Vector3.INF else Vector3(panel.x, st.y + 1.2, panel.z)
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = Vector3(0.3, 0.45, 0.06)

@@ -35,6 +35,8 @@ const TINTS := {
 	# main-street paint
 	"sage": Color(0.74, 0.82, 0.68), "terracotta": Color(0.86, 0.58, 0.46), "mustard": Color(0.93, 0.8, 0.46), "pale_blue": Color(0.74, 0.84, 0.92),
 	"heritage": Color(0.42, 0.56, 0.44), "maroon": Color(0.56, 0.26, 0.24), "navy": Color(0.3, 0.37, 0.52), "charcoal": Color(0.34, 0.34, 0.36),
+	"sandstone": Color(0.95, 0.83, 0.6), "monument": Color(0.42, 0.42, 0.44), "surfmist": Color(0.95, 0.94, 0.9), "woodland": Color(0.55, 0.57, 0.52),
+	"basalt": Color(0.5, 0.5, 0.52), "brick_tan": Color(1.15, 1.05, 0.85), "brick_dark": Color(0.62, 0.55, 0.52),
 	"sand": Color(0.92, 0.84, 0.7), "black": Color(0.22, 0.23, 0.25), "red": Color(0.86, 0.2, 0.18),
 }
 static var _mats := {}
@@ -252,6 +254,42 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			p.roof = {"type": "hip" if rng.randf() < 0.65 else "gable", "pitch": deg_to_rad(rng.randf_range(24, 32)), "mat": "tin" if rng.randf() < 0.7 else "tin_rust"}
 			p.verandah = {"depth": rng.randf_range(2.2, 2.8), "sides": rng.randf() < 0.35}
 			p.floors.append({"y": 0.0, "h": 3.0, "rooms": _hall_layout(w, d, 1.2, rng, false, false)})
+		"cottage" when sub == "shack":
+			# a 1960s timber beach shack: small, on low stumps, painted boards or fibro, a skillion or low gable tin roof,
+			# a little front deck
+			p.raised = rng.randf_range(0.5, 1.0)
+			p.stumps = true
+			p.h = 2.5
+			var beach: String = ["white", "pale_blue", "teal", "yellow", "sage", "pink"][rng.randi() % 6]
+			p.clad = ("weatherboard:" if rng.randf() < 0.6 else "fibro:") + beach
+			p.roof = {"type": "skillion" if rng.randf() < 0.4 else "gable", "pitch": deg_to_rad(rng.randf_range(8, 16)), "mat": "tin" if rng.randf() < 0.5 else "tin_rust"}
+			p.verandah = {"depth": rng.randf_range(1.6, 2.2), "sides": false}
+			p.floors.append({"y": 0.0, "h": 2.5, "rooms": _open_layout(w, d, rng)})
+		"two_storey" when sub == "units70":
+			# 1970s sandstone-coloured two-storey walk-up units by the beach: flat-ish tile roof, the same up and down
+			p.raised = 0.3
+			p.h = 2.6
+			p.clad = ["plaster:sandstone", "plaster:sandstone", "plaster:sand", "plaster:cream"][rng.randi() % 4]
+			p.roof = {"type": "hip", "pitch": deg_to_rad(rng.randf_range(12, 16)), "mat": ["roof_tile:terracotta", "roof_tile", "roof_tile:brick_dark"][rng.randi() % 3]}
+			p.fascia = "trim:" + ["white", "maroon", "charcoal"][rng.randi() % 3]
+			p.floors.append({"y": 0.0, "h": 2.6, "rooms": _hall_layout(w, d, 2.2, rng, true, false)})
+			p.floors.append({"y": 2.9, "h": 2.6, "rooms": _hall_layout(w, d, 2.2, rng, true, true)})
+		"brick" when sub.begins_with("estate"):
+			# a newer double brick home in an estate: each estate keeps to a palette (the builder's range, the council's
+			# approved fascia colours) and the houses vary within it
+			var pal := int(sub.get_slice(":", 1)) if sub.contains(":") else 0
+			var ranges := [
+				[["plaster:white", "brick:brick_tan"], ["roof_tile:charcoal", "roof_tile:basalt"], ["trim:monument", "trim:charcoal"]],
+				[["brick:brick_tan", "brick"], ["roof_tile:terracotta", "roof_tile"], ["trim:surfmist", "trim:white"]],
+				[["brick:brick_dark", "plaster:grey"], ["tin:charcoal", "tin:monument"], ["trim:woodland", "trim:monument"]],
+				[["plaster:grey", "plaster:cream"], ["roof_tile:basalt", "roof_tile:charcoal"], ["trim:surfmist", "trim:charcoal"]]]
+			var r: Array = ranges[pal % ranges.size()]
+			p.raised = 0.25
+			p.h = 2.7
+			p.clad = r[0][rng.randi() % 2]
+			p.roof = {"type": "hip" if rng.randf() < 0.8 else "gable", "pitch": deg_to_rad(rng.randf_range(20, 24)), "mat": r[1][rng.randi() % 2]}
+			p.fascia = r[2][rng.randi() % 2]
+			p.floors.append({"y": 0.0, "h": 2.7, "rooms": _open_layout(w, d, rng) if rng.randf() < 0.7 else _hall_layout(w, d, 1.2, rng, false, false)})
 		"cottage":
 			p.raised = rng.randf_range(0.5, 0.9)
 			p.stumps = true
@@ -762,6 +800,20 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		ro.setup(rd.w, rd.h, rd.frac if rng.randf() < 0.6 else 0.0, rd.get("grille", false))
 	if p.kind == "tower":
 		TowerGen.lifts(p, root)
+	elif p.kind == "mall" and p.has("mall") and p.mall.has("street_fl") and p.floors.size() > 1:
+		# a village centre's lift: a panel in the car on each floor, F takes you to the other one
+		var stops := []; var names := []; var panels := []
+		for fi in p.floors.size():
+			for r in p.floors[fi].rooms:
+				if r.type == "lift":
+					var cx := (float(r.x0) + float(r.x1)) / 2; var cz := (float(r.z0) + float(r.z1)) / 2
+					stops.append(Vector3(cx, float(p.floors[fi].y) + 0.1, cz))
+					names.append("Car park" if fi == 0 else "Shops")
+					panels.append(Vector3(float(r.x1) - 0.25, 0, cz))
+		for i in stops.size():
+			var lf := BuildLift.new()
+			root.add_child(lf)
+			lf.setup(stops, names, i, float(p.d), panels[i])
 	if p.has("sign"):
 		# its name over the door, on a board
 		if not p.has("_labels"): p["_labels"] = []
@@ -1375,11 +1427,11 @@ static func _roof(p: Dictionary, g: Geo, top: float) -> void:
 					_roof_tri(g, rmat, Vector3(x1, y, z0), Vector3(x0, y, z0), ra)
 					_roof_tri(g, rmat, Vector3(x0, y, z1), Vector3(x1, y, z1), rb)
 	# fascia boards round the eaves
-	var fm := "trim" if p.kind in ["qlder", "cottage", "brick", "two_storey"] else "steel"
+	var fm := str(p.get("fascia", "trim" if p.kind in ["qlder", "cottage", "brick", "two_storey"] else "steel"))
 	g.aabb(fm, Vector3(x0, y - 0.18, z0 - 0.03), Vector3(x1, y + 0.02, z0), false)
 	g.aabb(fm, Vector3(x0, y - 0.18, z1), Vector3(x1, y + 0.02, z1 + 0.03), false)
 	# soffit under the eaves so you don't see into the roof
-	g.aabb("trim" if fm == "trim" else "steel", Vector3(x0, y - 0.02, z0), Vector3(x1, y, z1), false)
+	g.aabb("trim" if fm.begins_with("trim") else "steel", Vector3(x0, y - 0.02, z0), Vector3(x1, y, z1), false)
 
 ## A gable-end triangle of cladding on the wall line (a thin prism)
 static func _gable_end(p: Dictionary, g: Geo, axis: String, fixed: float, y: float, rh: float, a: float, b: float) -> void:

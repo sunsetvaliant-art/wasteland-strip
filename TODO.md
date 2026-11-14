@@ -2,7 +2,7 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0045, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0046, 2026-11-15.
 
 ## Requested 2026-11-14 (late)
 ### Bugs
@@ -31,15 +31,27 @@ Newest requests at the top of each section. Last updated: patch 0045, 2026-11-15
 - [x] 0045 Chop trees with an axe (4 hits, machete 8): firewood and sticks, the tree falls, stays down (saved).
       Crouch and look at the ground to forage rocks and sticks; flint and steel from a rock and scrap; lighters in
       kitchens, servos, drawers, on bodies; fill a bottle at the water's edge
-- [ ] House types: 0-20 year old double brick estate homes (style variations within an estate, "council approved
+- [x] 0046 House types (scripts/world/buildgen.gd styles, placed by Buildings._house_styles): 1,078 1960s beach
+      shacks and 624 1970s sandstone-coloured two-storey units within a few hundred metres of the beach, 546 newer double
+      brick estate homes where brick houses run in lined-up streets (each estate keeps a palette and Colorbond fascia
+      colours, houses vary within it). No building height data in hand, so storeys aren't from real heights yet
+      Asked for: House types: 0-20 year old double brick estate homes (style variations within an estate, "council approved
       fascia", shared fences); 1970s sandstone two-storey units along the beach (use building height data where
       there is some to place single and two storey); 1960s timber beach shacks
-- [ ] Fences: side and back yard fences between houses; most Australian houses have no front fence, some a low
+- [x] 0046 Fences: side and back yard fences between town houses, half way to the neighbour (Colorbond on brick and
+      estate homes, timber palings on old houses, low brick round 70s units); a low brick front wall on some brick
+      homes; none in the country
+      Asked for: Fences: side and back yard fences between houses; most Australian houses have no front fence, some a low
       brick wall
-- [ ] Small shopping centres for Cabarita and Kingscliff. Caba: the entry is flush with the main street, a lift on
+- [x] 0046 Small centres: CABA VILLAGE on the west side of Tweed Coast Road (arcade level with the main street,
+      supermarket at the back, shops both sides, toilets, a lift on the west side down to the car park underneath,
+      which opens flush onto the Hastings Road side) and KINGS REEF VILLAGE on Pearl Street, one level
+      Asked for: Small shopping centres for Cabarita and Kingscliff. Caba: the entry is flush with the main street, a lift on
       the west side of the mall goes down to the underground car park, which opens flush onto the road on the other
       side of the block (built into the hill)
-- [ ] Pearl Street, Kingscliff (about No. 6): five-storey apartment block, two units long, garages on the ground
+- [x] 0046 Pearl Street, Kingscliff: five-storey block with garages across the ground floor, at the south-west end of
+      Pearl Street (16531, -8512). USER: if No. 6 is at the other end (near the shops), F9 it and I'll move it
+      Asked for: Pearl Street, Kingscliff (about No. 6): five-storey apartment block, two units long, garages on the ground
       floor
 
 ## Requested 2026-11-14

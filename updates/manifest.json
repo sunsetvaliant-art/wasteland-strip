@@ -342,6 +342,13 @@
    "date": "2026-11-15",
    "notes": "Bridges rebuilt: every bridge now comes from one modular kit (deck, concrete barriers with steel rails, girders, piers, abutments), the ground is shaped to meet each end and an approach slab runs into the road, so no more gap to get stuck in. Steering eases off with speed so the fronts stop washing out, and the throttle comes in smoothly (Shift + W floors it for a burnout). Look at things for a menu like Vein's: wheel to choose, left click to do it, right click hides it for 5 s (cars: drive / repair / boot; dead bodies: search them; windows and doors: open / barricade; stations). Bodies carry loot. New stations to build with M: workbench, campfire (cook, boil water, stew) and vegie garden. Chop trees with an axe for firewood, forage rocks and sticks crouched, make flint and steel, find lighters. 311 sheds in town streets are houses now.",
    "size": 2408844
+  },
+  {
+   "file": "patch_0.2.0_0046.pck",
+   "version": "0.2.46",
+   "date": "2026-11-15",
+   "notes": "Suburbs: side and back yard fences between town houses (Colorbond, timber palings, low brick), some low brick front walls. New house styles: 1960s timber beach shacks and 1970s sandstone two-storey units along the beach, newer double brick estate homes with matching Colorbond fascia in their estates. Two small shopping centres: Caba (arcade level with the main street, lift on the west side down to a car park underneath that opens onto the street behind) and Kingscliff on Pearl Street. A five-storey block with ground-floor garages on Pearl Street, Kingscliff.",
+   "size": 2172336
   }
  ],
  "full": {
