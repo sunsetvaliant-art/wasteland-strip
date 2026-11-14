@@ -39,8 +39,16 @@ Newest requests at the top of each section. Last updated: patch 0041 work, 2026-
 - [x] Kick too powerful (2026-11-14): standing kick is now a shove (3 m/s, 1 in 4 go down), flying kick floors them
       (7.5 m/s). In source, ships with patch 0042
 - [ ] Kick and melee swing animations look off ("a bit how ya goin"): replace the procedural leg/arm (BodyMods.kick /
-      strike) with Mixamo clips. Mixamo needs the user's Adobe sign-in: either Claude drives his Chrome or he downloads
-      a list Claude gives him, then drops the FBX files in Drive WASTELAND folder for Claude to pull
+      strike) with Mixamo clips. DOWNLOADED 2026-11-14 through the user's Chrome (X Bot, FBX binary, with skin, 30 fps)
+      into his Chrome downloads folder; WAITING on him to drop them in Drive WASTELAND/mixamo. Files (Chrome adds
+      " (1)" to the second of a repeated name, in this download order):
+      Kicking.fbx (thrust kick, rear foot) · Flying Kick.fbx · Standing Melee Attack Horizontal.fbx ·
+      Standing Melee Attack Downward.fbx · Standing Melee Attack Backhand.fbx · Standing Torch Melee Attack Stab.fbx ·
+      Great Sword Slash.fbx (power slash) · Great Sword Slash (1).fbx (downward slash) · Cross Punch.fbx ·
+      Hook Punch.fbx · Zombie Reaction Hit.fbx (stumble back) · Zombie Reaction Hit (1).fbx (flinch) ·
+      Zombie Stand Up.fbx (from back) · Zombie Stand Up (1).fbx (from stomach).
+      Then: import with the Mixamo bone map (assets/characters/mixamo_bonemap.tres), add to Rig.CLIP_SOURCES, play
+      them from Melee (kick, swings by weapon class) and NPC (hit reactions, get-up after knock_down)
 
 ## Older, still open
 ### World and buildings
