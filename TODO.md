@@ -30,13 +30,17 @@ Newest requests at the top of each section. Last updated: patch 0041 work, 2026-
       storm), fog slider, back to natural weather
 - [x] 0041 Map tab in the palette: the whole valley (tools/make_map.gd bakes assets/world/map.png); click anywhere to
       teleport, red dot shows where you are
-- [ ] 2020 setting: add guns from that period. BLOCKED on models: need the user's pick of free/licensed 2020-era gun
-      models (or his own). Candidates for Australia 2020: Glock 17/19, S&W M&P (police), EF88 Austeyr (army),
-      AR-15 / M4, Remington 700, Ruger 10/22, Lithgow LA101, Beretta 92, Mossberg 500
-- [ ] Modular bridge addon: none exists for Godot 4 (searched 2026-11-14). QUESTION for the user: build our own
-      modular bridge kit (spans, piers, rails, abutments placed on the real bridge lines), or use his bridge models?
-- [ ] Classic cars "a bit useless now, kinda" (2020 setting): QUESTION for the user: add modern cars, keep classics as
-      rarer finds?
+- [ ] 2020 setting: add guns from that period. USER (2026-11-14): Claude hunts for free/licensed models, and good
+      sounds too. Candidates for Australia 2020: Glock 17/19, S&W M&P (police), EF88 Austeyr (army), AR-15 / M4,
+      Remington 700, Ruger 10/22, Lithgow LA101, Beretta 92, Mossberg 500
+- [ ] Bridges: no addon exists for Godot 4. USER (2026-11-14): build our own modular bridge kit (spans, piers,
+      railings, abutments placed on the real bridge lines) and replace every code-built bridge with it
+- [ ] Classic cars vs 2020 setting: USER (2026-11-14): leave the cars for the moment
+- [x] Kick too powerful (2026-11-14): standing kick is now a shove (3 m/s, 1 in 4 go down), flying kick floors them
+      (7.5 m/s). In source, ships with patch 0042
+- [ ] Kick and melee swing animations look off ("a bit how ya goin"): replace the procedural leg/arm (BodyMods.kick /
+      strike) with Mixamo clips. Mixamo needs the user's Adobe sign-in: either Claude drives his Chrome or he downloads
+      a list Claude gives him, then drops the FBX files in Drive WASTELAND folder for Claude to pull
 
 ## Older, still open
 ### World and buildings

@@ -228,7 +228,10 @@ func kick() -> void:
 	var n_hit := 0
 	for e in _targets(2.4 if flying else 1.9, 0.5):
 		var n = e[1]
-		_shove(n, dir, 11.0 if flying else 6.5, 2.2 if flying else 1.3, {"chest": 28.0 if flying else 12.0})
+		# a standing kick is a shove: back a step or two and off balance, now and then off its feet; the flying
+		# kick is the one that puts them down (2026-11-14: the old kick sent everything flying)
+		var down := flying or randf() < 0.25
+		_shove(n, dir, 7.5 if flying else 3.0, 1.8 if flying else 0.8, {"chest": 22.0 if flying else 10.0}, down)
 		n_hit += 1
 		if n_hit >= (3 if flying else 2): break
 	if n_hit > 0:
@@ -236,15 +239,15 @@ func kick() -> void:
 		if flying:
 			player.velocity = -dir * 2.5 + Vector3(0, 2.0, 0)
 
-func _shove(n, dir: Vector3, speed: float, stun: float, parts: Dictionary) -> void:
+func _shove(n, dir: Vector3, speed: float, stun: float, parts: Dictionary, down := true) -> void:
 	n.take_hit(parts, dir, n.global_position + Vector3(0, 1.1, 0), 4.0, player)
 	if is_instance_valid(n) and not n.dead:
 		# off its feet: it goes down in a heap and has to get up again (a brute only staggers unless it's a flying kick)
-		if n.has_method("knock_down") and (n.breed != "brute" or speed > 9.0):
-			n.knock_down(dir * speed + Vector3(0, 2.5, 0), stun + 1.2)
+		if down and n.has_method("knock_down") and (n.breed != "brute" or speed > 7.0):
+			n.knock_down(dir * speed + Vector3(0, 1.6, 0), stun + 1.0)
 		else:
 			n.stagger = maxf(n.stagger, stun)
-			n.velocity = dir * speed + Vector3(0, 2.2, 0)
+			n.velocity = dir * speed + Vector3(0, 1.0, 0)
 			n.set("knock_t", stun * 0.6)
 
 ## Alt: a quick hop the way you're moving (back if you're standing still)
