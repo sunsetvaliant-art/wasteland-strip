@@ -161,7 +161,10 @@ func _physics_process(dt: float) -> void:
 	if rise_t > 0.0:
 		# coming back up off the floor: stiff as a board, then it's after you again
 		rise_t -= dt
-		rig.rotation.x = -PI / 2 * smoothstep(0.0, 1.0, clampf(rise_t / 0.9, 0.0, 1.0))
+		if not _rise_clip:
+			rig.rotation.x = -PI / 2 * smoothstep(0.0, 1.0, clampf(rise_t / 0.9, 0.0, 1.0))
+		else:
+			_animate(dt)          # keeps the clip turning over
 		velocity = Vector3.ZERO
 		if rise_t <= 0.0:
 			rig.rotation.x = 0.0
@@ -728,6 +731,9 @@ func take_hit(parts: Dictionary, dir: Vector3, point: Vector3, force: float, att
 			if rig.mods.ik.has("L") and c.begins_with("l_"): rig.mods.ik["L"].w = 0.0
 			if rig.mods.ik.has("R") and c.begins_with("r_"): rig.mods.ik["R"].w = 0.0
 	stagger = 0.25 if kind == "zombie" else 0.4
+	# a zombie that takes a solid one flinches (a clip on the body; a light graze just checks its stride)
+	if kind == "zombie" and total >= 10.0 and rig.action == "" and rig.has_clip("mx_z_flinch"):
+		rig.act_seg("mx_z_flinch", 0.3, 1.2, 1.6, 0.08)
 	velocity += dir * force * 0.08
 	if kind == "scav":
 		suspicion = 1.0
@@ -741,6 +747,8 @@ func take_hit(parts: Dictionary, dir: Vector3, point: Vector3, force: float, att
 
 var down_t := 0.0              # knocked off its feet: a ragdoll for this long, then it gets up
 var rise_t := 0.0
+var _rise_clip := false        # getting up is a Mixamo clip (else the old stiff tilt)
+var _face_up := false          # how it ended up lying
 
 ## Knocked flat: the body goes limp and tumbles, and after a while it picks itself up where it ended
 func knock_down(vel: Vector3, secs: float) -> void:
@@ -780,6 +788,9 @@ func _down_tick(dt: float) -> void:
 		var lie := head_p - pel.global_position
 		lie.y = 0.0
 		lie = lie.normalized() if lie.length() > 0.05 else Vector3(0, 0, -1)
+		# on its back or its front? the chest bone's forward axis (it follows the ragdoll) pointing up or down
+		var cb := rig.bone("Spine2")
+		_face_up = cb >= 0 and (rig.skel.global_transform.basis * rig.skel.get_bone_global_pose(cb).basis.z).y > 0.0
 		_stand_up(pel.global_position - lie * 0.9, lie)
 
 func _stand_up(at: Vector3, lie: Vector3) -> void:
@@ -792,8 +803,24 @@ func _stand_up(at: Vector3, lie: Vector3) -> void:
 	global_position = Vector3(at.x, maxf(at.y - 0.25, gy) if absf(at.y - gy) > 0.6 else gy, at.z)
 	face_dir = lie
 	rotation.y = atan2(-lie.x, -lie.z)
-	rig.rotation.x = -PI / 2
-	rise_t = 0.9
+	_rise_clip = false
+	var clip := "mx_z_up_back" if _face_up else "mx_z_up_front"
+	if kind == "zombie" and rig.has_clip(clip):
+		# get up the way it fell: the clip starts flat on the ground with the hips over our feet, so stand where the
+		# hips were and turn until the clip's head lies where the body's head did
+		var sp := 1.5 if _face_up else 2.6
+		rise_t = rig.act_seg(clip, 0.0, 99.0, sp, 0.0)
+		_rise_clip = true
+		global_position += lie * 0.9
+		rotation.y = 0.0
+		var d: Vector3 = rig.bone_pos("Head") - rig.bone_pos("Hips")
+		d.y = 0.0
+		if d.length() > 0.05:
+			rotation.y = atan2(lie.x, lie.z) - atan2(d.x, d.z)
+		face_dir = Basis(Vector3.UP, rotation.y) * Vector3(0, 0, -1)
+	else:
+		rig.rotation.x = -PI / 2
+		rise_t = 0.9
 	velocity = Vector3.ZERO
 	collision_layer = LAYER
 	collision_mask = _mask0

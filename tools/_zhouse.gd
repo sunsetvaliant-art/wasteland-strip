@@ -72,10 +72,10 @@ func _ready():
 				if OS.get_environment("ZONLY") != "": print("ZDBG t=%ds z=%s vel=%s stuck=%.1f route=%s hits=%s" % [f / 120, (xf.affine_inverse() * n.global_position).snapped(Vector3.ONE * 0.1), n.velocity.snapped(Vector3.ONE * 0.01), n._stuck_t, rl.slice(0, 4), col])
 				if false: print("%s%s%s%s%s" % [f / 120, (xf.affine_inverse() * n.global_position).snapped(Vector3.ONE * 0.1), n.velocity.snapped(Vector3.ONE * 0.01), rl, col])
 		if got: reached += 1
-		for fl in plan.get("flights", []):
-			var fw: Vector3 = xf * (fl.foot as Vector3)
+		for sf in plan.get("flights", []):
+			var fw: Vector3 = xf * (sf.foot as Vector3)
 			var gy: float = main.height_at(fw.x, fw.z)
-			print("ZSTAIR lot %d flight foot local y %.2f, ground under it local y %.2f (gap %.2f m)" % [best, float(fl.foot.y), (xf.affine_inverse() * Vector3(fw.x, gy, fw.z)).y, float(fl.foot.y) - (xf.affine_inverse() * Vector3(fw.x, gy, fw.z)).y])
+			print("ZSTAIR lot %d flight foot local y %.2f, ground under it local y %.2f (gap %.2f m)" % [best, float(sf.foot.y), (xf.affine_inverse() * Vector3(fw.x, gy, fw.z)).y, float(sf.foot.y) - (xf.affine_inverse() * Vector3(fw.x, gy, fw.z)).y])
 		print("ZHOUSE lot %d %s room %s: reached=%s closest %.1f m, state %s, route %d pts, zombie at %s" % [best, l[0], room.get("tag", "?"), got, tmin, n.state, n._route.size(), (xf.affine_inverse() * n.global_position).snapped(Vector3.ONE * 0.1)])
 		n.queue_free()
 	print("ZHOUSE result %d of %d houses reached" % [reached, tried])

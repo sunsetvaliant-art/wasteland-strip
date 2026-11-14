@@ -17,6 +17,25 @@ const WEAPONS := {
 	"hatchet": {"name": "Axe", "dmg": 80.0, "reach": 1.9, "time": 0.8, "stam": 15.0, "force": 7.0, "blunt": false, "wide": 1},
 	"sledge": {"name": "Sledgehammer", "dmg": 130.0, "reach": 2.2, "time": 1.25, "stam": 26.0, "force": 16.0, "blunt": true, "wide": 2},
 }
+# The body's part in it: Mixamo clips (assets/characters/mx_clips.res). [clip, when in the clip the blow lands (s),
+# how much of the wind-up before that is played (s of clip)]; the clip's speed is set so the blow lands when the
+# weapon's own timing says it does (38% through its swing time), then it follows through and blends back out.
+const SWINGS := {
+	"fists": [["mx_cross", 1.1, 0.4], ["mx_hook", 1.02, 0.4]],
+	"knife": [["mx_cross", 1.1, 0.4], ["mx_swing_down", 0.88, 0.45]],          # a straight stab, then one down from above
+	"one": [["mx_swing_side", 0.94, 0.5], ["mx_swing_down", 0.88, 0.5], ["mx_swing_back", 1.04, 0.5]],
+	"two": [["mx_two_power", 0.75, 0.5], ["mx_two_down", 0.7, 0.45]],
+}
+const SWING_CLASS := {"fists": "fists", "knife": "knife", "tyre_iron": "one", "pipe_wrench": "one", "crowbar": "one", "machete": "one",
+	"hatchet": "two", "bat": "two", "sledge": "two"}
+const KICK_CLIP := ["mx_kick", 1.0, 0.36]             # the boot's furthest out a second in
+const FLYKICK_CLIP := ["mx_flying_kick", 0.5, 0.3]
+const KICK_LANDS := 0.2                               # seconds after Q that the boot arrives
+var _swing_n := 0
+var _body_clip := false                               # this swing / kick is a clip on the body (not the old bent limb)
+var _kick_hit := {}                                   # the kick on its way: {flying, dir}
+var hand_att: BoneAttachment3D
+
 const THROWN := {"brick": {"dmg": 45.0, "loud": 22.0}, "bottle": {"dmg": 12.0, "loud": 40.0, "breaks": true}, "molotov": {"dmg": 10.0, "loud": 30.0, "breaks": true, "fire": true}}
 
 var player: Player
@@ -126,7 +145,7 @@ func tick(dt: float) -> void:
 			swing = 0.0
 			_hit_done = false
 			_spend(float(w.stam))
-			if player.rig.has_clip("Punch_Forward_with_Both_Fists") and weapon == "fists": player.rig.act("Punch_Forward_with_Both_Fists", 1.8)
+			_body_clip = _play_swing(w)
 			_sfx("whoosh", 0.9 + randf() * 0.3)
 	if swing >= 0.0:
 		var w: Dictionary = WEAPONS[weapon]
@@ -139,10 +158,13 @@ func tick(dt: float) -> void:
 			cool = 0.08
 	if kick_t >= 0.0:
 		kick_t += dt
+		if not _kick_hit.is_empty() and kick_t >= KICK_LANDS:
+			_kick_land()
 		if kick_t > 0.45: kick_t = -1.0
-	# the body does it too: the leg out for a kick, the arm through a swing
-	player.rig.mods.kick = sin(clampf(kick_t / 0.45, 0.0, 1.0) * PI) if kick_t >= 0.0 else move_toward(player.rig.mods.kick, 0.0, dt * 6.0)
-	player.rig.mods.strike = clampf(swing / float(WEAPONS[weapon].time), 0.0, 1.0) if swing >= 0.0 else 0.0
+	# the body does it too: a clip when we have one, else the old way (the leg thrown out, the arm bent through)
+	var km := 0.0 if _body_clip else 1.0
+	player.rig.mods.kick = (sin(clampf(kick_t / 0.45, 0.0, 1.0) * PI) if kick_t >= 0.0 else move_toward(player.rig.mods.kick, 0.0, dt * 6.0)) * km
+	player.rig.mods.strike = (clampf(swing / float(WEAPONS[weapon].time), 0.0, 1.0) if swing >= 0.0 else 0.0) * km
 	_climb_tick(dt)
 	# a slide: low and fast, bowling over what's in the way
 	if slide_t > 0.0:
@@ -224,7 +246,18 @@ func kick() -> void:
 	_spend(22.0 if flying else 12.0)
 	grab_t = 0.0
 	_sfx("whoosh", 0.7)
-	var dir := Vector3(_aim().x, 0, _aim().z).normalized()
+	var kc: Array = FLYKICK_CLIP if flying else KICK_CLIP
+	_body_clip = player.rig.has_clip(kc[0])
+	if _body_clip:
+		var sp: float = float(kc[2]) / KICK_LANDS
+		player.rig.act_seg(kc[0], float(kc[1]) - float(kc[2]), float(kc[1]) + 0.45, sp, 0.08)
+	_kick_hit = {"flying": flying, "dir": Vector3(_aim().x, 0, _aim().z).normalized()}
+
+## The boot arrives (a moment after Q, when the leg's out)
+func _kick_land() -> void:
+	var flying: bool = _kick_hit.flying
+	var dir: Vector3 = _kick_hit.dir
+	_kick_hit = {}
 	var n_hit := 0
 	for e in _targets(2.4 if flying else 1.9, 0.5):
 		var n = e[1]
@@ -239,6 +272,27 @@ func kick() -> void:
 		if flying:
 			player.velocity = -dir * 2.5 + Vector3(0, 2.0, 0)
 
+## Start the body's clip for this weapon's swing. False if there's none (then the old bent arm does it).
+func _play_swing(w: Dictionary) -> bool:
+	var opts: Array = SWINGS.get(SWING_CLASS.get(weapon, "one"), [])
+	if opts.is_empty(): return false
+	var c: Array = opts[_swing_n % opts.size()]
+	_swing_n += 1
+	if not player.rig.has_clip(c[0]): return false
+	var lands: float = float(w.time) * 0.38
+	var sp: float = float(c[2]) / maxf(lands, 0.05)
+	player.rig.act_seg(c[0], float(c[1]) - float(c[2]), float(c[1]) + 0.5, sp, 0.07)
+	return true
+
+## Where a held weapon sits in the right hand, in the hand bone's own space. In the skeleton's rest pose (a T, facing
+## +Z, the right arm out along -X, palm down) a gripped handle runs fore and aft with the business end forward.
+static func grip_xf(rig: Rig) -> Transform3D:
+	var sk := rig.skel
+	var rest: Transform3D = sk.get_bone_global_rest(rig.bone("RightHand"))
+	var k: float = 1.0 / maxf(sk.global_transform.basis.get_scale().x, 0.001)
+	var t := Transform3D(Basis(Vector3.UP, PI).scaled(Vector3.ONE * k), rest.origin + Vector3(-0.085, -0.03, 0.02) * k)
+	return rest.affine_inverse() * t
+
 func _shove(n, dir: Vector3, speed: float, stun: float, parts: Dictionary, down := true) -> void:
 	n.take_hit(parts, dir, n.global_position + Vector3(0, 1.1, 0), 4.0, player)
 	if is_instance_valid(n) and not n.dead:
@@ -249,6 +303,9 @@ func _shove(n, dir: Vector3, speed: float, stun: float, parts: Dictionary, down 
 			n.stagger = maxf(n.stagger, stun)
 			n.velocity = dir * speed + Vector3(0, 1.0, 0)
 			n.set("knock_t", stun * 0.6)
+			# booted back but still on its feet: it stumbles (when we kicked it from the front)
+			if n.kind == "zombie" and n.rig.has_clip("mx_z_stumble") and n.face_dir.dot(dir) < 0.2:
+				n.rig.act_seg("mx_z_stumble", 0.25, 1.9, 1.5, 0.08)
 
 ## Alt: a quick hop the way you're moving (back if you're standing still)
 func dodge() -> void:
@@ -361,6 +418,24 @@ func _show_weapon() -> void:
 			held = _model(want)
 			player.head.add_child(held)
 	if held == null: return
+	# in the hand: always in shoulder view, and in first person while the body's swinging (the arm comes through in
+	# front of you); at rest in first person it's the weapon held up in view, as before
+	var in_hand: bool = player.rig.has_clip("mx_swing_side") and (not player.first_person or (swing >= 0.0 and _body_clip) or player.rig.action.begins_with("mx_"))
+	if in_hand:
+		if hand_att == null or not is_instance_valid(hand_att):
+			hand_att = BoneAttachment3D.new()
+			hand_att.name = "MeleeHand"
+			player.rig.skel.add_child(hand_att)
+			hand_att.bone_idx = player.rig.bone("RightHand")
+		if held.get_parent() != hand_att:
+			held.get_parent().remove_child(held)
+			hand_att.add_child(held)
+		held.transform = grip_xf(player.rig)
+		return
+	if held.get_parent() != player.head:
+		held.get_parent().remove_child(held)
+		player.head.add_child(held)
+		held.transform = Transform3D(Basis.from_euler(Vector3(-0.5, 0.25, -0.15)), Vector3(0.3, -0.34, -0.45))
 	# at rest low on the right; a swing comes across from up on the right to down on the left
 	var w: Dictionary = WEAPONS[weapon]
 	var k := clampf(swing / float(w.time), 0.0, 1.0) if swing >= 0.0 else 0.0
@@ -373,7 +448,7 @@ func _show_weapon() -> void:
 		held.transform = Transform3D(Basis.from_euler(Vector3(-0.3 - 1.1 * smoothstep(0.15, 0.55, k) + 0.9 * (1.0 - a) * 0.0, sw * 0.9, -sw * 0.8)),
 			Vector3(0.3 - 0.45 * smoothstep(0.1, 0.6, k), -0.18 - 0.1 * k, -0.5 - 0.25 * a))
 
-func _model(id: String) -> Node3D:
+static func _model(id: String) -> Node3D:
 	var root := Node3D.new()
 	var L: float = LEN.get(id, 0.5)
 	if MODELS.has(id) and ResourceLoader.exists(MODELS[id]):

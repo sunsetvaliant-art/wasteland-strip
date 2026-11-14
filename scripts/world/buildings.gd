@@ -49,6 +49,7 @@ func setup(m) -> void:
 	towns = d.get("towns", [])
 	lots_ver = str(d.get("ver", ""))
 	_clear_roads()
+	_clear_cliffs()
 	_level_malls()
 	for i in lots.size():
 		var l: Array = lots[i]
@@ -118,7 +119,7 @@ const KEEP_KINDS := ["mall", "tower", "hospital", "school", "church", "fire", "p
 	"pub", "warehouse", "servo", "bank", "clinic"]
 func _clear_roads() -> void:
 	if main == null or main.get("roads") == null: return
-	if lots_ver.ends_with("+roads1"): return          # already cleared and baked (BAKE_LOTS)
+	if lots_ver.contains("+roads1"): return          # already cleared and baked (BAKE_LOTS)
 	var rd = main.roads
 	var t0 := Time.get_ticks_msec()
 	var kept: Array = []
@@ -170,6 +171,37 @@ func _clear_roads() -> void:
 		var f := FileAccess.open(ProjectSettings.globalize_path("res://assets/world/buildings.json"), FileAccess.WRITE)
 		f.store_string(JSON.stringify(d, "", false, true))
 		print("BUILDINGS baked the cleared lot list")
+
+## No houses on cliffs: where the ground falls more than STEEP metres across a small building's lot nobody could have
+## built (the steps down the low side ran to 60 and more, or stopped in mid-air). Those lots are left out. Baked into
+## the lot list like the road pass (BAKE_LOTS=1), so it costs nothing at load.
+const STEEP := 7.0
+func _clear_cliffs() -> void:
+	if lots_ver.contains("+steep1") or main == null or not main.has_method("height_at"): return
+	var kept: Array = []
+	var dropped := 0
+	for l in lots:
+		if str(l[0]) == "mall" or str(l[0]) in KEEP_KINDS or float(l[4]) * float(l[5]) > 900.0:
+			kept.append(l)
+			continue
+		var c := cos(float(l[3])); var s := sin(float(l[3]))
+		var lo := INF; var hi := -INF
+		for f in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(-0.5, 0.5), Vector2(0.5, 0.5), Vector2.ZERO]:
+			var lx: float = f.x * float(l[4]); var lz: float = f.y * float(l[5])
+			var gh: float = main.height_at(float(l[1]) + lx * c + lz * s, float(l[2]) - lx * s + lz * c)
+			lo = minf(lo, gh); hi = maxf(hi, gh)
+		if hi - lo > STEEP: dropped += 1
+		else: kept.append(l)
+	lots = kept
+	lots_ver += "+steep1"
+	print("BUILDINGS off the cliffs: %d left out" % dropped)
+	if OS.get_environment("BAKE_LOTS") != "":
+		var d = JSON.parse_string(FileAccess.get_file_as_string("res://assets/world/buildings.json"))
+		d.lots = lots
+		d.ver = lots_ver
+		var f := FileAccess.open(ProjectSettings.globalize_path("res://assets/world/buildings.json"), FileAccess.WRITE)
+		f.store_string(JSON.stringify(d, "", false, true))
+		print("BUILDINGS baked the lot list (cliffs)")
 
 func _road_worst(rd, l: Array) -> Array:
 	var x0 := float(l[1]); var z0 := float(l[2]); var yaw := float(l[3])
@@ -238,12 +270,18 @@ func _xf(i: int, p: Dictionary) -> Transform3D:
 	var basis := Basis(Vector3.UP, float(l[3]))
 	if not _floor.has(i):
 		var top := -INF
+		var low := INF
 		var w: float = l[4]
 		var d: float = l[5]
 		for c in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(-0.5, 0.5), Vector2(0.5, 0.5), Vector2.ZERO]:
 			var wp := basis * Vector3(c.x * w, 0, c.y * d)
-			top = maxf(top, main.height_at(float(l[1]) + wp.x, float(l[2]) + wp.z))
-		_floor[i] = top + float(p.raised)
+			var gh: float = main.height_at(float(l[1]) + wp.x, float(l[2]) + wp.z)
+			top = maxf(top, gh)
+			low = minf(low, gh)
+		# high-set houses on a hillside: low-set on the uphill side, the full height only on the downhill side (the
+		# old way put the whole floor a storey above the HIGHEST ground, so the low side hung 6 m and more in the air
+		# and the steps never reached the ground). On the flat nothing changes.
+		_floor[i] = maxf(top + minf(float(p.raised), 0.45), low + float(p.raised))
 	return Transform3D(basis, Vector3(float(l[1]), float(_floor[i]), float(l[2])))
 
 func _ground_fn(xf: Transform3D) -> Callable:

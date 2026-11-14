@@ -65,6 +65,19 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
 - Test harnesses added: tools/_zhouse.gd (zombies into houses), tools/_seam.gd, tools/_tptest.gd (map teleport,
   weather), tools/_mallcheck.gd (mall entrances), tools/make_map.gd (bakes the Forge map), tools/bake_north_veg.py.
   Add one as an autoload line under Settings= in project.godot for a run, remove it after.
+- Patch 0042 was exported with `--patches /home/claude/ref.pck,/home/claude/new.pck` (the base plus the 0041 patch), so
+  it holds only its own changes. Keep each shipped patch file to chain the next one the same way (they are in updates/).
+- Scripts run with `-s` can't see autoloads (Settings), so anything touching BuildGen/Melee has to run as a temporary
+  autoload Node instead (see tools/_plandump.gd, tools/_mxtest.gd). A parse error in such a test script fails
+  silently: the game just runs with no test output. Check the log for "Parse Error" first.
+- tools/_mxlab.gd renders the player body in any clip at any moment with a stand-in weapon in hand (fast, a few
+  seconds under xvfb): use it to tune animation timing and grips by eye.
+- Files on the user's Drive in a link-shared folder download straight into the sandbox with
+  `curl -L "https://drive.usercontent.google.com/download?id=FILE_ID&export=download&confirm=t"`; list a shared
+  folder's file ids from `https://drive.google.com/embeddedfolderview?id=FOLDER_ID#list`. Don't pull binaries
+  through the Drive connector (base64 into the conversation).
+- Mixamo: driven through the user's Chrome (he must be signed in); downloads land in his Downloads folder, he drags
+  them to Drive.
 - Screenshots render at about 1 fps here (software GL under xvfb): a two-shot run takes 5 to 10 minutes.
 
 ## 4. Test and release loop (all scripts exist in `tools/`)

@@ -1122,7 +1122,7 @@ static func _flight(g: Geo, top: Vector3, out: Vector3, width: float, ground: Ca
 	# makes it longer, so it never stops short in mid-air)
 	var rise := RISE
 	var n := 0
-	while n < 40:
+	while n < 70:
 		var c := top + out * (GOING * (n + 0.5))
 		if top.y - (n + 1) * rise <= float(ground.call(c.x, c.z)) + 0.03:
 			break

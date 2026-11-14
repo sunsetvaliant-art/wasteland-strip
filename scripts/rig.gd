@@ -67,6 +67,14 @@ static func _pool() -> Dictionary:
 						_strip_root_motion(clip)
 						clip_pool[a] = clip
 			n.free()
+		# the Mixamo melee clips (tools/bake_mixamo.gd): kicks, swings, punches, zombie hit reactions and get-ups
+		if ResourceLoader.exists("res://assets/characters/mx_clips.res"):
+			var lib: AnimationLibrary = load("res://assets/characters/mx_clips.res")
+			for a in lib.get_animation_list():
+				var clip: Animation = lib.get_animation(a).duplicate()
+				clip.resource_name = a
+				_strip_root_motion(clip)
+				clip_pool[a] = clip
 	return clip_pool
 
 ## Mixamo clips walk the hips forward; we move the body ourselves, so keep the hips over the feet
@@ -297,6 +305,17 @@ func act(clip: String, speed := 1.0, blend := 0.2) -> float:
 	anim.play("pool/" + clip, blend, speed)
 	_action_t = anim.current_animation_length / max(speed, 0.01)
 	return _action_t
+
+## Part of a clip as a one-shot: from t0 to t1 (seconds in the clip) at this speed. Returns how long it takes.
+func act_seg(clip: String, t0: float, t1: float, speed := 1.0, blend := 0.1) -> float:
+	if not has_clip(clip):
+		return 0.0
+	action = clip
+	_cur = ""
+	anim.play("pool/" + clip, blend, speed)
+	anim.seek(t0, true)
+	_action_t = (minf(t1, anim.current_animation_length) - t0) / max(speed, 0.01) + 0.15
+	return _action_t - 0.15
 
 ## First person: shrink the head so the camera sits inside an empty skull (the body still casts its full shadow)
 func hide_head(on: bool) -> void:

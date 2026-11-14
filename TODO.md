@@ -2,7 +2,7 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0041 work, 2026-11-14.
+Newest requests at the top of each section. Last updated: patch 0042, 2026-11-14.
 
 ## Requested 2026-11-14
 ### Bugs
@@ -12,18 +12,26 @@ Newest requests at the top of each section. Last updated: patch 0041 work, 2026-
 - [x] 0041 Zombies follow you into houses: track you inside, route round the house to the nearest door, through
       doors and up stairs, clamber onto raised doorsteps, shove past hall furniture (tools/_zhouse.gd: 12 of 12 houses
       in two test areas)
-- [ ] NEW: Queenslanders on steep hillsides: the stairs stop metres above the ground (zombies and players can't get
-      in). Found by tools/_zhouse.gd at x 11126, z -13366 (4 of 6 failed there)
+- [x] 0042 Hillside houses: high-set houses now sit low on the uphill side (floor = highest ground + 0.45 m, the full
+      stump height only on the downhill side), flights can run to 70 steps, and 459 small buildings on cliff-steep
+      lots (ground falling more than 7 m across the lot) are left out. tools/_zhouse.gd at x 11126, z -13366: 4 of 6
+      (was 2 of 6)
+- [ ] Still open there: 2 of 6 Queenslanders in the steepest streets, the zombie doesn't get from the street to the
+      stair foot (stays ~10 m out front, 1.5 to 2 m below the floor). Lots 13725 and 10990
 - [x] 0041 Houses off the roads: every lot checked against the painted road edges, 843 nudged clear, 1,025 small
       buildings that couldn't be cleared left out; malls, civic and big buildings never removed (baked into
       buildings.json, so cupboards start fresh once)
 - [x] 0041 Twin City and Bay Mall entrances: the outside cladding was drawn solid over their doorways; now cut round
       every opening and window
-- [ ] Tweed City not built to reality, despite the screenshots (docs/ref, docs/tweed_city_plan.png). Asked many times.
-      NOT done in 0041. Plan: trace the current outline from docs/ref/tweed_city_gmaps_indoor.jpg (about 0.665 m a
-      pixel at 540 px wide; the mall sits about 9 degrees off north), use it as the footprint instead of the lot
-      rectangle, lay out today's tenants (gmaps), angled west wing and food court, cinemas mid-west, big store south;
-      check by drawing the plan over the gmaps picture before building
+- [ ] Tweed City not built to reality. Asked many times. STILL OPEN after 0042. What exists is a schematic traced
+      from the directory plan (docs/tweed_city_plan.png): same anchors and malls, with the diagonal mall as two angled
+      shop rows inside a glass court. docs/ref/twin_city_now_vs_real.png shows the in-game plan beside the Google map
+      at the same scale. Differences seen: (1) the real west wing runs off at an angle to the south-west (dining
+      precinct) and the west concourse sits right under the north-west anchor; in game it's a straight wing further
+      south. (2) the real diagonal mall is about 150 m long and reaches the cinema; in game the court is about 95 m.
+      (3) the east side steps in and out; in game it's squarer. (4) outside: car parks, roof and signage not checked.
+      WAITING on the user: which of these (or what else) is the "not per reality" he means, now that 0041 gave it
+      entrances and he can get inside
 - [x] 0041 Clouds about 6x slower (a layer crosses the sky in about 90 s)
 ### Features
 - [x] 0041 Forge palette opens on a "Time & Weather" tab: time slider, stop the clock, weather slider (clear to
@@ -36,19 +44,18 @@ Newest requests at the top of each section. Last updated: patch 0041 work, 2026-
 - [ ] Bridges: no addon exists for Godot 4. USER (2026-11-14): build our own modular bridge kit (spans, piers,
       railings, abutments placed on the real bridge lines) and replace every code-built bridge with it
 - [ ] Classic cars vs 2020 setting: USER (2026-11-14): leave the cars for the moment
-- [x] Kick too powerful (2026-11-14): standing kick is now a shove (3 m/s, 1 in 4 go down), flying kick floors them
-      (7.5 m/s). In source, ships with patch 0042
-- [ ] Kick and melee swing animations look off ("a bit how ya goin"): replace the procedural leg/arm (BodyMods.kick /
-      strike) with Mixamo clips. DOWNLOADED 2026-11-14 through the user's Chrome (X Bot, FBX binary, with skin, 30 fps)
-      into his Chrome downloads folder; WAITING on him to drop them in Drive WASTELAND/mixamo. Files (Chrome adds
-      " (1)" to the second of a repeated name, in this download order):
-      Kicking.fbx (thrust kick, rear foot) · Flying Kick.fbx · Standing Melee Attack Horizontal.fbx ·
-      Standing Melee Attack Downward.fbx · Standing Melee Attack Backhand.fbx · Standing Torch Melee Attack Stab.fbx ·
-      Great Sword Slash.fbx (power slash) · Great Sword Slash (1).fbx (downward slash) · Cross Punch.fbx ·
-      Hook Punch.fbx · Zombie Reaction Hit.fbx (stumble back) · Zombie Reaction Hit (1).fbx (flinch) ·
-      Zombie Stand Up.fbx (from back) · Zombie Stand Up (1).fbx (from stomach).
-      Then: import with the Mixamo bone map (assets/characters/mixamo_bonemap.tres), add to Rig.CLIP_SOURCES, play
-      them from Melee (kick, swings by weapon class) and NPC (hit reactions, get-up after knock_down)
+- [x] 0042 Kick toned down: a standing kick is a shove (3 m/s, 1 in 4 go down), the flying kick floors them
+- [x] 0042 Mixamo melee animations (downloaded through the user's Chrome 2026-11-14, baked into
+      assets/characters/mx_clips.res by tools/bake_mixamo.gd): thrust kick and flying kick (the boot lands 0.2 s
+      after the key), punches (cross, hook), one-handed swings (side, down, backhand), two-handed swings (bat, axe,
+      sledge), knife (stab, downward); the weapon sits in the right hand (BoneAttachment, Melee.grip_xf) in shoulder
+      view and during a swing in first person; zombies flinch when hit, stumble when booted, and get up off the
+      ground with a clip (from the back or the front, turned to match how they lay). Hit moments tuned by eye in
+      tools/_mxlab.gd; end-to-end test tools/_mxtest.gd
+- [ ] Melee animation follow-ups: the user to check the grip and swing in first person; feet slide if you swing
+      while running (the clip is full-body); scavs don't use the clips yet; LAN clients see the clip from its start;
+      mx_stab and mx_swing_back spare. The FBX sources are NOT in git: Drive WASTELAND/mixamo (to rebake: copy to
+      assets/characters/mx_src with the retarget import settings, import, run tools/bake_mixamo.gd, remove the folder)
 
 ## Older, still open
 ### World and buildings
