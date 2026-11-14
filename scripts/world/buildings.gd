@@ -260,6 +260,15 @@ func _level_malls() -> void:
 				z += 5.0
 			x += 5.0
 	if changed: data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
+	# traced malls that go underground: holes in the terrain where you go down
+	var holes := 0
+	for i in lots.size():
+		var l: Array = lots[i]
+		if str(l[0]) == "mall" and l.size() > 7 and str(l[7]) == "TWIN CITY":
+			holes += PolyMall.terrain_holes("twin_city", l, data)
+	if holes > 0:
+		data.update_maps(Terrain3DRegion.TYPE_CONTROL)
+		print("BUILDINGS terrain holes for the car park ramps: ", holes)
 
 func _plan(i: int) -> Dictionary:
 	var l: Array = lots[i]

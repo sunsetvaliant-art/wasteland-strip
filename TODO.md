@@ -2,7 +2,7 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0043, 2026-11-14.
+Newest requests at the top of each section. Last updated: patch 0044, 2026-11-14.
 
 ## Requested 2026-11-14
 ### Bugs
@@ -32,6 +32,16 @@ Newest requests at the top of each section. Last updated: patch 0043, 2026-11-14
       FRESHWAY, GREENGATE, BIG VALUE, BETTER FOR LESS, VOLT ELECTRICAL, REGENT CINEMAS), glass roof on a frame over
       the malls, shop names over the fronts. Fit-out reuses BuildProps in the biggest square-on rectangle inside each
       shop. Test: tools/_polytest.gd; lab: tools/_polylab.tscn
+- [x] 0044 Tweed City v2 from the user's annotated plan (docs/ref/2026/tweed_city_annotated.jpg, his colour key:
+      red walls and shop fronts, green ways in, yellow toilet doors, purple covered walkways, orange travelators,
+      pink cinema upstairs, grey stairs). tools/trace_mall2.py reads the colours: 113 units, 4 toilet blocks, 12
+      ways in, covered walkways with posts round the outside shops, 3 travelators down to an underground car park at
+      -4 m (lit, columns, bay lines), a car ramp down in the cinema building, stairs up to the REGENT CINEMAS lobby
+      and three cinemas with raked seats at +5.2 m. Terrain holes cut over the travelators and ramp at load.
+      Test: tools/_polytest2.gd (walks down a travelator and up to the cinema)
+- [ ] Tweed City v2 questions for the user: where the real car park ramp comes in (placed in the cinema building
+      opening south); Best&Less and Harris Scarfe came out as one store; is there anything on the cinema level
+      besides Hoyts? The car park is one level under the whole centre
 - [ ] Twin City follow-ups: zombies have no route graph inside it (they walk straight and slide on walls); shops
       are fitted out only in their inner rectangle (angled corners empty); no props on the mall floor itself
       (benches, planters, kiosks); the cinema is one hall; anchors have one way in each; no car parks, loading docks
@@ -64,7 +74,7 @@ Newest requests at the top of each section. Last updated: patch 0043, 2026-11-14
 
 ## Older, still open
 ### World and buildings
-- [ ] Multi-level car park for Twin City (Bay Mall has one since 0040)
+- [x] 0044 Underground car park for Twin City, travelators and a car ramp down (Bay Mall has a multi-level one since 0040)
 - [ ] Sexton Hill cutting
 - [ ] New downloaded plant models and ground textures (user approved downloading)
 - [ ] Sliding shed doors (only roller doors exist)

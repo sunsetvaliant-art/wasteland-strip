@@ -328,6 +328,13 @@
    "date": "2026-11-14",
    "notes": "Twin City rebuilt from the real centre's directory plan. Every shop and anchor is traced from the plan, so the walls stand on their real angles: the diagonal mall runs corner to corner, both west wings curve away to the south-west, and the big stores are where they really are (HOLLIS & CRANE up north-west, FRESHWAY north-east, GREENGATE and BIG VALUE down south, REGENT CINEMAS and VOLT ELECTRICAL on the west side). 114 shops, 16 ways in, a glass roof on a frame over the malls, shop names over the fronts. New and rough: zombies inside it only walk straight at you, and the malls themselves are bare (no benches or kiosks yet).",
    "size": 2275100
+  },
+  {
+   "file": "patch_0.2.0_0044.pck",
+   "version": "0.2.44",
+   "date": "2026-11-14",
+   "notes": "Twin City built from your colour-keyed plan. Walls and shop fronts where you drew them, 12 ways in, 4 toilet blocks, covered walkways with posts round the outside shops. Three travelators go down to an underground car park under the whole centre (lit, columns, bay lines), and a car ramp comes down through the cinema building. Stairs inside the mall go up to the REGENT CINEMAS lobby and three cinemas with raked seats. Still rough: zombies inside walk straight at you, and the mall floor has no benches or kiosks yet.",
+   "size": 362512
   }
  ],
  "full": {

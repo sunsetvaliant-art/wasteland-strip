@@ -78,6 +78,17 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   through the Drive connector (base64 into the conversation).
 - Mixamo: driven through the user's Chrome (he must be signed in); downloads land in his Downloads folder, he drags
   them to Drive.
+- Tweed City v2 (0044): `python3 tools/trace_mall2.py docs/ref/2026/tweed_city_annotated.jpg assets/world/twin_city.json
+  [debug.png]` reads the user's hand-coloured plan (key in the picture: red walls, green ways in, yellow toilet
+  doors, purple covered, orange travelators down, pink cinema upstairs, grey stairs) and writes JSON v2; PolyMall.build2
+  builds it (floor, covered walkways, travelators to the car park at -4, ramp, cinema floor at +5.2). The inside flood
+  seeds at pixel row/col (520,480): if a re-annotated plan moves the food court, move the seed. Walk test: add
+  `PT="*res://tools/_polytest2.gd"` under `Settings=` in project.godot and boot with
+  `WASTELAND_NO_UPDATE=1 WASTELAND_AUTOPLAY=1 VEG_OFF=1` (remove the line afterwards). Floors that meet must abut
+  flush: any overlap step of ~17 cm stops the player. `"lamp"` is an unshaded finish for fake lights (no cost).
+- Export verify without the base build: chain `--patches /home/claude/ref.pck,new.pck,p42.pck,p43.pck,...`;
+  ref.pck lacks the Poly Haven .gltf sources, so ~130 build_props "instantiate on null" errors at boot are expected
+  there (players have them from the real base build).
 - Traced malls (0043): `python3 tools/trace_mall.py <directory screenshot> assets/world/<name>.json [debug.png]`
   turns a centre's coloured directory plan into polygons; `PolyMall` (scripts/world/polymall.gd) builds from it.
   The colour thresholds and the crop at the top of the script are for the Tweed City screenshot; another centre

@@ -79,6 +79,10 @@ static func mat(key: String) -> Material:
 			m.roughness = 0.08
 			m.metallic = 0.4
 			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		"lamp":
+			# a fluoro tube or panel light: unshaded so it reads as lit with no real light cost
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.albedo_color = Color(1.0, 0.98, 0.92) * tint
 		"trim":
 			m.albedo_color = Color(0.86, 0.85, 0.8) * tint
 			m.roughness = 0.75
