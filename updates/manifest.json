@@ -307,6 +307,13 @@
    "date": "2026-11-13",
    "notes": "The ground north of the old map edge now comes from your lidar wherever it has data (the New South Wales side, about 60 percent of the new strip); across the border it stays on public elevation data, matched and blended in. Bay Mall has its multi-level car park: three open concrete decks with ramps you can drive up. Buildings up north were re-placed on the new ground.",
    "size": 1997280
+  },
+  {
+   "file": "patch_0.2.0_0041.pck",
+   "version": "0.2.41",
+   "date": "2026-11-14",
+   "notes": "Fixes and Forge tools. The country north of the old map edge now actually arrives: its ground and roads were never in the updates before, so it should finally meet the rest of the valley, with bush, grass and real beaches instead of bare lawn. Zombies follow you into houses: through the doors, round to the back door, up the stairs. Houses no longer sit on the roads (about 1,000 small buildings that couldn't be moved clear are gone, so cupboards start fresh). Twin City and Bay Mall have their entrances back. Slower clouds. In Forge: a Time & Weather tab (time, stop the clock, weather and fog sliders) and a Map tab, click anywhere to teleport.",
+   "size": 7729296
   }
  ],
  "full": {

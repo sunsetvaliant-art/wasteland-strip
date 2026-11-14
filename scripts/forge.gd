@@ -179,6 +179,7 @@ func _unhandled_input(e: InputEvent) -> void:
 
 # ---------------------------------------------------------------- per frame
 func _process(dt: float) -> void:
+	if palette_open and map_rect and map_rect.is_visible_in_tree(): _map_dot_update()
 	if not active:
 		return
 	cam.rotation = Vector3(pitch, yaw, 0)
@@ -856,6 +857,11 @@ func _build_ui() -> void:
 	for k in MARKERS: mk.append({"type": "marker", "key": k, "name": k.replace("_", " ").capitalize() + (" spawn" if not k.ends_with("spawn") else "")})
 	_palette_page(tabs, "NPCs & spawns", mk)
 	_world_page(tabs)
+	_map_page(tabs)
+	# open on the World tab (time, weather), where people look first
+	tabs.move_child(tabs.get_node("Time & Weather"), 0)
+	tabs.move_child(tabs.get_node("Map"), 1)
+	tabs.current_tab = 0
 	inspector = PanelContainer.new()
 	inspector.theme = theme
 	inspector.position = Vector2(1460, 110)
@@ -866,7 +872,7 @@ func _build_ui() -> void:
 ## Fly speed, the time of day and the weather
 func _world_page(tabs: TabContainer) -> void:
 	var vb := VBoxContainer.new()
-	vb.name = "World"
+	vb.name = "Time & Weather"
 	tabs.add_child(vb)
 	var row := func(label: String) -> HBoxContainer:
 		var hb := HBoxContainer.new()
@@ -907,19 +913,117 @@ func _world_page(tabs: TabContainer) -> void:
 		tl.text = "%02d:%02d" % [int(v), int(fmod(v, 1.0) * 60.0)])
 	r2.add_child(sl)
 	r2.add_child(tl)
+	var fz := CheckBox.new()
+	fz.text = "Stop the clock"
+	fz.button_pressed = SkyCycle.inst.frozen if SkyCycle.inst else false
+	fz.toggled.connect(func(on): if SkyCycle.inst: SkyCycle.inst.frozen = on)
+	row.call("").add_child(fz)
+	# the weather: one slider from clear through cloudy and rain to a storm, and one for fog; changes at once
 	var r3: HBoxContainer = row.call("Weather")
-	for w in ["clear", "cloudy", "rain", "storm", "fog"]:
-		var b := Button.new()
-		b.text = w.capitalize()
-		b.custom_minimum_size = Vector2(72, 40)
-		b.pressed.connect(func():
-			if SkyCycle.inst: SkyCycle.inst.set_weather(w, 1800.0))
-		r3.add_child(b)
+	var wl := Label.new()
+	var ws := HSlider.new()
+	ws.min_value = 0.0; ws.max_value = 1.0; ws.step = 0.01
+	ws.value = SkyCycle.inst.m_amt if SkyCycle.inst and SkyCycle.inst.manual else 0.0
+	ws.custom_minimum_size = Vector2(280, 40)
+	var r4: HBoxContainer = row.call("Fog")
+	var fl := Label.new()
+	var fs := HSlider.new()
+	fs.min_value = 0.0; fs.max_value = 1.0; fs.step = 0.01
+	fs.value = SkyCycle.inst.m_fog if SkyCycle.inst and SkyCycle.inst.manual else 0.0
+	fs.custom_minimum_size = Vector2(280, 40)
+	var wname := func(v: float) -> String:
+		return "Storm" if v > 0.85 else "Rain" if v > 0.55 else "Cloudy" if v > 0.25 else "Clear"
+	wl.text = wname.call(ws.value)
+	fl.text = "%d%%" % int(fs.value * 100.0)
+	var apply := func():
+		if SkyCycle.inst: SkyCycle.inst.set_manual(ws.value, fs.value)
+		wl.text = wname.call(ws.value)
+		fl.text = "%d%%" % int(fs.value * 100.0)
+	ws.value_changed.connect(func(_v): apply.call())
+	fs.value_changed.connect(func(_v): apply.call())
+	r3.add_child(ws); r3.add_child(wl)
+	r4.add_child(fs); r4.add_child(fl)
+	var nat := Button.new()
+	nat.text = "Back to natural weather"
+	nat.custom_minimum_size = Vector2(220, 40)
+	nat.pressed.connect(func():
+		if SkyCycle.inst: SkyCycle.inst.natural_weather())
+	row.call("").add_child(nat)
 	var note := Label.new()
-	note.text = "The weather you pick holds for half an hour. P drops the player wherever you're looking, any distance."
+	note.text = "Weather you set holds until you go back to natural. P drops the player wherever you're looking, any distance. The Map tab teleports."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.custom_minimum_size = Vector2(520, 60)
 	vb.add_child(note)
+
+## The Map tab: the whole valley; click anywhere to go there (the Oracle in Forge, the player too)
+const MAP_X0 := -8960.0
+const MAP_Z0 := -19960.0
+const MAP_MPX := 20.0
+var map_rect: TextureRect
+var map_dot: ColorRect
+func _map_page(tabs: TabContainer) -> void:
+	var vb := VBoxContainer.new()
+	vb.name = "Map"
+	tabs.add_child(vb)
+	var tip := Label.new()
+	tip.text = "Click anywhere to teleport there. Red dot: you."
+	vb.add_child(tip)
+	map_rect = TextureRect.new()
+	map_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	map_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	map_rect.custom_minimum_size = Vector2(530, 760)
+	map_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	if ResourceLoader.exists("res://assets/world/map.png"):
+		map_rect.texture = load("res://assets/world/map.png")
+	vb.add_child(map_rect)
+	map_dot = ColorRect.new()
+	map_dot.color = Color(1, 0.15, 0.1)
+	map_dot.size = Vector2(8, 8)
+	map_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	map_rect.add_child(map_dot)
+	map_rect.gui_input.connect(func(ev):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			var w := _map_to_world(ev.position)
+			if w != Vector3.INF: teleport_to(w))
+	vb.visibility_changed.connect(_map_dot_update)
+
+## map rect pixel <-> world, allowing for the picture being letterboxed in the rect
+func _map_frame() -> Rect2:
+	if map_rect == null or map_rect.texture == null: return Rect2()
+	var ts := map_rect.texture.get_size()
+	var rs := map_rect.size
+	var k := minf(rs.x / ts.x, rs.y / ts.y)
+	var sz := ts * k
+	return Rect2((rs - sz) * 0.5, sz)
+
+func _map_to_world(px: Vector2) -> Vector3:
+	var fr := _map_frame()
+	if fr.size.x <= 0 or not fr.has_point(px): return Vector3.INF
+	var ts := map_rect.texture.get_size()
+	var u := (px - fr.position) / fr.size * ts
+	return Vector3(MAP_X0 + u.x * MAP_MPX, 0, MAP_Z0 + u.y * MAP_MPX)
+
+func _map_dot_update() -> void:
+	if map_rect == null or map_dot == null or map_rect.texture == null: return
+	var fr := _map_frame()
+	var ts := map_rect.texture.get_size()
+	var pp: Vector3 = cam.global_position if active else main.player.global_position
+	var u := Vector2((pp.x - MAP_X0) / MAP_MPX, (pp.z - MAP_Z0) / MAP_MPX) / ts * fr.size + fr.position
+	map_dot.position = u - map_dot.size * 0.5
+
+## Go there: the Oracle (when flying) a little above the ground, and the player on it
+func teleport_to(w: Vector3) -> void:
+	var gy: float = main.height_at(w.x, w.z)
+	var at := Vector3(w.x, gy, w.z)
+	if main.buildings: main.buildings.build_near_now(at, 30.0)
+	var p: Player = main.player
+	if p.vehicle: p._get_out()
+	p.global_position = at + Vector3(0, 1.0, 0)
+	p.velocity = Vector3.ZERO
+	if active:
+		cam.global_position = at + Vector3(0, 40.0, 0)
+	_map_dot_update()
+	_toast("Teleported to %d, %d" % [int(w.x), int(w.z)])
 
 func _palette_page(tabs: TabContainer, title: String, items: Array) -> void:
 	var sc := ScrollContainer.new()

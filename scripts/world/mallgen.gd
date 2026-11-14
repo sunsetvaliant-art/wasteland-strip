@@ -929,6 +929,28 @@ static func _bare(rooms: Array, r: Dictionary, side: String) -> Array:
 		spans = out
 	return spans
 
+## A stretch of cladding [a, b] x [y0, y1] with the wall's openings (doors, ways in, windows) cut out of it:
+## [[a, b, y0, y1], ...] pieces, the full height between openings, above and below each one
+static func _clad_pieces(ops: Array, a: float, b: float, y0: float, y1: float, floor_y: float) -> Array:
+	var holes := []
+	for op in ops:
+		if not (op.kind in ["open", "door", "doorx", "roller", "arch", "bay", "window"]): continue
+		var oa := maxf(float(op.a), a); var ob := minf(float(op.b), b)
+		if ob - oa < 0.05: continue
+		holes.append([oa, ob, floor_y + float(op.get("y0", 0.0)), floor_y + float(op.get("y1", 3.0))])
+	holes.sort_custom(func(h1, h2): return h1[0] < h2[0])
+	var out := []
+	var x := a
+	for h in holes:
+		if h[0] > x + 0.01: out.append([x, h[0], y0, y1])
+		var hx0: float = maxf(h[0], x)
+		if h[1] > hx0:
+			if h[2] > y0 + 0.01: out.append([hx0, h[1], y0, h[2]])          # under a window
+			if h[3] < y1 - 0.01: out.append([hx0, h[1], h[3], y1])          # over the opening
+		x = maxf(x, h[1])
+	if b > x + 0.01: out.append([x, b, y0, y1])
+	return out
+
 # ------------------------------------------------------------------------------------------------ outside and on top
 static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, lod := false) -> void:
 	var MY: float = p.mall.y
@@ -957,7 +979,13 @@ static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, 
 				var edge := BuildGen._ext_side(p, r, side)
 				# out from the wall's line: the lot's own edges already have their cladding below the roof
 				var y0 := ry if edge else MY - 0.3
-				BuildGen._wall_box(g, clad, si, float(sp[0]) - T, float(sp[1]) + T, y0, pt, -T, 0.0, false)
+				if y0 < ry:
+					# down to the floor: leave the ways in and the windows open (a ground-level mall's entrances
+					# are in these walls; cladding straight over them sealed Twin City and Bay Mall up)
+					for piece in _clad_pieces(r.ops[side], float(sp[0]) - T, float(sp[1]) + T, y0, pt, MY):
+						BuildGen._wall_box(g, clad, si, piece[0], piece[1], piece[2], piece[3], -T, 0.0, false)
+				else:
+					BuildGen._wall_box(g, clad, si, float(sp[0]) - T, float(sp[1]) + T, y0, pt, -T, 0.0, false)
 				BuildGen._wall_box(g, trim, si, float(sp[0]) - T, float(sp[1]) + T, pt, pt + 0.1, -T - 0.05, 0.05, false)
 				BuildGen._wall_box(g, trim, si, float(sp[0]) - T, float(sp[1]) + T, MY - 0.2, MY + 0.25, -T - 0.06, -T, false)
 	# the roof deck over the car park where nothing's built on it

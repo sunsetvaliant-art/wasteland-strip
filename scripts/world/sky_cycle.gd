@@ -20,6 +20,11 @@ var wet := 0.0                        # how wet the ground is (rain soaks in, dr
 var cloud := 0.0
 var rain := 0.0
 var fogd := 0.0
+# Forge World tab: weather set by hand (a slider from clear to storm, and fog), and the clock stopped
+var manual := false
+var m_amt := 0.0                      # 0 clear .. 0.3 cloudy .. 0.6 rain .. 1 storm
+var m_fog := 0.0
+var frozen := false
 var _flash := 0.0
 var _next_strike := 10.0
 var _thunder: Array = []              # [delay, stream]
@@ -110,11 +115,31 @@ func set_weather(w: String, secs: float) -> void:
 	weather = w
 	weather_left = secs
 
+## The weather by hand, straight away (no easing in): amt 0 clear .. 1 storm, fog 0..1. It holds until natural_weather().
+func set_manual(amt: float, fog: float) -> void:
+	manual = true
+	m_amt = clampf(amt, 0.0, 1.0)
+	m_fog = clampf(fog, 0.0, 1.0)
+	if m_amt > 0.85: weather = "storm"
+	elif m_amt > 0.55: weather = "rain"
+	elif m_amt > 0.25: weather = "cloudy"
+	elif m_fog > 0.5: weather = "fog"
+	else: weather = "clear"
+	weather_left = 1e9
+	cloud = _target_cloud(); rain = _target_rain(); fogd = _target_fog()
+
+func natural_weather() -> void:
+	manual = false
+	weather_left = 0.0
+
 func _target_cloud() -> float:
+	if manual: return maxf(lerpf(0.05, 1.0, m_amt), m_fog * 0.55)
 	return {"clear": 0.05, "cloudy": 0.7, "rain": 0.9, "storm": 1.0, "fog": 0.55}.get(weather, 0.0)
 func _target_rain() -> float:
+	if manual: return clampf((m_amt - 0.5) / 0.5, 0.0, 1.0)
 	return {"rain": 0.55, "storm": 1.0}.get(weather, 0.0)
 func _target_fog() -> float:
+	if manual: return maxf(m_fog, _target_rain() * 0.35)
 	return {"fog": 1.0, "rain": 0.25, "storm": 0.35}.get(weather, 0.0)
 
 func clock() -> String:
@@ -142,12 +167,13 @@ func _process(dt: float) -> void:
 	if runs:
 		# the clock: daylight hours pass slower than night ones
 		var day := tod >= 6.0 and tod < 18.0
-		tod += dt * (12.0 / DAY_S if day else 12.0 / NIGHT_S)
+		if not frozen:
+			tod += dt * (12.0 / DAY_S if day else 12.0 / NIGHT_S)
 		if tod >= 24.0: tod -= 24.0
 		weather_left -= dt
-		if weather_left <= 0.0:
+		if weather_left <= 0.0 and not manual:
 			_next_weather()
-		if weather == "fog" and tod > 10.0:
+		if weather == "fog" and tod > 10.0 and not manual:
 			set_weather("cloudy", _rng.randf_range(200, 500))
 	# ease the weather in and out over a minute or so
 	var k := clampf(dt / 50.0, 0.0, 1.0)
@@ -202,7 +228,7 @@ func _apply_light(dt: float) -> void:
 		sky_sh.set_shader_parameter("ground", Color(0.16, 0.2, 0.15).lerp(Color(0.02, 0.02, 0.02), night))
 		sky_sh.set_shader_parameter("night", night)
 		sky_sh.set_shader_parameter("cover", clampf(maxf(cloud, 0.16) + fogd * 0.2, 0.0, 1.0))
-		sky_sh.set_shader_parameter("wind", 1.0 + rain * 2.5)
+		sky_sh.set_shader_parameter("wind", 1.0 + rain * 1.5)
 		var cc := Color(1.0, 1.0, 1.0).lerp(Color(0.5, 0.52, 0.56), cloud * 0.9).lerp(Color(1.0, 0.7, 0.5), dusk_t * 0.6)
 		sky_sh.set_shader_parameter("cloud_col", cc.lerp(Color(0.06, 0.07, 0.1), night) + Color(_flash, _flash, _flash) * 0.6)
 		sky_sh.set_shader_parameter("sun_col", main.sun.light_color)

@@ -49,6 +49,24 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
    can be fetched here (same godot-builds release has `Godot_v4.7.2-stable_export_templates.tpz`). Needs rcedit
    skipping (the scripts already filter that error).
 
+### 3b. What actually worked on 2026-11-14 (patch 0041), use this
+- There are NO GitHub releases (no terrain-data.zip, no base build). Everything needed is in the patches: extract
+  every `updates/patch_0.2.0_*.pck` in order into an overlay (pck_strip.read_index), then copy it into the working
+  copy WITHOUT overwriting git files (`cp -rn overlay/. game/`). That gives terrain/ (from patch 0005), the Poly
+  Haven imports, road tiles, etc. THEN delete every `*.remap` and `*.gdc` outside .godot (exported compiled scripts
+  that silently override your edited .gd files) and delete `~/.local/share/godot/app_userdata/Wasteland/patches`.
+- Building a patch without the base build: (1) put the original files back for everything you changed (keep a tar of
+  yours), `godot --headless --path . --export-pack Windows /home/claude/ref.pck` (no export templates needed, about
+  900 MB), (2) restore your files, set version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.
+  The patch then holds exactly your changes. Check it by unpacking ref.pck + new.pck into a folder and booting it.
+  Copy it to `updates/patch_0.2.0_NNNN.pck`, add the manifest entry, commit only the files you changed.
+- Non-resource files (.bin) only ship if listed in export_presets.cfg include_filter. north_h.bin and
+  lines_north.bin were missing until 0041, so the north strip never reached players before then.
+- Test harnesses added: tools/_zhouse.gd (zombies into houses), tools/_seam.gd, tools/_tptest.gd (map teleport,
+  weather), tools/_mallcheck.gd (mall entrances), tools/make_map.gd (bakes the Forge map), tools/bake_north_veg.py.
+  Add one as an autoload line under Settings= in project.godot for a run, remove it after.
+- Screenshots render at about 1 fps here (software GL under xvfb): a two-shot run takes 5 to 10 minutes.
+
 ## 4. Test and release loop (all scripts exist in `tools/`)
 - `tools/smoke.sh`: boots the game headless 400 frames, prints script errors. Env flags used everywhere:
   `WASTELAND_NO_UPDATE=1 WASTELAND_AUTOPLAY=1 VEG_OFF=1`.

@@ -311,11 +311,16 @@ func _think_zombie(dt: float) -> void:
 				goal_t = randf_range(3.0, 9.0)
 		"chase":
 			var tp := _target_pos()
+			# you went into a building it was chasing you to: it knows where you went and follows you in, through
+			# the doors and up the stairs (Buildings.route), for a good while before it gives up
+			var inside := Buildings.inst != null and Buildings.inst.lot_at(tp, 0.5) >= 0
 			if vis > 0.0:
 				last_seen = tp
 				lost_t = 0.0
 			else:
 				lost_t += dt
+				if inside and _flat_dist(tp) < 45.0 and lost_t < 40.0:
+					last_seen = tp
 			goal = last_seen
 			var d := _flat_dist(tp)
 			var reach := 2.4 if (player and player.vehicle) else 1.35
@@ -336,7 +341,7 @@ func _think_zombie(dt: float) -> void:
 				# after dark they're quicker and they don't give up
 				if SkyCycle.inst and SkyCycle.inst.night > 0.5:
 					move_speed *= 1.3
-				if lost_t > 12.0:
+				if lost_t > (40.0 if inside else 12.0):
 					state = "wander"
 					goal_t = 15.0
 	# the swing lands partway through the punch
@@ -484,6 +489,16 @@ func _flat_dist(p: Vector3) -> float:
 
 var _route: Array = []
 var _route_t := 0.0
+var _stuck_t := 0.0
+
+## Can we walk straight to q (nothing solid at knee height in between; doors count as clear, they push open)?
+func _clear_to(q: Vector3) -> bool:
+	# a metre up at both ends: clears beds and chairs, and runs parallel to a flight of stairs, but not a wall
+	var o := global_position + Vector3(0, 1.0, 0)
+	var t := q + Vector3(0, 1.0, 0)
+	var rq := PhysicsRayQueryParameters3D.create(o, t, 1, [get_rid()])
+	var hit := get_world_3d().direct_space_state.intersect_ray(rq)
+	return hit.is_empty() or hit.collider is BuildDoor
 
 func _move(dt: float) -> void:
 	# through a building's doors and up its stairs, when you're inside one (or it is)
@@ -493,8 +508,34 @@ func _move(dt: float) -> void:
 		if _route_t <= 0.0:
 			_route_t = 0.6
 			_route = Buildings.inst.route(global_position, goal)
-		while not _route.is_empty() and Vector2((_route[0] as Vector3).x - global_position.x, (_route[0] as Vector3).z - global_position.z).length() < 0.55:
-			_route.remove_at(0)
+			# a fresh route starts back at the first door: skip what's already behind us (up to the waypoint we're
+			# nearest, and that one too if we're on it), so we don't turn round to touch it again
+			var near_i := -1; var near_d := 1e9
+			for k in _route.size():
+				var q: Vector3 = _route[k]
+				var dd := Vector2(q.x - global_position.x, q.z - global_position.z).length() + absf(q.y - global_position.y) * 0.5
+				if dd < near_d: near_d = dd; near_i = k
+			# ... but only one we can actually walk straight to (the nearest can be on the other side of a wall)
+			if near_i > 0 and (not _clear_to(_route[near_i]) or absf((_route[near_i] as Vector3).y - global_position.y) > 0.6): near_i = 0; near_d = 1e9
+			if near_i > 0 or (near_i == 0 and near_d < 1.0):
+				_route = _route.slice(near_i + (1 if near_d < 1.0 else 0))
+		while not _route.is_empty():
+			var q: Vector3 = _route[0]
+			var here := Vector2(global_position.x, global_position.z)
+			var qa := Vector2(q.x, q.z)
+			var passed := false
+			if _route.size() > 1:
+				# already between this waypoint and the next (on the stairs past the bottom step, through the door)
+				var qb := Vector2((_route[1] as Vector3).x, (_route[1] as Vector3).z)
+				var seg := qb - qa
+				var tt := clampf((here - qa).dot(seg) / maxf(seg.length_squared(), 0.01), 0.0, 1.0)
+				var want_y := lerpf(q.y, (_route[1] as Vector3).y, tt)      # on a flight we should have climbed this far
+				passed = seg.length() > 0.3 and (here - qa).dot(seg) > 0.0 and here.distance_to(qa) < seg.length() + 0.5 \
+					and global_position.y > want_y - 0.8 and absf(seg.normalized().cross(here - qa)) < 0.9 and _clear_to(_route[1])
+			if (here.distance_to(qa) < 0.9 and absf(q.y - global_position.y) < 1.6) or passed:
+				_route.remove_at(0)
+			else:
+				break
 		if not _route.is_empty():
 			g = _route[0]
 	var to := g - global_position
@@ -504,9 +545,30 @@ func _move(dt: float) -> void:
 	knock_t = maxf(knock_t - dt, 0.0)
 	if gun and gun.reloading > 0.0: spd = min(spd, 1.0)
 	var dir := Vector3.ZERO
+	# wanting to move but not getting anywhere (a chair, a bed, the corner of a wall): steer round it for a bit
+	if spd > 0.0 and to.length() > 0.4 and Vector2(velocity.x, velocity.z).length() < spd * 0.25:
+		_stuck_t += dt
+	else:
+		_stuck_t = maxf(_stuck_t - dt * 2.0, 0.0)
+	# a doorstep or the bottom of a flight of stairs left up off the ground on a slope: clamber up onto it
+	var indoors := state == "chase" and Buildings.inst != null and Buildings.inst.lot_at(global_position, 0.3) >= 0
+	if _stuck_t > 0.4 and (not _route.is_empty() or indoors):
+		var q: Vector3 = _route[0] if not _route.is_empty() else g
+		var dy := q.y - global_position.y
+		if dy > 0.25 and dy < 2.2 and Vector2(q.x - global_position.x, q.z - global_position.z).length() < 1.8 and _clear_to(q):
+			var fl := Vector3(q.x - global_position.x, 0, q.z - global_position.z)
+			global_position += fl.limit_length(0.6)
+			global_position.y = q.y + 0.08
+			velocity = Vector3.ZERO
+			_stuck_t = 0.0
+		# wedged on furniture in a hall (the way's clear above waist height, so it isn't a wall): shove past it
+		elif _stuck_t > 1.5 and _clear_to(q) and absf(dy) < 0.5:
+			var fl := Vector3(q.x - global_position.x, 0, q.z - global_position.z)
+			global_position += fl.limit_length(0.35)
+			_stuck_t = 1.0
 	if spd > 0.0 and to.length() > 0.4:
 		dir = to.normalized()
-		dir = _steer(dir, dt)
+		dir = _steer(dir, dt, to.length() if not _route.is_empty() and _stuck_t < 0.6 else -1.0)
 		if kind == "zombie" or state != "combat" or vis <= 0.0:
 			face_dir = face_dir.slerp(dir, clamp(dt * 3.0, 0.0, 1.0)) if face_dir.length() > 0.1 else dir
 	if kind == "zombie" and limp > 0.0:
@@ -540,16 +602,23 @@ func _move(dt: float) -> void:
 		rotation.y = lerp_angle(rotation.y, yaw, clamp(dt * 6.0, 0.0, 1.0))
 
 ## Whiskers: if something's in the way, pick the clearer side and hold it for a moment
-func _steer(dir: Vector3, dt: float) -> Vector3:
+## to_wp >= 0: following a building route, the next waypoint is that far: only look that far ahead (a doorway's
+## frame and the walls beyond it aren't in the way), and walk into a shut door rather than round it (it pushes open)
+func _steer(dir: Vector3, dt: float, to_wp := -1.0) -> Vector3:
 	avoid_t -= dt
+	if to_wp >= 0.0:
+		avoid_t = 0.0
 	if avoid_t > 0.0:
 		return (dir + avoid * 1.5).normalized()
 	var space := get_world_3d().direct_space_state
 	var o := global_position + Vector3(0, 0.6, 0)
-	var q := PhysicsRayQueryParameters3D.create(o, o + dir * 1.6, 1 | LAYER, [get_rid()])
+	var look := 1.6 if to_wp < 0.0 else clampf(to_wp - 0.1, 0.2, 1.6)
+	var q := PhysicsRayQueryParameters3D.create(o, o + dir * look, 1 | LAYER, [get_rid()])
 	var hit := space.intersect_ray(q)
-	if hit.is_empty() or (player and hit.collider == player):
+	if hit.is_empty() or (player and hit.collider == player) or hit.collider is BuildDoor or hit.collider is Boards:
 		return dir
+	if to_wp >= 0.0:
+		return dir          # on a route the waypoints already go round things; sliding along the wall does the rest
 	for a in [0.9, -0.9, 1.6, -1.6]:
 		var d2 := dir.rotated(Vector3.UP, a)
 		var q2 := PhysicsRayQueryParameters3D.create(o, o + d2 * 1.8, 1 | LAYER, [get_rid()])

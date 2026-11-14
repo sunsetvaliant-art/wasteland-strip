@@ -48,6 +48,7 @@ func setup(m) -> void:
 	lots = d.lots
 	towns = d.get("towns", [])
 	lots_ver = str(d.get("ver", ""))
+	_clear_roads()
 	_level_malls()
 	for i in lots.size():
 		var l: Array = lots[i]
@@ -103,6 +104,88 @@ static func near_any(x: float, z: float, r: float) -> bool:
 		if blocked(x + o.x, z + o.y, r * 0.5):
 			return true
 	return false
+
+## Keep every building off the roads as they're really painted (the lot list was placed from OSM centrelines, which
+## don't always match the painted seal). Each lot's walls are sampled round the outside; if any point is on or within
+## a margin of the seal the lot is pushed straight away from the road, a little at a time, up to MAX_SHIFT metres.
+## If it still can't clear (squeezed between two roads), it's left out. Same data and same steps on every machine,
+## so LAN players get the same town. The lot list's "ver" changes so old saves' cupboards start fresh.
+const ROAD_MARGIN := {"house": 1.5, "qlder": 1.5, "shed": 1.0, "shop": 0.2, "mall": 0.5}
+const MAX_SHIFT := 9.0
+# real, named buildings (and the big ones): if they can't be cleared they stay where OSM puts them; car-park and
+# service roads often run through their grounds
+const KEEP_KINDS := ["mall", "tower", "hospital", "school", "church", "fire", "police", "post", "club", "motel", "hall",
+	"pub", "warehouse", "servo", "bank", "clinic"]
+func _clear_roads() -> void:
+	if main == null or main.get("roads") == null: return
+	if lots_ver.ends_with("+roads1"): return          # already cleared and baked (BAKE_LOTS)
+	var rd = main.roads
+	var t0 := Time.get_ticks_msec()
+	var kept: Array = []
+	var moved := 0; var dropped := 0
+	for l in lots:
+		if str(l[0]) == "mall":           # the malls and their pavilions are placed by hand (tools/add_malls.py): never moved
+			kept.append(l)
+			continue
+		var margin: float = ROAD_MARGIN.get(str(l[0]), 1.0)
+		var shift := 0.0
+		var ok := false
+		# most lots are nowhere near a road: one look from the middle settles it
+		var reach := sqrt(float(l[4]) * float(l[4]) + float(l[5]) * float(l[5])) * 0.5 + margin
+		if reach < 29.0 and rd.edge_dist(float(l[1]), float(l[2])) > reach:
+			kept.append(l)
+			continue
+		var orig := [l[1], l[2]]
+		for _it in 8:
+			var w := _road_worst(rd, l)                      # [min edge distance, x, z]
+			if w[0] >= margin: ok = true; break
+			# push straight away from the road at the worst point (gradient of the distance field)
+			var e := 0.75
+			var gx: float = rd.edge_dist(w[1] + e, w[2]) - rd.edge_dist(w[1] - e, w[2])
+			var gz: float = rd.edge_dist(w[1], w[2] + e) - rd.edge_dist(w[1], w[2] - e)
+			var g := Vector2(gx, gz)
+			if g.length() < 0.0001: break
+			var step := minf(margin - float(w[0]) + 0.4, MAX_SHIFT - shift)
+			if step <= 0.05: break
+			g = g.normalized() * step
+			l[1] = float(l[1]) + g.x; l[2] = float(l[2]) + g.y
+			shift += step
+		if ok:
+			if shift > 0.0: moved += 1
+			kept.append(l)
+		elif str(l[0]) in KEEP_KINDS or float(l[4]) * float(l[5]) > 900.0:
+			l[1] = orig[0]; l[2] = orig[1]
+			kept.append(l)
+		else:
+			dropped += 1
+	if moved + dropped > 0:
+		lots = kept
+		lots_ver += "+roads1"
+	print("BUILDINGS off the roads: %d moved, %d left out, in %d ms" % [moved, dropped, Time.get_ticks_msec() - t0])
+	# BAKE_LOTS=1: write the cleared list back into the project so the shipped file needs no work at load
+	if OS.get_environment("BAKE_LOTS") != "" and moved + dropped > 0:
+		var d = JSON.parse_string(FileAccess.get_file_as_string("res://assets/world/buildings.json"))
+		d.lots = lots
+		d.ver = lots_ver
+		var f := FileAccess.open(ProjectSettings.globalize_path("res://assets/world/buildings.json"), FileAccess.WRITE)
+		f.store_string(JSON.stringify(d, "", false, true))
+		print("BUILDINGS baked the cleared lot list")
+
+func _road_worst(rd, l: Array) -> Array:
+	var x0 := float(l[1]); var z0 := float(l[2]); var yaw := float(l[3])
+	var hw := float(l[4]) * 0.5; var hd := float(l[5]) * 0.5
+	var c := cos(yaw); var s := sin(yaw)
+	var best := [999.0, x0, z0]
+	# corners, edge thirds and the middle, in the lot's frame (Basis(UP, yaw)): world = (lx c + lz s, -lx s + lz c)
+	for fx in [-1.0, -0.333, 0.333, 1.0]:
+		for fz in [-1.0, -0.333, 0.333, 1.0]:
+			if absf(fx) < 0.9 and absf(fz) < 0.9 and not (fx == 0.333 and fz == 0.333): continue
+			var lx: float = fx * hw; var lz: float = fz * hd
+			var x := x0 + lx * c + lz * s
+			var z := z0 - lx * s + lz * c
+			var dd: float = rd.edge_dist(x, z)
+			if dd < best[0]: best = [dd, x, z]
+	return best
 
 ## A mall's too big to sit on sloping ground (its floor ended up metres above one end): level the terrain under each,
 ## with a 25 m skirt easing back to the lie of the land, before anything's built or grown
@@ -474,11 +557,22 @@ func route(a: Vector3, b: Vector3) -> Array:
 	if ra == rb:
 		return []
 	var nav := _nav_of(i)
-	# breadth first over rooms
+	# shortest walk over the rooms (Dijkstra on path length). From outside, each way in costs the walk round the
+	# outside of the house to it, so the zombie takes the nearest door and goes round the corners to get there
+	var la: Vector3 = inv * a
+	var l: Array = lots[i]
+	var X := float(l[4]) * 0.5 + 1.1
+	var Zn := -float(l[5]) * 0.5 - 1.1
+	var Zs := float(l[5]) * 0.5 + 1.1 + (3.5 if l[0] == "qlder" else 0.0)
+	var dist := {ra: 0.0}
 	var prev := {ra: null}
-	var q := [ra]
-	while not q.is_empty():
-		var cur: String = q.pop_front()
+	var open := [ra]
+	while not open.is_empty():
+		var bi := 0
+		for k in open.size():
+			if dist[open[k]] < dist[open[bi]]: bi = k
+		var cur: String = open[bi]
+		open.remove_at(bi)
 		if cur == rb: break
 		for e in nav.edges:
 			var nxt := ""
@@ -486,9 +580,17 @@ func route(a: Vector3, b: Vector3) -> Array:
 			if e[0] == cur: nxt = e[1]; pts = e[2]
 			elif e[1] == cur: nxt = e[0]; pts = (e[2] as Array).duplicate(); pts.reverse()
 			else: continue
-			if prev.has(nxt): continue
-			prev[nxt] = [cur, pts]
-			q.append(nxt)
+			var cost := 0.0
+			for k in range(1, pts.size()): cost += (pts[k] as Vector3).distance_to(pts[k - 1])
+			var lead := []
+			if cur == "out" and ia != i or (cur == "out" and ra == "out"):
+				var r := _round_house(la, pts[0], X, Zn, Zs)
+				cost += r[0]; lead = r[1]
+			var nd: float = dist[cur] + cost
+			if dist.has(nxt) and nd >= dist[nxt]: continue
+			dist[nxt] = nd
+			prev[nxt] = [cur, lead + pts]
+			if not open.has(nxt): open.append(nxt)
 	if not prev.has(rb):
 		return []
 	var out := []
@@ -499,9 +601,47 @@ func route(a: Vector3, b: Vector3) -> Array:
 		for lp in pts: w.append(xf * (lp as Vector3))
 		out = w + out
 		n = prev[n][0]
-	if rb == "out" and ib != i:
-		pass
 	return out
+
+## The walk round the outside of a house (its footprint padded out to a rectangle) from a to the door's outside
+## point o, the shorter way round: [metres, corner waypoints in the house's frame]
+func _round_house(a: Vector3, o: Vector3, X: float, Zn: float, Zs: float) -> Array:
+	var cs := [Vector3(-X, a.y, Zn), Vector3(X, a.y, Zn), Vector3(X, a.y, Zs), Vector3(-X, a.y, Zs)]
+	var lens := [2.0 * X, Zs - Zn, 2.0 * X, Zs - Zn]
+	var per := 4.0 * X + 2.0 * (Zs - Zn)
+	var sa := _perim_s(a, X, Zn, Zs)
+	var so := _perim_s(o, X, Zn, Zs)
+	var fwd := fposmod(so - sa, per)
+	var back := per - fwd
+	var along := minf(fwd, back)
+	if along < 1.5 or a.distance_to(o) < 2.0:
+		return [a.distance_to(o), []]
+	# corners passed on the way: corner k sits at perimeter distance S[k]
+	var S := [0.0, lens[0], lens[0] + lens[1], lens[0] + lens[1] + lens[2]]
+	var pts := []
+	if fwd <= back:
+		for k in 4:
+			var dk := fposmod(S[k] - sa, per)
+			if dk > 0.05 and dk < fwd: pts.append([dk, cs[k]])
+	else:
+		for k in 4:
+			var dk := fposmod(sa - S[k], per)
+			if dk > 0.05 and dk < back: pts.append([dk, cs[k]])
+	pts.sort_custom(func(p1, p2): return p1[0] < p2[0])
+	var way := []
+	for e in pts: way.append(e[1])
+	return [along + 1.0, way]
+
+func _perim_s(p: Vector3, X: float, Zn: float, Zs: float) -> float:
+	# nearest side of the rectangle, then how far round from the north-west corner (clockwise: N, E, S, W)
+	var x := clampf(p.x, -X, X); var z := clampf(p.z, Zn, Zs)
+	var dn := absf(p.z - Zn); var ds := absf(p.z - Zs); var dw := absf(p.x + X); var de := absf(p.x - X)
+	var m := minf(minf(dn, ds), minf(dw, de))
+	var W := 2.0 * X; var D := Zs - Zn
+	if m == dn: return x + X
+	if m == de: return W + (z - Zn)
+	if m == ds: return W + D + (X - x)
+	return W + D + W + (Zs - z)
 
 ## Now and then a rolling chassis or a loose body: in the shed, or out the back of the house
 func _project_car(i: int, p: Dictionary, b: Node3D) -> void:

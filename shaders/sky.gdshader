@@ -45,7 +45,7 @@ void sky() {
 	// clouds on a flat ceiling, two layers sliding at different speeds
 	if (h > 0.015) {
 		vec2 uv = d.xz / (h + 0.14);
-		float t = TIME * 0.0035 * wind;
+		float t = TIME * 0.0006 * wind;   // a layer crosses the sky in about 90 s at the zenith on a calm day
 		float n = texture(noise, uv * 0.055 + vec2(t, t * 0.35)).r * 0.62 + texture(noise, uv * 0.16 + vec2(-t * 1.6, t * 0.9)).r * 0.38;
 		float th = mix(0.68, 0.2, cover);
 		float c = smoothstep(th, th + 0.22, n) * smoothstep(0.015, 0.16, h);

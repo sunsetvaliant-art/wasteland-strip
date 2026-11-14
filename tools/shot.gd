@@ -1,7 +1,7 @@
 extends Node
 ## Test harness: loaded as an extra autoload in test runs only. Waits for the world, poses the camera, saves screenshots.
 ## env SHOT_PLAN = "name:mode:x:z:yaw:pitch;..." mode = foot | car | carcab | drive
-var out := "/tmp/claude-0/-home-claude/b0119dc3-e5bf-538e-a527-b04b73bbc85a/scratchpad/"
+var out := OS.get_environment("SHOT_OUT") if OS.get_environment("SHOT_OUT") != "" else "/tmp/shots/"
 func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	await get_tree().create_timer(0.5).timeout

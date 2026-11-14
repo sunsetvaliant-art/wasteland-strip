@@ -4,20 +4,39 @@ This is the one list. Every Claude session reads it first and updates it before 
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
 Newest requests at the top of each section. Last updated: patch 0041 work, 2026-11-14.
 
-## Requested 2026-11-14 (patch 0041)
+## Requested 2026-11-14
 ### Bugs
-- [ ] The 3 km north extension doesn't stitch into the existing LiDAR terrain (visible step at z = -16960)
-- [ ] Zombies don't pathfind into houses
-- [ ] Houses still sit on roads
-- [ ] Tweed Mall (Bay Mall) and Tweed City (Twin City) have no entrances
+- [x] 0041 North strip seam: it was the ground texture and plants, not the height. The strip now has its own
+      vegetation map (tools/bake_north_veg.py), ground textures mirrored from just south of the seam, beach sand only
+      along the ocean, and its heights stitched to the live terrain at runtime
+- [x] 0041 Zombies follow you into houses: track you inside, route round the house to the nearest door, through
+      doors and up stairs, clamber onto raised doorsteps, shove past hall furniture (tools/_zhouse.gd: 12 of 12 houses
+      in two test areas)
+- [ ] NEW: Queenslanders on steep hillsides: the stairs stop metres above the ground (zombies and players can't get
+      in). Found by tools/_zhouse.gd at x 11126, z -13366 (4 of 6 failed there)
+- [x] 0041 Houses off the roads: every lot checked against the painted road edges, 843 nudged clear, 1,025 small
+      buildings that couldn't be cleared left out; malls, civic and big buildings never removed (baked into
+      buildings.json, so cupboards start fresh once)
+- [x] 0041 Twin City and Bay Mall entrances: the outside cladding was drawn solid over their doorways; now cut round
+      every opening and window
 - [ ] Tweed City not built to reality, despite the screenshots (docs/ref, docs/tweed_city_plan.png). Asked many times.
-- [ ] Clouds move too fast
+      NOT done in 0041. Plan: trace the current outline from docs/ref/tweed_city_gmaps_indoor.jpg (about 0.665 m a
+      pixel at 540 px wide; the mall sits about 9 degrees off north), use it as the footprint instead of the lot
+      rectangle, lay out today's tenants (gmaps), angled west wing and food court, cinemas mid-west, big store south;
+      check by drawing the plan over the gmaps picture before building
+- [x] 0041 Clouds about 6x slower (a layer crosses the sky in about 90 s)
 ### Features
-- [ ] Time and weather sliders in the Forge palette
-- [ ] Minimap in the palette: click to open, click anywhere to teleport
-- [ ] Setting is 2020 now: add guns from that period
-- [ ] Find a modular bridge-making addon and replace every code-built bridge with it
-- [ ] Classic cars "a bit useless now, kinda" (2020 setting): QUESTION for the user: add modern cars, keep classics as rarer finds?
+- [x] 0041 Forge palette opens on a "Time & Weather" tab: time slider, stop the clock, weather slider (clear to
+      storm), fog slider, back to natural weather
+- [x] 0041 Map tab in the palette: the whole valley (tools/make_map.gd bakes assets/world/map.png); click anywhere to
+      teleport, red dot shows where you are
+- [ ] 2020 setting: add guns from that period. BLOCKED on models: need the user's pick of free/licensed 2020-era gun
+      models (or his own). Candidates for Australia 2020: Glock 17/19, S&W M&P (police), EF88 Austeyr (army),
+      AR-15 / M4, Remington 700, Ruger 10/22, Lithgow LA101, Beretta 92, Mossberg 500
+- [ ] Modular bridge addon: none exists for Godot 4 (searched 2026-11-14). QUESTION for the user: build our own
+      modular bridge kit (spans, piers, rails, abutments placed on the real bridge lines), or use his bridge models?
+- [ ] Classic cars "a bit useless now, kinda" (2020 setting): QUESTION for the user: add modern cars, keep classics as
+      rarer finds?
 
 ## Older, still open
 ### World and buildings

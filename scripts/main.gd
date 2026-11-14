@@ -345,18 +345,54 @@ func _extend_north() -> void:
 	var sp := f.get_float()
 	var buf := f.get_buffer(w * h * 2)
 	var sand: bool = data.has_method("set_control_base_id")
+	# Stitch: the strip's southern rows must meet the ground that's really in the terrain at the old edge (the bake
+	# matched a copy of it that has since drifted). Per column, the step between the old edge and the strip's last
+	# row is carried north and faded out with a smoothstep over STITCH metres, so the join has no lip.
+	const STITCH := 220.0
+	var edge_z := zn + h * sp                      # the old map's first row (the strip ends 5 m north of it)
+	var step := PackedFloat32Array(); step.resize(w)
+	var worst := 0.0; var mean := 0.0
+	for c in w:
+		var last := (float(buf.decode_u16(((h - 1) * w + c) * 2)) - 1000.0) * 0.01
+		var x := xa + c * sp
+		# the old ground a step further south too, so the slope carries on rather than just the level
+		var e0: float = data.get_height(Vector3(x, 0, edge_z))
+		var e1: float = data.get_height(Vector3(x, 0, edge_z + sp))
+		var want := e0 + (e0 - e1)                 # where the old slope says the next row north should be
+		if is_nan(e0) or is_nan(e1): want = last
+		step[c] = want - last
+		worst = maxf(worst, absf(step[c])); mean += absf(step[c])
+	var vm: Image = load("res://assets/vegmask_north.png") if ResourceLoader.exists("res://assets/vegmask_north.png") else null
 	var i := 0
 	for r in h:
 		var z := zn + r * sp
+		var t := clampf((edge_z - z) / STITCH, 0.0, 1.0)
+		var keep := 1.0 - t * t * (3.0 - 2.0 * t)   # 1 at the seam, 0 by STITCH north
 		for c in w:
-			var v := (float(buf.decode_u16(i)) - 1000.0) * 0.01
+			var v := (float(buf.decode_u16(i)) - 1000.0) * 0.01 + step[c] * keep
 			i += 2
 			var p := Vector3(xa + c * sp, 0, z)
 			data.set_height(p, v)
-			if sand and v < 2.2: data.set_control_base_id(p, 4)          # beach and dune
+			if sand: data.set_control_base_id(p, _north_ground(data, p, v, edge_z, vm))
 	data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
 	if sand: data.update_maps(Terrain3DRegion.TYPE_CONTROL)
-	print("PROBE terrain north: ", w * h, " points in ", Time.get_ticks_msec() - t0, " ms, at the mall ", data.get_height(Vector3(13798, 0, -17250)))
+	print("PROBE terrain north: ", w * h, " points in ", Time.get_ticks_msec() - t0, " ms, at the mall ", data.get_height(Vector3(13798, 0, -17250)),
+		" seam step mean %.2f m worst %.2f m (now stitched)" % [mean / maxf(w, 1), worst])
+
+## The ground texture for a point of the north strip: the texture of the ground the same distance south of the seam
+## (mirrored, so the pattern runs straight across the join with no line), then beach sand along the ocean, forest
+## litter under thick bush, and mud under water, from the strip's own vegetation map (tools/bake_north_veg.py).
+func _north_ground(data, p: Vector3, v: float, edge_z: float, vm: Image) -> int:
+	var id: int = data.get_control_base_id(Vector3(p.x, 0, edge_z + (edge_z - p.z) + 5.0))
+	if v < 0.25: return 7
+	if vm == null: return 4 if v < 2.2 else id
+	var px := clampi(int((p.x - 8480.0) / 10.0), 0, vm.get_width() - 1)
+	var pz := clampi(int((p.z + 19960.0) / 10.0), 0, vm.get_height() - 1)
+	var m := vm.get_pixel(px, pz)
+	if m.g > 0.35: return 4
+	if m.r > 0.5: return 1
+	if id == 4: return 8                 # mirrored beach sand from down south isn't beach up here
+	return id
 
 # ---------------------------------------------------------------- terrain
 func _build_terrain() -> void:

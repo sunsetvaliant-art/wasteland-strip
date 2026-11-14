@@ -33,6 +33,11 @@ const SMALL := ["fern", "fern2", "monstera", "elephant", "bush1", "shrub1", "shr
 var terrain: Terrain3D
 var mask: Image
 var mask2: Image
+# the strip north of the old map edge has maps of its own (tools/bake_north_veg.py), 10 m a pixel from (XN, ZN)
+const XN := 8480.0
+const ZN := -19960.0
+var mask_n: Image
+var mask2_n: Image
 var roadmask: Image       # 5 m clearance from the nearest road edge: (m + 10) x 10
 var meshes := {}
 var groups := {}        # group -> [[key, weight], ...]
@@ -71,6 +76,9 @@ func setup(t: Terrain3D) -> void:
 	terrain = t
 	mask = load("res://assets/vegmask.png")
 	mask2 = load("res://assets/vegmask2.png")
+	if ResourceLoader.exists("res://assets/vegmask_north.png"):
+		mask_n = load("res://assets/vegmask_north.png")          # imported as Image, like the others
+		mask2_n = load("res://assets/vegmask2_north.png")
 	if ResourceLoader.exists("res://assets/roadmask.png"):
 		roadmask = load("res://assets/roadmask.png")
 	for k in DEF:
@@ -159,14 +167,25 @@ func _load_scans() -> void:
 		root.free()
 
 func sample(x: float, z: float) -> Color:
+	if z < Z0 and mask_n != null:
+		return _north(mask_n, x, z)
 	var px := clampi(int((x - X0) / MPX), 0, mask.get_width() - 1)
 	var pz := clampi(int((z - Z0) / MPX), 0, mask.get_height() - 1)
 	return mask.get_pixel(px, pz)
 
 func sample2(x: float, z: float) -> Color:
+	if z < Z0 and mask2_n != null:
+		return _north(mask2_n, x, z)
 	var px := clampi(int((x - X0) / MPX), 0, mask2.get_width() - 1)
 	var pz := clampi(int((z - Z0) / MPX), 0, mask2.get_height() - 1)
 	return mask2.get_pixel(px, pz)
+
+func _north(img: Image, x: float, z: float) -> Color:
+	var px := int((x - XN) / MPX)
+	var pz := int((z - ZN) / MPX)
+	if px < 0 or px >= img.get_width() or pz < 0:
+		return Color(0, 0, 0, 0) if img == mask_n else Color(0, 0, 1, 1)       # off the strip: nothing grows (water)
+	return img.get_pixel(px, mini(pz, img.get_height() - 1))
 
 ## metres from the nearest road's outer edge (negative = on the road); 15 when there's no road about
 func road_clearance(x: float, z: float) -> float:
