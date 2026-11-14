@@ -23,7 +23,9 @@ Newest requests at the top of each section. Last updated: patch 0046, 2026-11-15
       seconds so you can swing or shoot. Dead zombie: Open inventory. Car: Drive, Repair (opens the menu),
       Inventory. Window: Barricade, Open / Close
 - [x] 0045 Zombies and scavs carry loot (rags, lighters, the odd key, bandage, drink, ammo); search the body
-- [ ] More guns (2020-era, free or licensed models, good sounds)
+- [ ] More guns (2020-era, free or licensed models, good sounds). WAITING ON USER: this workspace can't download
+      from model sites by itself. Like the Mixamo run: with your Chrome open, Claude picks the models and sounds on
+      Sketchfab / freesound, you drop the downloads into Drive WASTELAND/guns, then they get built in
 - [x] 0045 Work stations you build with M: workbench (axe recipe), campfire (light with a lighter or flint and steel
       plus 2 firewood; cook meat, boil creek water, hot stew), vegie garden (plant seeds, harvest vegies and seeds in
       20 minutes). Saved with the base
