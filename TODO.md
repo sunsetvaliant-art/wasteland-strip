@@ -2,7 +2,7 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0042, 2026-11-14.
+Newest requests at the top of each section. Last updated: patch 0043, 2026-11-14.
 
 ## Requested 2026-11-14
 ### Bugs
@@ -23,15 +23,20 @@ Newest requests at the top of each section. Last updated: patch 0042, 2026-11-14
       buildings.json, so cupboards start fresh once)
 - [x] 0041 Twin City and Bay Mall entrances: the outside cladding was drawn solid over their doorways; now cut round
       every opening and window
-- [ ] Tweed City not built to reality. Asked many times. STILL OPEN after 0042. What exists is a schematic traced
-      from the directory plan (docs/tweed_city_plan.png): same anchors and malls, with the diagonal mall as two angled
-      shop rows inside a glass court. docs/ref/twin_city_now_vs_real.png shows the in-game plan beside the Google map
-      at the same scale. Differences seen: (1) the real west wing runs off at an angle to the south-west (dining
-      precinct) and the west concourse sits right under the north-west anchor; in game it's a straight wing further
-      south. (2) the real diagonal mall is about 150 m long and reaches the cinema; in game the court is about 95 m.
-      (3) the east side steps in and out; in game it's squarer. (4) outside: car parks, roof and signage not checked.
-      WAITING on the user: which of these (or what else) is the "not per reality" he means, now that 0041 gave it
-      entrances and he can get inside
+- [x] 0043 Tweed City rebuilt from the user's 2026 directory screenshot (docs/ref/2026/tweed_city_directory_2026.png),
+      checked against his satellite screenshot (docs/ref/2026/twin_city_trace_on_satellite.png). tools/trace_mall.py
+      segments the picture by colour and writes assets/world/twin_city.json: 114 shops and anchors as polygons with
+      their walls classed (outside / mall / next shop), the outline, 16 ways in, roof beams. scripts/world/polymall.gd
+      builds the mall from that: angled and curved walls, the real diagonal mall, both west wings, Kmart / Coles /
+      Woolworths / Big W / Best&Less / JB Hi-Fi / Hoyts where they really are (fictional names: HOLLIS & CRANE,
+      FRESHWAY, GREENGATE, BIG VALUE, BETTER FOR LESS, VOLT ELECTRICAL, REGENT CINEMAS), glass roof on a frame over
+      the malls, shop names over the fronts. Fit-out reuses BuildProps in the biggest square-on rectangle inside each
+      shop. Test: tools/_polytest.gd; lab: tools/_polylab.tscn
+- [ ] Twin City follow-ups: zombies have no route graph inside it (they walk straight and slide on walls); shops
+      are fitted out only in their inner rectangle (angled corners empty); no props on the mall floor itself
+      (benches, planters, kiosks); the cinema is one hall; anchors have one way in each; no car parks, loading docks
+      or roof plant; the three pad-site buildings west of Kmart aren't built; shop fronts have no shutters or glass;
+      the same trace-and-build could redo Bay Mall (Tweed Mall) and Sunnyvale from their plans
 - [x] 0041 Clouds about 6x slower (a layer crosses the sky in about 90 s)
 ### Features
 - [x] 0041 Forge palette opens on a "Time & Weather" tab: time slider, stop the clock, weather slider (clear to

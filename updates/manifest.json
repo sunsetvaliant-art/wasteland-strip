@@ -321,6 +321,13 @@
    "date": "2026-11-14",
    "notes": "Proper melee animations. Kicks, punches and weapon swings are now real motion-captured moves instead of a bent leg and arm: a thrust kick and a flying kick (the boot lands a beat after you press it), jabs and hooks, one-handed swings for the tyre iron, crowbar, wrench and machete, two-handed swings for the bat, axe and sledge, stabs for the knife, and the weapon sits in your hand. Zombies flinch when you hit them, stumble back when you boot them, and climb back to their feet instead of tilting up like a plank. The kick is a shove now, not a cannon: only the flying kick floors them. Hillside houses sit lower on the high side so their steps reach the ground, and about 460 houses perched on cliffs are gone (cupboards start fresh once more).",
    "size": 2744276
+  },
+  {
+   "file": "patch_0.2.0_0043.pck",
+   "version": "0.2.43",
+   "date": "2026-11-14",
+   "notes": "Twin City rebuilt from the real centre's directory plan. Every shop and anchor is traced from the plan, so the walls stand on their real angles: the diagonal mall runs corner to corner, both west wings curve away to the south-west, and the big stores are where they really are (HOLLIS & CRANE up north-west, FRESHWAY north-east, GREENGATE and BIG VALUE down south, REGENT CINEMAS and VOLT ELECTRICAL on the west side). 114 shops, 16 ways in, a glass roof on a frame over the malls, shop names over the fronts. New and rough: zombies inside it only walk straight at you, and the malls themselves are bare (no benches or kiosks yet).",
+   "size": 2275100
   }
  ],
  "full": {

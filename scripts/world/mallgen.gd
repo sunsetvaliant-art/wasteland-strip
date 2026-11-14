@@ -49,6 +49,10 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 	p.mall = {"name": parts[0] if parts[0] != "" else "SUNNYVALE", "brand": brand, "units": [], "fl": 1, "y": UY}
 	if parts.size() > 1 and parts[1] == "P":
 		_pavilion(p, w, d, rng)
+	elif p.mall.name == "TWIN CITY" and not PolyMall.data("twin_city").is_empty():
+		# traced from the real directory plan (angles, curves and all): scripts/world/polymall.gd
+		PolyMall.plan(p, w, d, rng, "twin_city")
+		return
 	elif p.mall.name == "TWIN CITY":
 		_twin_city(p, w, d, rng)
 	elif p.mall.name == "BAY MALL":
@@ -323,6 +327,7 @@ static func _unit(u: Array, xa: float, xb: float, za: float, zb: float, front: b
 # ------------------------------------------------------------------------------------------------ openings
 ## Between rooms by what they are; to the outside on the street and round the car park. Called once the rooms have ids.
 static func openings(p: Dictionary, rng: RandomNumberGenerator) -> void:
+	if p.mall.has("poly"): return          # a traced mall: its walls and ways in come with the trace
 	var w: float = p.w
 	var d: float = p.d
 	for fl in p.floors.size():
@@ -953,6 +958,9 @@ static func _clad_pieces(ops: Array, a: float, b: float, y0: float, y1: float, f
 
 # ------------------------------------------------------------------------------------------------ outside and on top
 static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, lod := false) -> void:
+	if p.mall.has("poly"):
+		PolyMall.build(p, g, lod)
+		return
 	var MY: float = p.mall.y
 	var MF: Array = p.floors[int(p.mall.fl)].rooms
 	var w: float = p.w

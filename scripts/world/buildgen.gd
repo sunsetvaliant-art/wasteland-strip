@@ -689,9 +689,12 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		if fi > int(p.get("cut_floor", 99)): continue
 		top_h = maxf(top_h, float(f.y) + float(f.h))
 		for r in f.rooms:
+			if r.get("poly", false): continue          # a traced mall's rooms are only for the fit-out (PolyMall)
 			_room_shell(p, g, r, float(f.y), doors)
-	_outer_skin(p, g, doors)
-	_base(p, g, ground, lowest)
+	var traced: bool = p.kind == "mall" and p.mall.has("poly")
+	if not traced:
+		_outer_skin(p, g, doors)
+		_base(p, g, ground, lowest)
 	if p.verandah != null:
 		_verandah(p, g, ground)
 	if p.kind == "shop":
@@ -785,7 +788,7 @@ static func build_lod(p: Dictionary, g: Geo, ground: Callable) -> void:
 		# not a box: one block per room
 		for f in p.floors:
 			for r in f.rooms:
-				if r.type != "void":
+				if r.type != "void" and not r.get("poly", false):
 					g.aabb(p.clad, Vector3(float(r.x0), float(f.y) + bot, float(r.z0)), Vector3(float(r.x1), float(f.y) + float(f.h), float(r.z1)), false)
 	else:
 		g.aabb(p.clad, Vector3(-w / 2 - T_OUT, bot, -d / 2 - T_OUT), Vector3(w / 2 + T_OUT, top_y, d / 2 + T_OUT), false)

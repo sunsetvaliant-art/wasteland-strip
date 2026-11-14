@@ -78,6 +78,15 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   through the Drive connector (base64 into the conversation).
 - Mixamo: driven through the user's Chrome (he must be signed in); downloads land in his Downloads folder, he drags
   them to Drive.
+- Traced malls (0043): `python3 tools/trace_mall.py <directory screenshot> assets/world/<name>.json [debug.png]`
+  turns a centre's coloured directory plan into polygons; `PolyMall` (scripts/world/polymall.gd) builds from it.
+  The colour thresholds and the crop at the top of the script are for the Tweed City screenshot; another centre
+  needs its own. `tools/_polylab.tscn` builds one mall on flat ground and photographs it in seconds:
+  `MALL="TWIN CITY" W=378.3 D=244.7 SEED=20261112 OUT=/tmp/shots/pl_ SHOTS="top:0,470,0.1:0,0,0:50:top" xvfb-run -a
+  -s "-screen 0 1200x900x24" godot --path . --rendering-driver opengl3 --rendering-method gl_compatibility
+  res://tools/_polylab.tscn` (a scene run this way has the autoloads, unlike `-s` scripts).
+- tools/run_shots.sh adds a Shot autoload to project.godot while it runs: never export or run another Godot job
+  against the project until it has finished.
 - Screenshots render at about 1 fps here (software GL under xvfb): a two-shot run takes 5 to 10 minutes.
 
 ## 4. Test and release loop (all scripts exist in `tools/`)
