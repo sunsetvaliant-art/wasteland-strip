@@ -153,6 +153,11 @@ func _setup_scav() -> void:
 
 # ---------------------------------------------------------------- brain
 func _physics_process(dt: float) -> void:
+	var _pt := Prof.t()
+	_physics_process_inner(dt)
+	Prof.add("npcs", _pt)
+
+func _physics_process_inner(dt: float) -> void:
 	if dead:
 		return
 	if down_t > 0.0:

@@ -11,13 +11,15 @@ const SIGN := {"pub": ["HOTEL", "THE ROYAL HOTEL", "COMMERCIAL HOTEL", "THE RIVE
 	"police": ["POLICE"], "fire": ["FIRE STATION"], "post": ["POST OFFICE"], "motel": ["MOTEL", "MOTOR INN", "TRAVELLERS REST MOTEL"],
 	"club": ["RSL CLUB", "BOWLS CLUB", "COMMUNITY HALL", "SERVICES CLUB", "SCHOOL OF ARTS"]}
 
-static func plan_into(p: Dictionary, kind: String, w: float, d: float, rng: RandomNumberGenerator) -> void:
+static func plan_into(p: Dictionary, kind: String, w: float, d: float, rng: RandomNumberGenerator, sub := "") -> void:
 	var tint: String = ["cream", "white", "green", "blue", "yellow", "white"][rng.randi() % 6]
 	p.raised = 0.3
 	p.h = 3.0
 	p.clad = "brick"
 	p.roof = {"type": "hip", "pitch": deg_to_rad(rng.randf_range(20, 26)), "mat": "tin"}
 	p["sign"] = SIGN[kind][rng.randi() % SIGN[kind].size()]
+	if sub != "" and not sub.contains("/"):
+		p["sign"] = sub          # its real name (tools/place_pubs.py)
 	var rooms := []
 	match kind:
 		"pub":

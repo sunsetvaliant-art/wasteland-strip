@@ -167,7 +167,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			# 1 = primary, 2 = secondary
 			var want = inv.equip.get("primary" if i == 0 else "secondary")
 			for j in guns.size():
-				if guns[j].get_meta("stack", null) == want: _select(j)
+				if guns[j].has_meta("stack") and guns[j].get_meta("stack") == want: _select(j)
 
 func _apply_camera() -> void:
 	var c := active_camera()

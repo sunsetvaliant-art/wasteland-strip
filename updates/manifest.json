@@ -377,6 +377,13 @@
    "date": "2026-11-15",
    "notes": "Buildings are back on their real ground. Out towards Tweed Heads, Kingscliff and the coast, houses, shops, servos, wreckers and caravan parks were sitting up to 37 m off where they belong, many on the roads or in the water; they now line up with the roads and the coastline (Murwillumbah barely moves). Tweed City sits on its own flat ground. High shop doors on sloping streets get a landing with the stairs running down along the wall instead of out into the road. Caravan parks: chain-wire fence, and no vans through it. Cupboards and barricades start fresh once (your bases are kept).",
    "size": 2369976
+  },
+  {
+   "file": "patch_0.2.0_0051.pck",
+   "version": "0.2.51",
+   "date": "2026-11-15",
+   "notes": "The Riverview is a real pub now, and so is every hotel and tavern in the valley, by name (Imperial, Courthouse, Kingscliff Beach Hotel, Cabarita, Chinderah, Pottsville, South Tweed, Ivory Tavern...), plus 14 motels. Terrain collision is back after DRIVE IT. Parked cars keep their wheels still. The road flicker every second or two at speed is gone. High doors on slopes get a landing and turned stairs on verandahs too. F9 reports now record slow frames and what they were spent on: hit F9 when it stutters.",
+   "size": 2685184
   }
  ],
  "full": {

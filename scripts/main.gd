@@ -551,13 +551,24 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("debug"):
 		show_debug = not show_debug
 
+var _coll_tgt: Node3D = null
 func _process(_dt: float) -> void:
+	Prof.frame()
+	var _pt := Prof.t()
 	_npc_director(_dt)
+	Prof.add("npc director", _pt)
 	var cam := get_viewport().get_camera_3d()
 	if cam:
+		_pt = Prof.t()
 		veg.update(cam.global_position)
-		var tgt: Node3D = forge.cam if forge.active else (player.vehicle if player.vehicle else player)
+		Prof.add("plants", _pt)
+		var tgt: Node3D = forge.cam if forge.active else (player.vehicle if is_instance_valid(player.vehicle) else player)
 		collision_centre = tgt.global_position
+		# the terrain only has collision round its target: never leave that on a car that's been swapped or freed
+		# (0.2.51: after DRIVE IT nothing had ground under it)
+		if tgt != _coll_tgt:
+			_coll_tgt = tgt
+			terrain.set_collision_target(tgt)
 	var s := "WASTELAND  v%s  ·  %s" % [Boot.version, "creative" if Settings.creative() else "survival"]
 	if sky:
 		s += "  ·  %s %s" % [sky.clock(), sky.weather if sky.weather != "clear" else ""]
@@ -565,7 +576,7 @@ func _process(_dt: float) -> void:
 		var tn: String = buildings.town_at(player.global_position.x, player.global_position.z, 1600.0)
 		if tn != "": s += "  ·  " + tn
 	if Boot.patches_loaded.size():
-		s += "  ·  patches: " + ", ".join(Boot.patches_loaded)
+		s += "  ·  %d patches" % Boot.patches_loaded.size()
 	if player.vehicle:
 		s += "\n%s  %d km/h" % [player.vehicle.gear_name(), roundi(player.vehicle.speedo_kmh())]
 	if show_debug or Settings.get_v("show_fps"):

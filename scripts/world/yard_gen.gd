@@ -36,6 +36,11 @@ func setup(m) -> void:
 	print("YARDS %d wreckers, %d caravan parks" % [d.get("wreckers", []).size(), d.get("caravan", []).size()])
 
 func _process(dt: float) -> void:
+	var _pt := Prof.t()
+	_process_inner(dt)
+	Prof.add("yards", _pt)
+
+func _process_inner(dt: float) -> void:
 	_t -= dt
 	if _t > 0.0 or main == null or main.player == null: return
 	_t = 0.7

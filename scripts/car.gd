@@ -304,6 +304,11 @@ func _shift(d: int) -> void:
 # ---------------------------------------------------------------- simulation
 var _why_t := 0.0
 func _physics_process(dt: float) -> void:
+	var _pt := Prof.t()
+	_physics_process_inner(dt)
+	Prof.add("car physics", _pt)
+
+func _physics_process_inner(dt: float) -> void:
 	if running and driver: CarCare.burn(self, dt, throttle)
 	if home_pos == Vector3.ZERO:
 		home_pos = global_position
@@ -655,6 +660,7 @@ func _driveline(dt: float) -> void:
 			var tb: float = float(w.a.brake) * brake_in
 			if handbrake and not w.a.steer: tb = max(tb, 3500.0)
 			if gear == 0 and box.auto and w.a.drive: tb = max(tb, 6000.0)        # park pawl
+			if driver == null: tb = max(tb, 1500.0)        # nobody in it: left in gear with the handbrake on (no wheel turning by itself)
 			var fx := 0.0
 			var fy := 0.0
 			if w.contact and w.N > 0.0:
@@ -681,7 +687,7 @@ func _driveline(dt: float) -> void:
 			if abs(om) <= db: om = 0.0
 			else: om -= sign(om) * db
 			if not w.contact:
-				om *= 0.999
+				om *= 0.995
 			w.omega = om
 			w.fx += fx / SUBSTEPS
 			w.fy += fy / SUBSTEPS

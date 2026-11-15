@@ -34,6 +34,11 @@ func setup(m) -> void:
 	print("LANDMARKS ", spots.size())
 
 func _process(dt: float) -> void:
+	var _pt := Prof.t()
+	_process_inner(dt)
+	Prof.add("landmarks", _pt)
+
+func _process_inner(dt: float) -> void:
 	_t -= dt
 	if _t > 0.0 or main == null or main.player == null:
 		return

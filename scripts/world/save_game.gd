@@ -48,7 +48,7 @@ func world_state() -> Dictionary:
 		if c is Car and c.has_meta("player_car") and c != main.garage.preview:
 			var car: Car = c
 			cars.append({"name": str(car.name), "home": car.home_pos if "home_pos" in car else car.global_position,
-				"xf": car.global_transform, "design": car.design, "inv": car.get_meta("inv", null), "care": car.get_meta("care", null)})
+				"xf": car.global_transform, "design": car.design, "inv": car.get_meta("inv") if car.has_meta("inv") else null, "care": car.get_meta("care") if car.has_meta("care") else null})
 	d["cars"] = cars
 	if main.get("base"): d["base"] = main.base.save_state()
 	if main.get("veg"): d["felled"] = main.veg.save_felled()

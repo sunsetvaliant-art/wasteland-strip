@@ -39,6 +39,11 @@ func setup(m) -> void:
 	add_child(root)
 
 func _process(_dt: float) -> void:
+	var _pt := Prof.t()
+	_process_inner(_dt)
+	Prof.add("look-at menu", _pt)
+
+func _process_inner(_dt: float) -> void:
 	var p = main.player if main else null
 	var t: Node = null
 	var o: Array = []

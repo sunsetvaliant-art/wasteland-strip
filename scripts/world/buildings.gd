@@ -564,6 +564,11 @@ func _focus() -> Vector3:
 
 var _perf_t := 0.0
 func _process(dt: float) -> void:
+	var _pt := Prof.t()
+	_process_inner(dt)
+	Prof.add("buildings", _pt)
+
+func _process_inner(dt: float) -> void:
 	if OS.get_environment("PERF") != "":
 		_perf_t += dt
 		if _perf_t > 10.0:

@@ -93,6 +93,11 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   import_footprints.py and place_trades.py now convert with geo.ll, but both still measure streets with rg_graph
   (old frame): switch those to lines.bin before re-running them. make_servos.py's numbers are old-frame (run
   realign's fix on its output). Never run realign.py on output that already used geo.ll.
+- Pubs and motels (0051): tools/place_pubs.py (Overture places, geo.ll) after realign/clear_roads; civic lots take
+  their real name as sub (CivicGen uses it for the sign), main-street pubs are shop "pub/2/3.0/NAME".
+- Stutter hunting (0051): scripts/prof.gd. Wrap a per-frame job with `var t := Prof.t()` ... `Prof.add("job", t)`
+  (or the _process -> _process_inner wrapper used in roads/buildings/servos/yards/camps/sky/cars/npcs); F9 reports
+  carry "spikes" (frames over 33 ms and their top jobs) and "slowest" (worst time per job).
 - Footprints (0048): `tools/import_footprints.py` turns Overture buildings (docs/ref/2026/overture_*.geojsonl.gz,
   downloaded in the workspace with `pip install overturemaps`; S3 is reachable) into lots; lots_ver starts "fp" and
   Buildings._real skips the old road / cliff passes. Run order after it: `tools/place_trades.py` (0049: hardware,

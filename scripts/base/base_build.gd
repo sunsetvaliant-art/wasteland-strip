@@ -201,7 +201,7 @@ func save_state() -> Array:
 	var out := []
 	for b in get_tree().get_nodes_in_group("base_pieces"):
 		if b is BasePiece and not b.is_queued_for_deletion():
-			out.append({"k": b.kind, "t": b.tier, "p": b.global_position, "y": b.rotation.y, "hp": b.hp, "inv": b.get_meta("inv", null), "st": b.get_meta("st", null)})
+			out.append({"k": b.kind, "t": b.tier, "p": b.global_position, "y": b.rotation.y, "hp": b.hp, "inv": b.get_meta("inv") if b.has_meta("inv") else null, "st": b.get_meta("st") if b.has_meta("st") else null})
 	return out
 
 func load_state(arr: Array) -> void:

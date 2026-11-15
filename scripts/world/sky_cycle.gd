@@ -161,6 +161,11 @@ func _next_weather() -> void:
 	set_weather(w, _rng.randf_range(360, 1080))
 
 func _process(dt: float) -> void:
+	var _pt := Prof.t()
+	_process_inner(dt)
+	Prof.add("sky", _pt)
+
+func _process_inner(dt: float) -> void:
 	if main == null or main.sun == null:
 		return
 	var runs: bool = main.net == null or main.net.runs_world()

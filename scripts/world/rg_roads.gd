@@ -39,6 +39,11 @@ func setup(m) -> void:
 	print("RGROADS tiles ", tiles.size(), " roundabouts ", idx.get("islands", []).size())
 
 func _physics_process(dt: float) -> void:
+	var _pt := Prof.t()
+	_physics_process_inner(dt)
+	Prof.add("road graph", _pt)
+
+func _physics_process_inner(dt: float) -> void:
 	_t -= dt
 	if _t > 0.0 or main == null or main.roads == null:
 		return

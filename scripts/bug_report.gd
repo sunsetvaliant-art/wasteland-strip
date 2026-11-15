@@ -104,6 +104,8 @@ func _gather() -> Dictionary:
 	d.physics_ms = snappedf(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS) * 1000.0, 0.01)
 	d.memory_mb = int(Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0)
 	d.draw_calls = Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)
+	d.spikes = Prof.spikes.duplicate(true)          # 0.2.51: slow frames and what they were spent on
+	d.slowest = Prof.worst.duplicate()
 	d.objects = Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	d.window = [get_viewport().size.x, get_viewport().size.y]
 	d.settings = Settings.v.duplicate()

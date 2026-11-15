@@ -308,7 +308,7 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 		"tower":
 			TowerGen.plan_into(p, w, d, rng, sub)
 		"pub", "school", "church", "hospital", "police", "fire", "post", "motel", "club":
-			CivicGen.plan_into(p, kind, w, d, rng)
+			CivicGen.plan_into(p, kind, w, d, rng, sub)
 		"two_storey":
 			p.raised = 0.3
 			p.h = 2.6
@@ -1300,7 +1300,7 @@ static func _verandah(p: Dictionary, g: Geo, ground: Callable) -> void:
 	var srng := RandomNumberGenerator.new()
 	srng.seed = int(p.seed) + 5
 	var drop: float = -float(ground.call(stair_x, z1 + 2.0))
-	var turn: bool = p.kind == "qlder" and (srng.randf() < 0.35 or drop > 3.2)
+	var turn: bool = (p.kind == "qlder" and (srng.randf() < 0.35 or drop > 3.2)) or (p.kind != "qlder" and drop > 1.1)
 	if turn:
 		var lz0 := z1
 		var lz1 := z1 + 1.3

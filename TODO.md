@@ -2,7 +2,45 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0050, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0051, 2026-11-15.
+
+## Back to the grassroots: rigs and raiders (asked 2026-11-15 evening)
+User: "invest in the grassroots of what this game was ... making the sick rigs and how modular they were and the random
+enemy patrol encounters. The ranged and melee is now up to scratch for some enemies other than the filler zombies."
+Answers: enemies = raider gangs (local survivors in built utes / 4x4s, scav look), not War Boys. First rig parts:
+engine bay parts, bolt-on accessories, mounted guns + crew. (Armour panels not picked for the first round.)
+Patrol rate: not answered yet (default taken: a patrol every 10-15 min on main roads, more at night, plus roadblocks).
+Reference: the three.js build (artifact "Wasteland Strip", HANDOVER.md there: u-wargen, r-attach, v-engbay, z2-brain,
+owSpawnPatrol) still has the code; its strip game is still in it behind ?strip.
+- [ ] Raider gangs in rigs: generated raider machines (cab + chassis + bolt-ons + a gun mount), a driver and 1-3
+      gunners/passengers; they drive the real roads (road graph), spot you, chase, ram, shoot from the vehicle, bail
+      out and fight on foot with guns and melee when stopped; loot the wreck
+- [ ] Roadblocks on the main roads (wrecks across the road, raiders, a lookout)
+- [ ] Mounted guns + crew: roof / tray mounts on any rig, a seat to man it, swap seats, NPC gunners
+- [ ] Engine bay: blower, carbies, filters, injectors, alternator as fittable parts that change power and starting
+- [ ] Bolt-ons: bull bars, side steps, drop tanks, roof racks, spare wheel carriers, roof chops
+- [ ] The garage in survival (a garage work station, parts found and traded), not just creative
+
+## Bug reports 2026-11-15 (evening, 14 reports)
+- [x] 0051 The home pub (Riverview Hotel) was a plain generated shop; the pub generator was only used for two OSM pubs.
+      Every real hotel and tavern (Overture places) is now a pub with its name: CivicGen's pub (bar under a verandah,
+      lounge, kitchen, cool room) or, on a main street, the two-storey shop pub. 14 pubs + 3 main-street pubs, 14
+      motels by name (tools/place_pubs.py)
+- [x] 0051 No terrain collision after DRIVE IT: the terrain's collision followed the car the garage had just
+      replaced; it now always follows what you're in, and you're taken out of the old car first
+- [x] 0051 A parked car's wheel slowly turning by itself: a car with nobody in it now has its handbrake on
+- [x] 0051 Road flickers every second or two at speed: the painted-road picture was redrawn in place and showed a
+      frame in the wrong spot each time it moved on; now drawn behind and swapped, and redrawn half as often
+- [x] 0051 Error spam every frame in the log (a car's "care"/"inv" looked up when it had none)
+- [x] 0051 Stutter at speed: not found yet; every F9 report now lists the slow frames (over 33 ms) and which jobs
+      (buildings, plants, roads, NPCs, cars...) they were spent on. F9 at a stutter please
+- [ ] Bowsers placed 1.5 m from a shop's front door; servo forecourt ground is grass (wants to talk about it)
+- [ ] Tweed City: a mesh over the travelator entry seen from underneath; travelators not flush with the top; a wall
+      in the middle of the cinema; the cinema lobby should look like one (roof, walls)
+- [ ] Sexton Hill: the highway should run through the cutting under the connecting bridge (the mound has the road
+      painted over it); terrain coming onto the highway further south
+- [ ] Water over Tweed Valley Way
+- [ ] Cane billboards go shiny; cane beside the road too distracting
 
 ## Bug reports 2026-11-15 (afternoon, 20 reports) and "paint the satellite onto the lidar"
 - [x] 0050 Houses, sheds and shops on the roads and in the water round Tweed Heads, Kingscliff and the coast: the cause

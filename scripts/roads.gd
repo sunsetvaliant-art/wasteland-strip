@@ -225,7 +225,11 @@ func _flush_mesh(t: Dictionary) -> ArrayMesh:
 var overlay_world := World3D.new()
 var overlay_mat: ShaderMaterial
 var _cascades: Array = []         # [{vp, cam, size, px, centre: Vector2, dirty, step}]
-const CASCADES := [[256.0, 4096], [1024.0, 2048], [8192.0, 2048]]
+const CASCADES := [[256.0, 3072], [1024.0, 2048], [8192.0, 2048]]
+## 0.2.51: two pictures per cascade. The new one is drawn while the terrain still shows the old one, then both the
+## picture and where it lies swap in the same frame (one picture redrawn in place showed the roads a frame in the
+## wrong place every time it moved on: the flicker every second or two at speed). It moves on every quarter of its
+## size (was an eighth) and leads the car a little, so it's redrawn half as often.
 
 func _setup_overlay() -> void:
 	if OS.get_environment("ROAD_OVERLAY_OFF") != "":
@@ -243,23 +247,26 @@ func _setup_overlay() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
 	for i in CASCADES.size():
-		var vp := SubViewport.new()
-		vp.size = Vector2i(CASCADES[i][1], CASCADES[i][1])
-		vp.world_3d = overlay_world
-		vp.transparent_bg = true
-		vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-		vp.msaa_3d = Viewport.MSAA_DISABLED
-		vp.positional_shadow_atlas_size = 0
-		add_child(vp)
-		var cam := Camera3D.new()
-		cam.projection = Camera3D.PROJECTION_ORTHOGONAL
-		cam.size = CASCADES[i][0]
-		cam.near = 1.0
-		cam.far = 4000.0
-		cam.environment = env
-		vp.add_child(cam)
-		cam.current = true
-		_cascades.append({"vp": vp, "cam": cam, "size": float(CASCADES[i][0]), "centre": Vector2(INF, INF), "dirty": true, "step": float(CASCADES[i][0]) / 8.0})
+		var pair := []
+		for k in 2:
+			var vp := SubViewport.new()
+			vp.size = Vector2i(CASCADES[i][1], CASCADES[i][1])
+			vp.world_3d = overlay_world
+			vp.transparent_bg = true
+			vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+			vp.msaa_3d = Viewport.MSAA_DISABLED
+			vp.positional_shadow_atlas_size = 0
+			add_child(vp)
+			var cam := Camera3D.new()
+			cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+			cam.size = CASCADES[i][0]
+			cam.near = 1.0
+			cam.far = 4000.0
+			cam.environment = env
+			vp.add_child(cam)
+			cam.current = true
+			pair.append({"vp": vp, "cam": cam})
+		_cascades.append({"vp": pair[0].vp, "pair": pair, "front": 1, "busy": false, "size": float(CASCADES[i][0]), "centre": Vector2(INF, INF), "dirty": true, "step": float(CASCADES[i][0]) / 4.0})
 	# the terrain's own shader with the cascades blended in at the end
 	var tm: Terrain3DMaterial = main.terrain.material
 	tm.shader_override_enabled = true
@@ -312,8 +319,6 @@ vec4 road_paint(vec2 p) {
 		var nsh := Shader.new()
 		nsh.code = tc
 		tm.shader_override = nsh
-	for i in _cascades.size():
-		tm.set_shader_param("road_c%d" % i, (_cascades[i].vp as SubViewport).get_texture())
 	print("ROADS painted into the terrain")
 
 var _ov_t := 0.0
@@ -325,22 +330,34 @@ func _update_overlay(me: Vector3) -> void:
 		return
 	_ov_t = 0.5
 	var tm: Terrain3DMaterial = main.terrain.material
+	# lead the car by a second or so: the picture is centred where you're going, not where you were
+	var v := Vector3.ZERO
+	if main.player and is_instance_valid(main.player.vehicle): v = (main.player.vehicle as RigidBody3D).linear_velocity
+	var at := me + Vector3(v.x, 0, v.z) * 1.2
 	for i in _cascades.size():
 		var c: Dictionary = _cascades[i]
+		if c.busy: continue
 		var step: float = c.step
-		var want := Vector2(roundf(me.x / step) * step, roundf(me.z / step) * step)
+		var want := Vector2(roundf(at.x / step) * step, roundf(at.z / step) * step)
 		if want == c.centre and not c.dirty:
 			continue
 		c.centre = want
 		c.dirty = false
-		var cam: Camera3D = c.cam
-		cam.look_at_from_position(Vector3(want.x, 2000.0, want.y), Vector3(want.x, 0.0, want.y), Vector3(0, 0, -1))
-		(c.vp as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
-		_set_rect.call_deferred(tm, i, want, float(c.size))
+		c.busy = true
+		var back: Dictionary = c.pair[1 - int(c.front)]
+		(back.cam as Camera3D).look_at_from_position(Vector3(want.x, 2000.0, want.y), Vector3(want.x, 0.0, want.y), Vector3(0, 0, -1))
+		(back.vp as SubViewport).render_target_update_mode = SubViewport.UPDATE_ONCE
+		_swap.call_deferred(tm, i, want)
 
-func _set_rect(tm: Terrain3DMaterial, i: int, centre: Vector2, size: float) -> void:
+## once the back picture has been drawn, show it and say where it lies, together
+func _swap(tm: Terrain3DMaterial, i: int, centre: Vector2) -> void:
 	await RenderingServer.frame_post_draw
+	var c: Dictionary = _cascades[i]
+	c.front = 1 - int(c.front)
+	var size: float = c.size
+	tm.set_shader_param("road_c%d" % i, (c.pair[int(c.front)].vp as SubViewport).get_texture())
 	tm.set_shader_param("road_r%d" % i, Vector4(centre.x - size * 0.5, centre.y - size * 0.5, size, 0.0))
+	c.busy = false
 
 func _index_segments(lines: Dictionary) -> void:
 	for key in lines:
@@ -389,6 +406,11 @@ func on_road(x: float, z: float) -> bool:
 var _ft := 0.0
 
 func _process(dt: float) -> void:
+	var _pt := Prof.t()
+	_process_inner(dt)
+	Prof.add("roads paint", _pt)
+
+func _process_inner(dt: float) -> void:
 	if main == null or main.terrain == null or main.terrain.data == null:
 		return
 	_ft -= dt
@@ -422,6 +444,11 @@ func _process(dt: float) -> void:
 	_update_overlay(me)
 
 func _physics_process(dt: float) -> void:
+	var _pt := Prof.t()
+	_physics_process_inner(dt)
+	Prof.add("road collision", _pt)
+
+func _physics_process_inner(dt: float) -> void:
 	_t -= dt
 	if _t > 0.0:
 		return

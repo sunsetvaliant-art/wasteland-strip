@@ -91,6 +91,7 @@ func drive() -> void:
 	target = null
 	var yaw := 0.0
 	if old and is_instance_valid(old):
+		if main.player.vehicle == old: main.player._get_out()
 		# it replaces the car you worked on, where it stood, with what was in the boot
 		yaw = old.rotation.y
 		if old.has_meta("inv") and c.has_meta("container"): c.set_meta("inv", old.get_meta("inv"))
