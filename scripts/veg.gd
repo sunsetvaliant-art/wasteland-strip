@@ -331,6 +331,8 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 				continue
 			if Buildings.blocked(x, z, {"tree": 3.0, "small": 0.8, "grass": 0.0, "scan": 0.0, "cane": 1.5}[layer]):
 				continue
+			if GroundKey.hard(x, z):          # paved or gravelled in the ground key: nothing grows there
+				continue
 			var h := _height(x, z)
 			if is_nan(h):
 				continue

@@ -11,8 +11,14 @@ Newest requests at the top of each section. Last updated: patch 0051, 2026-11-15
       sign on the awning, tables out the front)
 - [x] 0052 Riverview Hotel (on posts with a deck all round, solar panels, BREW WITH A VIEW, Bottlemart drive-through)
 - [ ] Riverview: second storey over part of it, ramps and the stair up the side as in the picture
-- [ ] Satellite imagery painted onto the terrain: NSW Spatial Services imagery reachable from the workspace
-      (tested, ~0.5 m/px); plan sent to the user, waiting on the go-ahead
+- [x] 0053 Ground key PILOT (1 km round Murwillumbah's main street): NSW imagery (~13 cm) read into a key, our own
+      PBR textures painted where it says (road asphalt, car park asphalt, concrete, pavers, lawn, dirt, gravel; trees
+      and water left to the terrain), painted lines traced from the photo and drawn sharp (white and yellow), kerb and
+      gutter as real geometry along the streets, islands raised with grass/concrete/pavers, no grass on the paved
+      ground (tools/sat_fetch.py, tools/sat_key.py, scripts/world/ground_key.gd)
+- [ ] Ground key: the user's verdict on the pilot, then the whole map (streamed tiles), the Queensland side
+- [ ] Ground key: speed humps and raised crossings as bumps (OSM traffic calming), footpaths at kerb height,
+      kerb ramps at crossings
 
 ## Back to the grassroots: rigs and raiders (asked 2026-11-15 evening)
 User: "invest in the grassroots of what this game was ... making the sick rigs and how modular they were and the random

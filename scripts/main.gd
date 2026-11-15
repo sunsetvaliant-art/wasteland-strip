@@ -36,6 +36,7 @@ var rg_roads: RgRoads
 var interact_menu: InteractMenu
 var servos: ServoGen
 var yards: YardGen
+var ground_key: GroundKey
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
@@ -163,6 +164,10 @@ func _ready() -> void:
 	yards.name = "Yards"
 	add_child(yards)
 	yards.setup(self)
+	ground_key = GroundKey.new()
+	ground_key.name = "GroundKey"
+	add_child(ground_key)
+	ground_key.setup(self)
 	zombies = ZombieDirector.new()
 	zombies.name = "ZombieDirector"
 	add_child(zombies)

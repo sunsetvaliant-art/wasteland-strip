@@ -1,0 +1,22 @@
+{
+ "x0": -1160.0,
+ "z0": -615.0,
+ "x1": -160.0,
+ "z1": 385.0,
+ "class_res": 0.25,
+ "class_n": 4000,
+ "marks_res": 0.125,
+ "marks_n": 8000,
+ "classes": {
+  "0": "terrain",
+  "1": "road",
+  "2": "worn asphalt",
+  "3": "concrete",
+  "4": "pavers",
+  "5": "lawn",
+  "6": "dirt",
+  "7": "gravel",
+  "9": "yellow paint"
+ },
+ "source": "NSW Spatial Services NSW_Imagery (CC BY 4.0)"
+}

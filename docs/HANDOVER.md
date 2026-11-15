@@ -93,6 +93,13 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   import_footprints.py and place_trades.py now convert with geo.ll, but both still measure streets with rg_graph
   (old frame): switch those to lines.bin before re-running them. make_servos.py's numbers are old-frame (run
   realign's fix on its output). Never run realign.py on output that already used geo.ll.
+- Ground key (0053 pilot): tools/sat_fetch.py X0 Z0 X1 Z1 NAME pulls NSW_Imagery zoom-20 tiles straight from
+  maps.six.nsw.gov.au (reachable from the workspace; CC BY 4.0, credit Spatial Services) and reprojects to the game
+  frame at 0.125 m (docs/ref/sat, gdignored). tools/sat_key.py NAME: random forest taught by OSM/Overture (seal from
+  lines.bin, parking, parks, footways, water; overture extracts in docs/ref/sat/osm) -> assets/world/ground_key/
+  NAME_class.bin.gz (R8 0.25 m), NAME_marks.bin.gz (R8 SDF 0.125 m), NAME_kerbs.json. GroundKey injects into the
+  terrain shader before Roads' road_paint (which it switches off inside the key) and builds kerb tiles near you.
+  Export include_filter carries assets/world/ground_key/*.gz.
 - Landmarks (0052): scripts/world/herogen.gd builds the user's reference buildings with full interiors (Imperial,
   Austral as ShopGen heroes: sub part 5; Riverview as a CivicGen pub: "NAME|riverview"); tools/place_heroes.py
   puts them on their lots. Buildings._level_malls also drops shop/pub floors to the footpath on a slope and cuts the

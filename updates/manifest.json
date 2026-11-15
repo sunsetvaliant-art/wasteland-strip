@@ -391,6 +391,13 @@
    "date": "2026-11-15",
    "notes": "Three landmarks built from your pictures, with their insides: the Imperial Hotel (pink, Dutch gables, arched verandah upstairs, the lettered awning; gelato shop, restaurant, bar, bottle shop, kitchen, hotel rooms upstairs), the Austral Cafe & Bakery (art deco front, window row, arched sign, tables out the front) and the Riverview (up on posts with a deck all round, solar panels, BREW WITH A VIEW, the Bottlemart drive-through). Shops and pubs on sloping streets now sit at footpath level instead of up on a plinth.",
    "size": 2505360
+  },
+  {
+   "file": "patch_0.2.0_0053.pck",
+   "version": "0.2.53",
+   "date": "2026-11-16",
+   "notes": "Ground key pilot: one square kilometre round Murwillumbah's main street is now painted from the real thing. The NSW government imagery was read into a map of what the ground is, and our own textures go down where it says: road asphalt, car park asphalt, concrete footpaths, pavers, lawn, dirt and gravel. Painted lines traced from the photo are drawn sharp (lanes, parking bays, arrows, crossings, yellow lines), kerb and gutter is real 3D along the streets, islands are raised, and grass stays off the paved ground. Walk or drive the CBD and tell me what you think before it goes map-wide. Imagery (c) Spatial Services NSW, CC BY 4.0.",
+   "size": 16342500
   }
  ],
  "full": {
