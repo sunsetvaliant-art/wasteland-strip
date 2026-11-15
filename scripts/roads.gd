@@ -363,13 +363,15 @@ func _index_segments(lines: Dictionary) -> void:
 						_seg[k].append_array(PackedFloat32Array([ax, az, bx, bz, hs]))
 
 ## Metres from (x, z) to the nearest road's seal edge (negative on the road); 30 if none near
-func edge_dist(x: float, z: float) -> float:
+## min_hs: ignore roads narrower than this half width (driveways, farm tracks), for placing real buildings
+func edge_dist(x: float, z: float, min_hs := 0.0) -> float:
 	var best := 30.0
 	var c := Vector2i(floori(x / 32.0), floori(z / 32.0))
 	for gx in range(c.x - 1, c.x + 2):
 		for gz in range(c.y - 1, c.y + 2):
 			var a: PackedFloat32Array = _seg.get(Vector2i(gx, gz), PackedFloat32Array())
 			for i in range(0, a.size(), 5):
+				if a[i + 4] < min_hs: continue
 				var dx := a[i + 2] - a[i]
 				var dz := a[i + 3] - a[i + 1]
 				var l2 := dx * dx + dz * dz + 0.000001

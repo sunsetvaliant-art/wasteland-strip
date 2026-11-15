@@ -2,7 +2,21 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0047, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0048, 2026-11-15.
+
+## Neighbourhoods from real footprints (asked 2026-11-15: "make neighbourhoods and buildings look believable")
+- [x] 0048 Every building is now a real roof: 40,501 footprints from Overture Maps (OpenStreetMap merged with Microsoft's
+      satellite-traced roofs, imagery about 2018-2023, so it's the valley as you left it in 2021), each at its real
+      place and size, turned to face its street, storeys from the satellite height (tools/import_footprints.py).
+      Named places (shops, schools, pubs, clubs, churches...) keep their identity on their real footprint; malls,
+      servos and the Pearl Street block stay as built. Unnamed roofs are worked out from size, height and the
+      neighbourhood (house / two-storey / units / garden shed / farm shed / warehouse / shop); the shacks, 70s units
+      and estates are styled on top again. 40,730 buildings (was 34,003 mostly generated)
+- [ ] Roofs the satellite traced as one shape where two buildings touch (a house and garage, a row of shops):
+      split the obviously-too-long ones
+- [ ] Yard dressing: driveways, letterboxes, wheelie bins, a car in the drive, Hills hoists, water tanks on rural
+      blocks
+- [ ] Malls: user will send annotated JPGs for the other centres (Tweed Mall etc.), like Tweed City
 
 ## Bug reports 2026-11-15 (morning, 9 reports)
 - [x] 0047 Tweed City: couldn't drive in under it. The terrain hole for the car ramp ran 3 m out past the door, so
@@ -44,7 +58,7 @@ Newest requests at the top of each section. Last updated: patch 0047, 2026-11-15
       floors it at once for a burnout. User to try it and say if it wants more or less
 - [x] 0045 Too many sheds where houses should be: 311 sheds in town streets turned into houses like their neighbours
       (tools/fix_sheds.py). Rural sheds and garden sheds stay
-- [ ] Sheds: check 107 Commercial Road, Murwillumbah in game; user will F9 any more
+- [ ] Sheds: check 107 Commercial Road, Murwillumbah in game (should be a real house now, from its footprint); user will F9 any more
 ### Features
 - [x] 0045 Interaction menu like Vein (scripts/inv/interact_menu.gd), also on work stations and the ground: aim the crosshair at something and a small Windows-style right-click menu shows;
       mouse wheel picks, left click does the highlighted (default) option; right click hides it on that object for 5

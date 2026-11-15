@@ -121,6 +121,7 @@ const KEEP_KINDS := ["mall", "tower", "hospital", "school", "church", "fire", "p
 	"pub", "warehouse", "servo", "bank", "clinic"]
 func _clear_roads() -> void:
 	if main == null or main.get("roads") == null: return
+	if _real and not lots_ver.contains("+roads3"): lots_ver += "+roads3"     # real footprints: cleared against the streets in tools/import_footprints.py
 	if lots_ver.contains("+roads3"): return          # already cleared and baked (BAKE_LOTS); roads2: again after the rural roads came in
 	var rd = main.roads
 	var t0 := Time.get_ticks_msec()
@@ -130,7 +131,7 @@ func _clear_roads() -> void:
 		if str(l[0]) == "mall":           # the malls and their pavilions are placed by hand (tools/add_malls.py): never moved
 			kept.append(l)
 			continue
-		var margin: float = ROAD_MARGIN.get(str(l[0]), 1.0)
+		var margin: float = 0.3 if _real else ROAD_MARGIN.get(str(l[0]), 1.0)
 		var shift := 0.0
 		var ok := false
 		# most lots are nowhere near a road: one look from the middle settles it
@@ -329,6 +330,8 @@ func _house_styles() -> void:
 				l.append("estate:%d" % (absi(hash(patch)) % 4)); counts.estate += 1
 	# 6 Pearl Street, Kingscliff: the house lot nearest the low-numbered end of the street
 	var bi := -1; var bd := 70.0
+	for l in lots:
+		if l.size() > 7 and str(l[7]) == "5g": houses = []; break       # already there (kept through the footprint import)
 	for i in houses:
 		var dd := Vector2(float(lots[i][1]) - 16495.0, float(lots[i][2]) + 8505.0).length()
 		if dd < bd: bd = dd; bi = i
@@ -397,7 +400,13 @@ func _trim_off_road(rd, l: Array, orig: Array, margin: float) -> bool:
 ## built (the steps down the low side ran to 60 and more, or stopped in mid-air). Those lots are left out. Baked into
 ## the lot list like the road pass (BAKE_LOTS=1), so it costs nothing at load.
 const STEEP := 7.0
+## real footprints (lots_ver "fp1..."): the buildings are where they really are, so the road pass only shifts what
+## a real road (wider than a track) runs through, and the cliff pass leaves them alone
+var _real: bool:
+	get: return lots_ver.begins_with("fp")
+
 func _clear_cliffs() -> void:
+	if _real and not lots_ver.contains("+steep1"): lots_ver += "+steep1"
 	if lots_ver.contains("+steep1") or main == null or not main.has_method("height_at"): return
 	var kept: Array = []
 	var dropped := 0
@@ -436,7 +445,7 @@ func _road_worst(rd, l: Array) -> Array:
 			var lx: float = fx * hw; var lz: float = fz * hd
 			var x := x0 + lx * c + lz * s
 			var z := z0 - lx * s + lz * c
-			var dd: float = rd.edge_dist(x, z)
+			var dd: float = rd.edge_dist(x, z, 2.0 if _real else 0.0)
 			if dd < best[0]: best = [dd, x, z]
 	return best
 

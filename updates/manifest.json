@@ -356,6 +356,13 @@
    "date": "2026-11-15",
    "notes": "Tweed City: you can drive in now (the terrain hole at the ramp door left a gap you fell through), no more sea in the basement, the roof that ran through the cinema lobby is gone, and there are car parks round it. Servos are generated from the real ones in OpenStreetMap: concrete forecourt, canopy at its real size in the brand's colours, bowsers, pylon sign with prices and a shop with shelves to loot. The Ampol model is gone; the Chinderah truck stop has its truck canopy. Fences between neighbours aren't doubled up and keep off houses. Big sheds trimmed off roads. Kingscliff centre on its real footprint. Bug reports now record where the camera is.",
    "size": 2348356
+  },
+  {
+   "file": "patch_0.2.0_0048.pck",
+   "version": "0.2.48",
+   "date": "2026-11-15",
+   "notes": "Every building in the valley now stands on a real roof: 40,000 footprints traced from satellite imagery (Microsoft) and OpenStreetMap, each in its real spot and size, facing its street, with the right number of storeys. Shops, schools, pubs and the like keep their names on their real buildings. Streets look like the real streets now. Cupboards and barricades start fresh once (your bases are kept). Building data (c) OpenStreetMap contributors, Microsoft, Overture Maps Foundation (ODbL).",
+   "size": 2370428
   }
  ],
  "full": {
