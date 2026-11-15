@@ -370,6 +370,13 @@
    "date": "2026-11-15",
    "notes": "Survival buildings at their real places: hardware stores (Bunnings, Mitre 10, True Value, Brims, Village Hardware) with racking, trolleys and a loading dock out the back; Mitre 10 Murwillumbah is double storey and runs from Wollumbin St through to Cliffords Lane. Mechanics, tyre shops and car parts stores full of tool chests, tyres and parts shelves. Six car wreckers' yards: tin fence, rows of wrecked cars, some stacked, search them for parts and scrap. Twenty caravan parks: fence, boom gate and sign, the loop road, caravans with annexes to search, cabins. Deep main-street shops have a back store with a roller door or back door onto the lane. About 450 spots where two buildings stood in one place are fixed. Cupboards and barricades start fresh once (your bases are kept).",
    "size": 2546760
+  },
+  {
+   "file": "patch_0.2.0_0050.pck",
+   "version": "0.2.50",
+   "date": "2026-11-15",
+   "notes": "Buildings are back on their real ground. Out towards Tweed Heads, Kingscliff and the coast, houses, shops, servos, wreckers and caravan parks were sitting up to 37 m off where they belong, many on the roads or in the water; they now line up with the roads and the coastline (Murwillumbah barely moves). Tweed City sits on its own flat ground. High shop doors on sloping streets get a landing with the stairs running down along the wall instead of out into the road. Caravan parks: chain-wire fence, and no vans through it. Cupboards and barricades start fresh once (your bases are kept).",
+   "size": 2369976
   }
  ],
  "full": {

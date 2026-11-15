@@ -1471,6 +1471,25 @@ static func _ext_steps(p: Dictionary, g: Geo, ground: Callable) -> void:
 		var out := Vector3(0, 0, 1) if e.side == "S" else Vector3(0, 0, -1)
 		var zline := float(r.z1) + T_OUT if e.side == "S" else float(r.z0) - T_OUT
 		var top := Vector3(float(e.c), 0.0, zline)
+		var drop: float = -float(ground.call(top.x, top.z + out.z * 1.5))
+		if p.kind != "qlder" and drop > 1.1:
+			# a high door on a slope (a shop on a falling street): a landing, then the flight turned to run down along
+			# the wall toward the lower side, so it doesn't stick out across the footpath and into the road
+			var lz := zline + out.z * 1.3
+			var mk2 := "timber" if p.stumps else "concrete"
+			g.aabb(mk2, Vector3(top.x - 0.8, -0.15, minf(zline, lz)), Vector3(top.x + 0.8, 0.0, maxf(zline, lz)))
+			for sx in [-0.72, 0.72]:
+				var gy2: float = ground.call(top.x + sx, lz - out.z * 0.07)
+				g.aabb("steel" if mk2 == "concrete" else "timber", Vector3(top.x + sx - 0.06, gy2 - 0.3, lz - out.z * 0.07 - 0.06), Vector3(top.x + sx + 0.06, -0.15, lz - out.z * 0.07 + 0.06), false)
+			var lh: float = ground.call(top.x - 3.0, lz)
+			var rh: float = ground.call(top.x + 3.0, lz)
+			var dir := -1.0 if lh < rh - 0.2 else (1.0 if rh < lh - 0.2 else (-1.0 if top.x > 0.0 else 1.0))
+			# rails: across the far edge of the landing and its high end
+			g.aabb("steel", Vector3(top.x - 0.8, 0.93, minf(lz, lz - out.z * 0.06)), Vector3(top.x + 0.8, 1.0, maxf(lz, lz - out.z * 0.06)), true)
+			var hx := top.x - 0.8 * dir
+			g.aabb("steel", Vector3(minf(hx, hx + 0.06 * dir), 0.93, minf(zline, lz)), Vector3(maxf(hx, hx + 0.06 * dir), 1.0, maxf(zline, lz)), true)
+			_flight(g, Vector3(top.x + 0.8 * dir, 0.0, (zline + lz) * 0.5), Vector3(dir, 0, 0), 1.0, ground, mk2)
+			continue
 		if p.kind == "qlder" or float(ground.call(top.x, top.z + out.z)) < -0.9:
 			# a landing then the flight
 			g.aabb("deck", Vector3(top.x - 0.8, -0.1, minf(zline, zline + out.z * 1.2)), Vector3(top.x + 0.8, 0.0, maxf(zline, zline + out.z * 1.2)))

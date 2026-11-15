@@ -65,7 +65,11 @@ func _fence(g: BuildGen.Geo, org: Vector3, a: Vector2, b: Vector2, mk: String, h
 		var p0 := a.lerp(b, float(k) / n); var p1 := a.lerp(b, float(k + 1) / n)
 		var m := (p0 + p1) * 0.5
 		var gy := _h(m.x, m.y) - org.y
-		g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x - org.x, gy + hgt * 0.5 - 0.1, m.y - org.z)), Vector3(0.06, hgt + 0.2, p0.distance_to(p1)))
+		var th := 0.02 if mk == "grille" else 0.06
+		g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x - org.x, gy + hgt * 0.5 - 0.1, m.y - org.z)), Vector3(th, hgt + 0.2, p0.distance_to(p1)))
+		if mk == "grille":
+			# chain wire: a top rail over the mesh
+			g.box(post, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x - org.x, gy + hgt + 0.1, m.y - org.z)), Vector3(0.05, 0.05, p0.distance_to(p1)), false)
 		if post != "":
 			var pg := _h(p0.x, p0.y) - org.y
 			g.box(post, Transform3D(Basis(Vector3.UP, yaw), Vector3(p0.x - org.x, pg + hgt * 0.5, p0.y - org.z)), Vector3(0.08, hgt + 0.15, 0.08), false)
@@ -221,8 +225,8 @@ func _park(y: Dictionary) -> Node3D:
 		if i == gi:
 			var mid := (a + b) * 0.5
 			var dir := (b - a).normalized()
-			_fence(g, org, a, mid - dir * 4.5, "steel", 1.6, "steel", 3.0)
-			_fence(g, org, mid + dir * 4.5, b, "steel", 1.6, "steel", 3.0)
+			_fence(g, org, a, mid - dir * 4.5, "grille", 1.8, "steel", 3.0)
+			_fence(g, org, mid + dir * 4.5, b, "grille", 1.8, "steel", 3.0)
 			# boom gate, and the park's sign
 			var gp := mid - dir * 3.8
 			var gy := _h(gp.x, gp.y) - org.y
@@ -234,7 +238,7 @@ func _park(y: Dictionary) -> Node3D:
 			g.box("timber", Transform3D(Basis(Vector3.UP, atan2(dir.x, dir.y)), Vector3(sp.x - org.x, sy + 1.6, sp.y - org.z)), Vector3(0.15, 1.2, 3.4))
 			ServoGen._label(root, Vector3(sp.x - org.x, sy + 1.6, sp.y - org.z) + Vector3(fwd.x, 0, fwd.y) * 0.1, str(y.name), 0.3, 3.2, atan2(fwd.x, fwd.y), Color(0.98, 0.95, 0.85))
 		else:
-			_fence(g, org, a, b, "steel", 1.6, "steel", 3.0)
+			_fence(g, org, a, b, "grille", 1.8, "steel", 3.0)
 	# the internal road: a loop 14 m in from the fence (toward the middle), 6 m wide, laid on the ground
 	var asph := StandardMaterial3D.new()
 	asph.albedo_texture = load("res://assets/ph/tex/asphalt_02/asphalt_02_diffuse.jpg") if ResourceLoader.exists("res://assets/ph/tex/asphalt_02/asphalt_02_diffuse.jpg") else null
@@ -277,12 +281,26 @@ func _park(y: Dictionary) -> Node3D:
 			for sg: float in [-1.0, 1.0]:
 				var sp := a + dir * t + dir.orthogonal() * sg * 8.0
 				if not Geometry2D.is_point_in_polygon(sp, poly): continue
+				# the whole van, drawbar and annexe inside the fence (a metre spare)
+				var vyaw := atan2(dir.x, dir.y) + PI * 0.5 * sg
+				var fw := Vector2(sin(vyaw), cos(vyaw)); var sd := Vector2(fw.y, -fw.x)
+				var inside := true
+				for cn: Vector2 in [Vector2(-2.2, -4.5), Vector2(5.2, -4.5), Vector2(-2.2, 5.8), Vector2(5.2, 5.8)]:
+					if not Geometry2D.is_point_in_polygon(sp + sd * cn.x + fw * cn.y, poly) or _edge_d(sp + sd * cn.x + fw * cn.y, poly) < 1.0:
+						inside = false
+				if not inside: continue
 				if Buildings.inst and Buildings.inst.lot_at(Vector3(sp.x, 0, sp.y), 2.0, true) != -1: continue
 				if rng.randf() < 0.25: continue
 				root.add_child(_caravan(sp, atan2(dir.x, dir.y) + PI * 0.5 * sg, org, rng))
 				vans += 1
 			t += 9.0
 	return root
+
+func _edge_d(p: Vector2, poly: PackedVector2Array) -> float:
+	var best := INF
+	for i in poly.size():
+		best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, poly[i], poly[(i + 1) % poly.size()])))
+	return best
 
 ## a caravan on its site: body, roof, a stripe, windows, drawbar and jockey wheel, an awning annexe; searchable
 func _caravan(p: Vector2, yaw: float, org: Vector3, rng: RandomNumberGenerator) -> Node3D:

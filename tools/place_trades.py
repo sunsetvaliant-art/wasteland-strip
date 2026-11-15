@@ -14,6 +14,7 @@ put onto the real footprints in assets/world/buildings.json (run tools/import_fo
              become cabins, the park gets its internal road, caravans in the sites, the office by the gate
   python3 tools/place_trades.py
 """
+import sys; sys.path.insert(0, "/home/claude/game/tools"); import geo
 import gzip, json, math, collections
 import numpy as np, cv2
 from shapely.geometry import Polygon, Point
@@ -42,7 +43,7 @@ for line in gzip.open(ROOT + "/docs/ref/2026/overture_places.geojsonl.gz", "rt")
     nm = ((p.get("names") or {}).get("primary") or "").strip()
     cat = ((p.get("categories") or {}).get("primary") if isinstance(p.get("categories"), dict) else None) or p.get("basic_category") or ""
     lon, lat = g["geometry"]["coordinates"][:2]
-    places.append({"n": nm, "cat": cat, "x": (lon - LON0) * KX, "z": (LAT0 - lat) * KZ, "conf": p.get("confidence") or 0})
+    places.append({"n": nm, "cat": cat, "x": geo.ll(lon, lat)[0], "z": geo.ll(lon, lat)[1], "conf": p.get("confidence") or 0})
 
 def poly(l, pad=0.0):
     b = float(l[3]); c, s = math.cos(b), math.sin(b); hw, hd = l[4] / 2 + pad, l[5] / 2 + pad

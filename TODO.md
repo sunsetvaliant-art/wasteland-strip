@@ -2,7 +2,37 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0049, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0050, 2026-11-15.
+
+## Bug reports 2026-11-15 (afternoon, 20 reports) and "paint the satellite onto the lidar"
+- [x] 0050 Houses, sheds and shops on the roads and in the water round Tweed Heads, Kingscliff and the coast: the cause
+      was the lat/long conversion every building tool used, 0.08% short east-west and 0.23% short north-south against
+      the frame the roads and terrain are in (nothing at Murwillumbah, 10 m east and 37 m north out at Tweed Heads).
+      Fitted against OpenStreetMap's roads over the whole map (median 0.5 m after) and checked against the coastline
+      in the terrain. Every building, servo, wreckers' yard and caravan park moved onto the right ground
+      (tools/realign.py, tools/geo.py); then the few still over a painted road pushed off it (tools/clear_roads.py).
+      Buildings over a road seal: 6,455 before, about 100 after
+- [x] 0050 Tweed City "terrain and mesh intertwining": the mall stood 30 m off its own flat ground (same cause)
+- [x] 0050 Long stairs from a high shop door straight out across the footpath into the road: on a slope the door now
+      gets a landing and the flight turns to run down along the wall
+- [x] 0050 Caravan park: vans across the fence (each van, drawbar and annexe now fits inside); chain-wire fence with
+      a top rail instead of solid panels
+- [ ] Satellite imagery painted on the ground (user's idea): NSW Spatial Services imagery is CC BY (Google/Bing
+      can't be used); as colour from mid-distance blended into the ground textures up close, 2-4 m a pixel (the
+      1650 Ti can't hold 1 m). Needs a way to fetch it (the user's Chrome)
+- [ ] Shops on sloping streets float on a tall plinth above the footpath (Murwillumbah): front floor should be at
+      street level with the back cut into the hill (retaining wall, terrain conformed like the bridge ends)
+- [ ] North strip (Queensland side, Coolangatta): ground has no texture (flat grey/white "blurry stuff"), towers lean
+- [ ] North strip roads/buildings were baked in the old short lat/long frame; the main map's frame differs by up to
+      38 m at the seam (z = -16960): re-bake the north strip in the game frame
+- [ ] Draw calls: up to 4,700 in Murwillumbah's main street (22 fps, 17 fps at Tweed Heads) since the real footprints
+      added buildings; needs merging / shorter detail range
+- [ ] Wrong identities: a TAFE shown as a 100 m butcher (Murwillumbah); "The Ivory" pub/restaurant on the water
+      (Tweed Heads); a two-screen multi-level cinema missing (Murwillumbah main street)
+- [ ] Bridges: one section dips into the water (Tweed Heads); the bridge there has a footpath; a split carriageway
+      shown as two separate bridges
+- [ ] Grey untextured plant (a garden plant model missing its texture, Murwillumbah)
+- [ ] Multi-storey buildings with one small stair as the entrance: proper entries (foyer, ramp, double doors)
 
 ## Survival buildings (asked 2026-11-15: "caravan parks, hardwares and car wreckers and mechanics are gonna do it")
 - [x] 0049 Hardware stores from the real places (Overture Maps): Bunnings (big warehouse, red sign), Mitre 10, True

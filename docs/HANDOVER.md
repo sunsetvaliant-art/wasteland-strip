@@ -83,6 +83,16 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   javascript_tool, read the result back in ~950-character slices). The numbers live in tools/make_servos.py, which
   writes assets/world/servos.json, removes the old ampol_servo landmarks and adds ShopGen "servo/1/0/<brand>" lots.
   ServoGen (scripts/world/servo_gen.gd) builds forecourt, canopies, bowsers, pylon within 900 m.
+- COORDINATES (0050): the game's roads and terrain use true metres per degree; the old tool conversion
+  x = dlon * 111320 * cos(lat0), z = -dlat * 110574 is 0.075% / 0.227% short (37 m out at Tweed Heads). Use
+  `tools/geo.py` ll(lon, lat) for anything new from lat/lon; fix(x, z) converts an old-frame position.
+  tools/realign.py moved buildings.json / servos.json / yards.json once (ver "+geo1"); tools/clear_roads.py then
+  pushed lots off the painted seals (lines.bin via tools/road_lines.py). EXCEPTION: the north strip (z < -16960:
+  lines_north.bin, its terrain, its buildings, tools/bake_north.py) was baked in the old frame and is left as is.
+  rg_graph.json (tools/road_graph.py) is also in the old frame: don't clear new lots against it, use lines.bin.
+  import_footprints.py and place_trades.py now convert with geo.ll, but both still measure streets with rg_graph
+  (old frame): switch those to lines.bin before re-running them. make_servos.py's numbers are old-frame (run
+  realign's fix on its output). Never run realign.py on output that already used geo.ll.
 - Footprints (0048): `tools/import_footprints.py` turns Overture buildings (docs/ref/2026/overture_*.geojsonl.gz,
   downloaded in the workspace with `pip install overturemaps`; S3 is reachable) into lots; lots_ver starts "fp" and
   Buildings._real skips the old road / cliff passes. Run order after it: `tools/place_trades.py` (0049: hardware,

@@ -21,6 +21,7 @@ What each roof is:
 Writes assets/world/buildings.json with a new version (cupboards and boards start fresh once).
   python3 tools/import_footprints.py
 """
+import sys; sys.path.insert(0, "/home/claude/game/tools"); import geo
 import gzip, json, math, collections, os, random
 import numpy as np, cv2
 from scipy.spatial import cKDTree
@@ -105,7 +106,7 @@ for line in gzip.open(SRC, "rt"):
     g = json.loads(line)
     geom = g["geometry"]
     ring = geom["coordinates"][0] if geom["type"] == "Polygon" else max((p[0] for p in geom["coordinates"]), key=len)
-    pts = np.array([((lon - LON0) * KX, (LAT0 - lat) * KZ) for lon, lat in ring], np.float32)
+    pts = np.array([geo.ll(lon, lat) for lon, lat in ring], np.float32)
     cx, cz = pts.mean(0)
     if not (-8960 < cx < 23040 and -16960 < cz < 15040): continue
     area = abs(cv2.contourArea(pts))
