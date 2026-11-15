@@ -384,6 +384,13 @@
    "date": "2026-11-15",
    "notes": "The Riverview is a real pub now, and so is every hotel and tavern in the valley, by name (Imperial, Courthouse, Kingscliff Beach Hotel, Cabarita, Chinderah, Pottsville, South Tweed, Ivory Tavern...), plus 14 motels. Terrain collision is back after DRIVE IT. Parked cars keep their wheels still. The road flicker every second or two at speed is gone. High doors on slopes get a landing and turned stairs on verandahs too. F9 reports now record slow frames and what they were spent on: hit F9 when it stutters.",
    "size": 2685184
+  },
+  {
+   "file": "patch_0.2.0_0052.pck",
+   "version": "0.2.52",
+   "date": "2026-11-15",
+   "notes": "Three landmarks built from your pictures, with their insides: the Imperial Hotel (pink, Dutch gables, arched verandah upstairs, the lettered awning; gelato shop, restaurant, bar, bottle shop, kitchen, hotel rooms upstairs), the Austral Cafe & Bakery (art deco front, window row, arched sign, tables out the front) and the Riverview (up on posts with a deck all round, solar panels, BREW WITH A VIEW, the Bottlemart drive-through). Shops and pubs on sloping streets now sit at footpath level instead of up on a plinth.",
+   "size": 2505360
   }
  ],
  "full": {

@@ -4,6 +4,16 @@ This is the one list. Every Claude session reads it first and updates it before 
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
 Newest requests at the top of each section. Last updated: patch 0051, 2026-11-15.
 
+## Landmark buildings from the user's pictures (2026-11-15 night: "you don't get interiors" from Meshy)
+- [x] 0052 Imperial Hotel (pink, three Dutch gables, arched verandah upstairs, the long lettered awning, stone piers;
+      gelato shop, restaurant, bar, bottle shop, kitchen and cool rooms, stairs up to hotel rooms) (scripts/world/herogen.gd)
+- [x] 0052 Austral Cafe & Bakery (art deco: tiled parapet band, steel window row under a hood, fluted panel, arched
+      sign on the awning, tables out the front)
+- [x] 0052 Riverview Hotel (on posts with a deck all round, solar panels, BREW WITH A VIEW, Bottlemart drive-through)
+- [ ] Riverview: second storey over part of it, ramps and the stair up the side as in the picture
+- [ ] Satellite imagery painted onto the terrain: NSW Spatial Services imagery reachable from the workspace
+      (tested, ~0.5 m/px); plan sent to the user, waiting on the go-ahead
+
 ## Back to the grassroots: rigs and raiders (asked 2026-11-15 evening)
 User: "invest in the grassroots of what this game was ... making the sick rigs and how modular they were and the random
 enemy patrol encounters. The ranged and melee is now up to scratch for some enemies other than the filler zombies."
@@ -58,7 +68,7 @@ owSpawnPatrol) still has the code; its strip game is still in it behind ?strip.
 - [ ] Satellite imagery painted on the ground (user's idea): NSW Spatial Services imagery is CC BY (Google/Bing
       can't be used); as colour from mid-distance blended into the ground textures up close, 2-4 m a pixel (the
       1650 Ti can't hold 1 m). Needs a way to fetch it (the user's Chrome)
-- [ ] Shops on sloping streets float on a tall plinth above the footpath (Murwillumbah): front floor should be at
+- [x] 0052 Shops on sloping streets float on a tall plinth above the footpath (Murwillumbah): front floor now at
       street level with the back cut into the hill (retaining wall, terrain conformed like the bridge ends)
 - [ ] North strip (Queensland side, Coolangatta): ground has no texture (flat grey/white "blurry stuff"), towers lean
 - [ ] North strip roads/buildings were baked in the old short lat/long frame; the main map's frame differs by up to

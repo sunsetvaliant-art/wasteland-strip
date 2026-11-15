@@ -82,6 +82,15 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 		"awn_d": clampf(room, 1.5, AWN_D),
 		"recess": s not in ["bank", "pub"] and w >= 5.5 and rng.randf() < 0.8,
 		"door_at": "c" if (s in ["bank", "pub"] or rng.randf() < 0.45) else ("l" if rng.randf() < 0.5 else "r")}
+	var hero: String = parts[4] if parts.size() > 4 else ""
+	if hero != "":
+		p["hero"] = hero          # a landmark from the user's pictures (HeroGen)
+	if hero == "imperial":
+		HeroGen.imperial_plan(p, w, d)
+		return
+	if hero == "austral":
+		two = true
+		HeroGen.austral_plan(p)
 	if s == "servo":
 		# a servo's shop (0.2.47): a plain modern box, white render and a glass front, the brand's colour along the
 		# top with its name, no awning (the canopy's out the front), fitted out as a servo shop
@@ -174,6 +183,9 @@ static func upper_rooms(w: float, d: float, rng: RandomNumberGenerator, flip: bo
 
 # ------------------------------------------------------------------------------------------------ openings
 static func ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
+	if p.get("hero", "") == "imperial":
+		HeroGen.imperial_openings(p)
+		return
 	var w: float = p.w
 	var d: float = p.d
 	var f: Dictionary = p.front
@@ -250,6 +262,8 @@ static func ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
 ## Windows: the shopfront's done; tall sashes upstairs over the street, ordinary ones out the back. None in the side
 ## walls (they're shared with next door)
 static func windows(p: Dictionary, rng: RandomNumberGenerator) -> void:
+	if p.get("hero", "") == "imperial": return
+	if p.get("hero", "") == "austral": HeroGen.austral_windows(p)
 	for fi in p.floors.size():
 		for r in p.floors[fi].rooms:
 			if r.type in ["void", "stair", "shop"]: continue
@@ -334,6 +348,13 @@ static func _label(p: Dictionary, pos: Vector3, text: String, h: float, width: f
 ## Parapet, side walls, the roof behind, pilasters, highlight windows, the awning (or the pub's verandah). lod: the
 ## cheap version for far off (no rods, signs, lettering or little panes)
 static func top(p: Dictionary, g: BuildGen.Geo, top_h: float, ground: Callable, lod := false) -> void:
+	match str(p.get("hero", "")):
+		"imperial":
+			HeroGen.imperial_top(p, g, top_h, ground, lod)
+			return
+		"austral":
+			HeroGen.austral_top(p, g, top_h, ground, lod)
+			return
 	var w: float = p.w
 	var d: float = p.d
 	var T := BuildGen.T_OUT

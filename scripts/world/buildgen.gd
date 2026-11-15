@@ -762,6 +762,8 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 			TowerGen.top(p, g)
 	elif cut == INF:
 		_roof(p, g, top_h)
+	if p.get("hero", "") == "riverview" and cut == INF:
+		HeroGen.riverview_extras(p, g, top_h, ground, false)
 	_ext_steps(p, g, ground)
 	# the mesh and its collision
 	var mi := MeshInstance3D.new()

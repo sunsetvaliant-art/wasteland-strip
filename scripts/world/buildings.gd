@@ -502,6 +502,56 @@ func _level_malls() -> void:
 						changed = true
 				z += 5.0
 			x += 5.0
+	# shops and pubs on a sloping street (0.2.52): the floor at the footpath, not up on a plinth level with the
+	# highest ground under the building. The ground under it (and a little either side and behind) is cut down to
+	# just under the floor, blending back up behind; the street in front is left alone. Nothing over 6 m of fall.
+	var cut_n := 0
+	for i in lots.size():
+		var l: Array = lots[i]
+		var k0 := str(l[0])
+		if k0 != "shop" and k0 != "pub": continue
+		var sub := str(l[7]) if l.size() > 7 else ""
+		if sub.begins_with("servo/"): continue
+		var w := float(l[4])
+		var d := float(l[5])
+		var basis := Basis(Vector3.UP, float(l[3]))
+		var c := Vector3(float(l[1]), 0, float(l[2]))
+		var hf := 0.0
+		var nf := 0
+		for fx: float in [-0.35, 0.0, 0.35]:
+			var h := float(data.get_height(c + basis * Vector3(fx * w, 0, d / 2 + 1.0)))
+			if not is_nan(h): hf += h; nf += 1
+		if nf == 0: continue
+		hf /= nf
+		var top := -INF
+		for sx in 3:
+			for sz in 4:
+				var h := float(data.get_height(c + basis * Vector3((sx / 2.0 - 0.5) * w, 0, (sz / 3.0 - 0.5) * d)))
+				if not is_nan(h): top = maxf(top, h)
+		if top - hf < 0.4 or top - hf > 6.0: continue
+		var fl := maxf(hf, 0.3) + 0.15
+		_floor[i] = fl
+		cut_n += 1
+		var r := sqrt(w * w + d * d) * 0.5 + 12.0
+		var inv := basis.inverse()
+		var x := snappedf(c.x - r, 5.0)
+		while x <= c.x + r:
+			var z := snappedf(c.z - r, 5.0)
+			while z <= c.z + r:
+				var lp: Vector3 = inv * (Vector3(x, 0, z) - c)
+				if lp.z <= d / 2 + 0.5:
+					var out := maxf(maxf(absf(lp.x) - w / 2 - 2.5, -lp.z - d / 2 - 2.5), 0.0)
+					if out < 8.0:
+						var p := Vector3(x, 0, z)
+						var h0 := float(data.get_height(p))
+						var want := lerpf(fl - 0.2, h0, smoothstep(0.0, 8.0, out))
+						var on_road: bool = main.get("roads") != null and main.roads.edge_dist(x, z) < 1.0
+						if not is_nan(h0) and want < h0 - 0.02 and not on_road:
+							data.set_height(p, want)
+							changed = true
+				z += 5.0
+			x += 5.0
+	if cut_n > 0: print("BUILDINGS shop floors at street level on a slope: ", cut_n)
 	if changed: data.update_maps(Terrain3DRegion.TYPE_HEIGHT)
 	# traced malls that go underground: holes in the terrain where you go down
 	var holes := 0

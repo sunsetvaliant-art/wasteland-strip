@@ -18,8 +18,10 @@ static func plan_into(p: Dictionary, kind: String, w: float, d: float, rng: Rand
 	p.clad = "brick"
 	p.roof = {"type": "hip", "pitch": deg_to_rad(rng.randf_range(20, 26)), "mat": "tin"}
 	p["sign"] = SIGN[kind][rng.randi() % SIGN[kind].size()]
+	var hero := ""
 	if sub != "" and not sub.contains("/"):
-		p["sign"] = sub          # its real name (tools/place_pubs.py)
+		p["sign"] = sub.get_slice("|", 0)          # its real name (tools/place_pubs.py)
+		if sub.contains("|"): hero = sub.get_slice("|", 1)
 	var rooms := []
 	match kind:
 		"pub":
@@ -82,6 +84,9 @@ static func plan_into(p: Dictionary, kind: String, w: float, d: float, rng: Rand
 				rooms.append({"x0": a, "z0": zb, "x1": b, "z1": d / 2, "type": "reception" if k == 0 else "bed", "entry": true, "hub": k == 0})
 				rooms.append({"x0": a, "z0": -d / 2, "x1": b, "z1": zb, "type": "store" if k == 0 else "bath"})
 	p.floors.append({"y": 0.0, "h": p.h, "rooms": rooms})
+	if hero != "":
+		p["hero"] = hero
+		if hero == "riverview": HeroGen.riverview_plan(p, w, d)
 
 ## A row of rooms a..b wide between z0 and z1, in the order given (toilets narrow)
 static func _cut_row(rooms: Array, a: float, b: float, z0: float, z1: float, types: Array) -> void:

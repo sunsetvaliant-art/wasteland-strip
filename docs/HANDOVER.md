@@ -93,6 +93,10 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   import_footprints.py and place_trades.py now convert with geo.ll, but both still measure streets with rg_graph
   (old frame): switch those to lines.bin before re-running them. make_servos.py's numbers are old-frame (run
   realign's fix on its output). Never run realign.py on output that already used geo.ll.
+- Landmarks (0052): scripts/world/herogen.gd builds the user's reference buildings with full interiors (Imperial,
+  Austral as ShopGen heroes: sub part 5; Riverview as a CivicGen pub: "NAME|riverview"); tools/place_heroes.py
+  puts them on their lots. Buildings._level_malls also drops shop/pub floors to the footpath on a slope and cuts the
+  ground under them (not the street in front, not under roads).
 - Pubs and motels (0051): tools/place_pubs.py (Overture places, geo.ll) after realign/clear_roads; civic lots take
   their real name as sub (CivicGen uses it for the sign), main-street pubs are shop "pub/2/3.0/NAME".
 - Stutter hunting (0051): scripts/prof.gd. Wrap a per-frame job with `var t := Prof.t()` ... `Prof.add("job", t)`
