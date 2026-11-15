@@ -78,6 +78,16 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   through the Drive connector (base64 into the conversation).
 - Mixamo: driven through the user's Chrome (he must be signed in); downloads land in his Downloads folder, he drags
   them to Drive.
+- Servos (0047): OSM fuel stations, canopies and shop outlines were fetched with Overpass through the user's Chrome
+  (the workspace can't reach overpass-api.de; Claude in Chrome: open https://overpass-api.de/, run a POST fetch in
+  javascript_tool, read the result back in ~950-character slices). The numbers live in tools/make_servos.py, which
+  writes assets/world/servos.json, removes the old ampol_servo landmarks and adds ShopGen "servo/1/0/<brand>" lots.
+  ServoGen (scripts/world/servo_gen.gd) builds forecourt, canopies, bowsers, pylon within 900 m.
+- Terrain3D get_height is the nearest 5 m vertex: anything laid on the ground (car parks, forecourts) uses
+  ServoGen._h (bilinear) or it sinks under the drawn surface.
+- Water: shaders/water.gdshader takes "dry" boxes (x0, z0, x1, z1; up to 4) where no water is drawn; set on both
+  main.water_mat and main.sea_mat (Tweed City's basement).
+- Write version.txt BEFORE exporting a patch (0046 shipped saying 0.2.45).
 - Bridges (0045): `tools/bake_bridges.gd` (headless -s) pulled every deck centreline out of the old baked road tiles
   into assets/world/bridges.json; `BridgeKit` (scripts/world/bridge_kit.gd) rebuilds them at load (Roads._build_bridges)
   and reshapes the terrain at the ends (conform). BRIDGE_OLD=1 brings the old baked decks back for comparison. Test:
