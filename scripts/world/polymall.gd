@@ -292,7 +292,8 @@ static func build2(p: Dictionary, g: BuildGen.Geo, dt: Dictionary, lod: bool) ->
 			var a := Vector2(float(o[i][0]), float(o[i][1])); var b := Vector2(float(o[(i + 1) % o.size()][0]), float(o[(i + 1) % o.size()][1]))
 			_wall(g, clad, a, b, -0.3, PT, 0.3, false)
 		_flat(g, "trim:white", dt.inside_tris, RH + 0.04, true)
-		for u in dt.units: _sheet(g, "concrete", _tris(u.poly), RH + 0.1, true)
+		for u in dt.units:
+			if str(u.kind) != "cinema": _sheet(g, "concrete", _tris(u.poly), RH + 0.1, true)
 		_flat(g, trim, dt.covered_tris, CANOPY + 0.1, true)
 		g.aabb(clad, Vector3(c0.x, 0, c0.y), Vector3(c1.x, croof, c1.y), false)
 		return
@@ -317,8 +318,11 @@ static func build2(p: Dictionary, g: BuildGen.Geo, dt: Dictionary, lod: bool) ->
 		var ceil_y: float = CEIL.get(kind, 3.9)
 		if kind == "toilet": ceil_y = 3.0
 		var ut := _tris(u.poly)
-		_sheet(g, "tile:white" if kind == "toilet" else "trim:white", ut, ceil_y, false)
-		_sheet(g, "concrete", ut, RH + 0.1, true)
+		# the cinema unit is the cinema building's ground floor: the cinema floor upstairs is its ceiling and the
+		# building has its own roof (a roof at RH ran through the cinema lobby)
+		if kind != "cinema":
+			_sheet(g, "tile:white" if kind == "toilet" else "trim:white", ut, ceil_y, false)
+			_sheet(g, "concrete", ut, RH + 0.1, true)
 		var rc: Array = u.rect
 		var cen := Vector2((float(rc[0]) + float(rc[2])) * 0.5, (float(rc[1]) + float(rc[3])) * 0.5)
 		var anchor := kind in ["bigbox", "super", "store", "cinema"]
@@ -567,7 +571,9 @@ static func terrain_holes(name: String, lot: Array, td) -> int:
 		rects.append([Vector2(tr[0], tr[1]), Vector2(tr[2], tr[3]), float(tr[4]) * 0.5])
 	if dt.has("ramp"):
 		var rp: Dictionary = dt.ramp
-		rects.append([Vector2(rp.top[0], rp.top[1]), Vector2(rp.bottom[0], rp.bottom[1]), float(rp.w) * 0.5])
+		# no rounded end at the top: the hole there must stop short of the door (the ramp's floor starts at the door, a
+		# hole past it left a gap to the street that cars fell through)
+		rects.append([Vector2(rp.top[0], rp.top[1]), Vector2(rp.bottom[0], rp.bottom[1]), float(rp.w) * 0.5, true])
 	var n := 0
 	for r in rects:
 		var a: Vector2 = r[0]; var b: Vector2 = r[1]; var hw: float = r[2] + 2.6
@@ -586,7 +592,9 @@ static func terrain_holes(name: String, lot: Array, td) -> int:
 					var lp: Vector3 = xf.affine_inverse() * Vector3(x + cc.x, 0, z + cc.y)
 					var q := Vector2(lp.x, lp.z)
 					var ab := b - a
-					var t := clampf((q - a).dot(ab) / maxf(ab.length_squared(), 0.01), 0.0, 1.0)
+					var t0 := (q - a).dot(ab) / maxf(ab.length_squared(), 0.01)
+					if r.size() > 3 and t0 < 0.0: continue
+					var t := clampf(t0, 0.0, 1.0)
 					if q.distance_to(a + ab * t) <= hw: hit = true; break
 				if hit:
 					td.set_control_hole(Vector3(x, 0, z), true)

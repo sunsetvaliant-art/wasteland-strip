@@ -27,9 +27,16 @@ vec3 ripple(vec2 q, float t) {
 }
 
 varying vec3 wpos;
+// dry boxes (x0, z0, x1, z1): no water drawn inside them; basements below sea level (Tweed City's car park)
+uniform vec4 dry[4];
+uniform int dry_n = 0;
 void vertex() { wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 
 void fragment() {
+	for (int k = 0; k < dry_n; k++) {
+		vec4 b = dry[k];
+		if (wpos.x > b.x && wpos.x < b.z && wpos.z > b.y && wpos.z < b.w) discard;
+	}
 	float t = TIME;
 	vec2 q = wpos.xz;
 	vec3 n = ripple(q, t);

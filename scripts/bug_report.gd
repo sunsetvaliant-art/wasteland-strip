@@ -111,6 +111,11 @@ func _gather() -> Dictionary:
 	if main == null:
 		return d
 	d.forge_active = main.forge.active if main.forge else false
+	# where the view is from (the Forge camera flies away from the player)
+	var vc := get_viewport().get_camera_3d()
+	if vc:
+		var cp := vc.global_position; var cf := -vc.global_transform.basis.z
+		d.camera = {"pos": [snappedf(cp.x, 0.1), snappedf(cp.y, 0.1), snappedf(cp.z, 0.1)], "look": [snappedf(cf.x, 0.01), snappedf(cf.y, 0.01), snappedf(cf.z, 0.01)]}
 	d.garage_open = main.garage.open if main.garage else false
 	var p: Player = main.player
 	if p:

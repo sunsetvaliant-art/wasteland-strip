@@ -270,6 +270,8 @@ static func _rules(p: Dictionary, r: Dictionary) -> Array:
 	if r.type not in ["shop", "unit"]:
 		return RULES.get(r.type, [])
 	var sub: String = r.get("sub", p.get("sub", "general"))
+	if sub == "servo":
+		return RULES.get("servo_shop", [])
 	if sub == "bottlo":
 		return [["shop_counter", "wall", 1.0], ["drinks_fridge", "wall", 1.0], ["drinks_fridge", "wall", 1.0], ["drinks_fridge", "wall", 0.8],
 			["bar_shelf", "wall", 1.0], ["bar_shelf", "center", 0.8], ["cardboard", "corner", 0.7], ["fluoro", "ceiling", 1.0]]

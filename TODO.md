@@ -2,7 +2,35 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0046, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0047, 2026-11-15.
+
+## Bug reports 2026-11-15 (morning, 9 reports)
+- [x] 0047 Tweed City: couldn't drive in under it. The terrain hole for the car ramp ran 3 m out past the door, so
+      cars fell through into nothing at the entrance. The hole now stops inside the building; a test drives a car from
+      the street down the ramp into the car park (tools/_tcdrive.gd)
+- [x] 0047 Tweed City: water showing downstairs. The car park is below sea level and the sea is one big plane; the
+      water shader now skips "dry" boxes and Tweed City's lot is one
+- [x] 0047 Tweed City: "concrete road in the cinema lobby": the Hoyts unit's roof at 7 m ran through the cinema
+      lobby (1.8 m above the cinema floor). The cinema unit has no roof of its own now (the cinema building has one)
+- [x] 0047 Tweed City: no car parks outside. Asphalt car parks with bay lines round Tweed City and the other big
+      centres, laid on the ground out to 35 m, off the roads
+- [ ] Tweed City: "terrain colliding visually with the mesh" outside the east side: should be gone with the dry box
+      (it was the sea showing at the wall foot). Check in game
+- [x] 0047 Fences: overlapping (both neighbours built the same fence) and running into houses. A shared fence is
+      built once now, and panels keep 1.2 m clear of any building at both ends and the middle
+- [x] 0047 Sheds on the road: big sheds and warehouses were left where OSM had them even when a road clipped them;
+      now they're shortened off the road (7 trimmed), and the road clearing pass ran again for the newer roads
+- [x] 0047 Servos generated from OpenStreetMap (asked: "paint some concrete and generate an accurate servo"; then
+      "get rid of the Ampol model servo and generate servos now instead"). 24 servos: concrete forecourt on the real
+      outline, canopies at their real size in brand colours with the name, bowsers, a pylon sign with prices, and a
+      generated shop (ShopGen "servo") on the real shop footprint with shelves and loot. The Chinderah Ampol truck
+      stop has its truck canopy, a 14 m sign and the whole site in concrete. The Ampol model is gone
+- [ ] Servos: the "huge truck" at the Chinderah truck stop (needs a semi-trailer model)
+- [x] 0047 Kingscliff centre moved onto the real Kingscliff Shopping Village footprint from OSM (about 64 x 104 m)
+- [ ] Terrain poking through the ocean (report 08:15). The report didn't say where the camera was: bug reports now
+      record the camera position, please F9 it again
+- [x] 0047 Bug reports record the camera position and look direction (the Forge camera flies away from the player)
+- [x] 0047 The in-game version said 0.2.45 on 0.2.46 (version.txt was written after the export)
 
 ## Requested 2026-11-14 (late)
 ### Bugs

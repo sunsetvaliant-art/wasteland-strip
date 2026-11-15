@@ -81,6 +81,19 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 		"awn_d": clampf(room, 1.5, AWN_D),
 		"recess": s not in ["bank", "pub"] and w >= 5.5 and rng.randf() < 0.8,
 		"door_at": "c" if (s in ["bank", "pub"] or rng.randf() < 0.45) else ("l" if rng.randf() < 0.5 else "r")}
+	if s == "servo":
+		# a servo's shop (0.2.47): a plain modern box, white render and a glass front, the brand's colour along the
+		# top with its name, no awning (the canopy's out the front), fitted out as a servo shop
+		var brand: String = parts[3] if parts.size() > 3 else "Ampol"
+		var col: Array = ServoGen.COLOURS.get(brand, ServoGen.COLOURS["Ampol"])
+		p.two = false
+		p.clad = "plaster:white"
+		p.trim = "trim:" + str(col[0])
+		p.roof = {"type": "shop", "mat": "tin"}
+		p.front = {"style": "box", "ph": 1.1, "year": 2005, "name": (brand + " " + ("FOODARY" if brand == "Ampol" else "")).strip_edges().to_upper(),
+			"title": "", "awning": false, "verandah": false, "awn_d": 0.0, "recess": false, "door_at": "c"}
+		p.floors.append({"y": 0.0, "h": GH, "rooms": _ground(w, d, rng, false, false)})
+		return
 	var flip := rng.randf() < 0.5
 	p.floors.append({"y": 0.0, "h": GH, "rooms": _ground(w, d, rng, two, flip)})
 	if two:

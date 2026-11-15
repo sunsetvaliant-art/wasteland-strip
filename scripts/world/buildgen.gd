@@ -35,6 +35,8 @@ const TINTS := {
 	# main-street paint
 	"sage": Color(0.74, 0.82, 0.68), "terracotta": Color(0.86, 0.58, 0.46), "mustard": Color(0.93, 0.8, 0.46), "pale_blue": Color(0.74, 0.84, 0.92),
 	"heritage": Color(0.42, 0.56, 0.44), "maroon": Color(0.56, 0.26, 0.24), "navy": Color(0.3, 0.37, 0.52), "charcoal": Color(0.34, 0.34, 0.36),
+	"bp_green": Color(0.0, 0.55, 0.25), "shell_yellow": Color(1.0, 0.82, 0.0), "ampol_red": Color(0.86, 0.1, 0.12), "ampol_blue": Color(0.05, 0.2, 0.55),
+	"orange": Color(1.0, 0.5, 0.05), "puma_red": Color(0.8, 0.05, 0.1),
 	"sandstone": Color(0.95, 0.83, 0.6), "monument": Color(0.42, 0.42, 0.44), "surfmist": Color(0.95, 0.94, 0.9), "woodland": Color(0.55, 0.57, 0.52),
 	"basalt": Color(0.5, 0.5, 0.52), "brick_tan": Color(1.15, 1.05, 0.85), "brick_dark": Color(0.62, 0.55, 0.52),
 	"sand": Color(0.92, 0.84, 0.7), "black": Color(0.22, 0.23, 0.25), "red": Color(0.86, 0.2, 0.18),

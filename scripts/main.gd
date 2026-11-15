@@ -16,6 +16,7 @@ var player: Player
 var car: Car
 var sun: DirectionalLight3D
 var water_mat: ShaderMaterial
+var sea_mat: ShaderMaterial
 var hud: Label
 var veg: Vegetation
 var roads: Roads
@@ -33,6 +34,7 @@ var landmarks: Landmarks
 var net: Net
 var rg_roads: RgRoads
 var interact_menu: InteractMenu
+var servos: ServoGen
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
@@ -152,6 +154,10 @@ func _ready() -> void:
 	landmarks.name = "Landmarks"
 	add_child(landmarks)
 	landmarks.setup(self)
+	servos = ServoGen.new()
+	servos.name = "Servos"
+	add_child(servos)
+	servos.setup(self)
 	zombies = ZombieDirector.new()
 	zombies.name = "ZombieDirector"
 	add_child(zombies)
@@ -498,7 +504,7 @@ func _build_water() -> void:
 	pm.subdivide_depth = 64
 	sea.mesh = pm
 	# the height map has the sea bed dead flat at 0 m: the sheet sits just over it and is shaded as deep water
-	var sea_mat: ShaderMaterial = water_mat.duplicate()
+	sea_mat = water_mat.duplicate()
 	sea_mat.set_shader_parameter("base_depth", 5.0)
 	sea_mat.set_shader_parameter("foam_max", 0.07)
 	sea.material_override = sea_mat

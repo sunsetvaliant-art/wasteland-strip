@@ -64,6 +64,7 @@ func setup(m) -> void:
 				if not _q.has(k): _q[k] = []
 				_q[k].append(i)
 	print("BUILDINGS ", lots.size())
+	if main and main.terrain: _car_parks(main.terrain.data)
 
 ## Is (x, z) on a building's lot (within pad metres of its walls)?
 static func blocked(x: float, z: float, pad := 0.0) -> bool:
@@ -120,7 +121,7 @@ const KEEP_KINDS := ["mall", "tower", "hospital", "school", "church", "fire", "p
 	"pub", "warehouse", "servo", "bank", "clinic"]
 func _clear_roads() -> void:
 	if main == null or main.get("roads") == null: return
-	if lots_ver.contains("+roads1"): return          # already cleared and baked (BAKE_LOTS)
+	if lots_ver.contains("+roads3"): return          # already cleared and baked (BAKE_LOTS); roads2: again after the rural roads came in
 	var rd = main.roads
 	var t0 := Time.get_ticks_msec()
 	var kept: Array = []
@@ -155,6 +156,9 @@ func _clear_roads() -> void:
 		if ok:
 			if shift > 0.0: moved += 1
 			kept.append(l)
+		elif str(l[0]) in ["shed", "machine_shed", "warehouse", "workshop", "factory"] and _trim_off_road(rd, l, orig, margin):
+			moved += 1
+			kept.append(l)
 		elif str(l[0]) in KEEP_KINDS or float(l[4]) * float(l[5]) > 900.0:
 			l[1] = orig[0]; l[2] = orig[1]
 			kept.append(l)
@@ -162,7 +166,7 @@ func _clear_roads() -> void:
 			dropped += 1
 	if moved + dropped > 0:
 		lots = kept
-		lots_ver += "+roads1"
+		lots_ver += "+roads3"
 	print("BUILDINGS off the roads: %d moved, %d left out, in %d ms" % [moved, dropped, Time.get_ticks_msec() - t0])
 	# BAKE_LOTS=1: write the cleared list back into the project so the shipped file needs no work at load
 	if OS.get_environment("BAKE_LOTS") != "" and moved + dropped > 0:
@@ -172,6 +176,101 @@ func _clear_roads() -> void:
 		var f := FileAccess.open(ProjectSettings.globalize_path("res://assets/world/buildings.json"), FileAccess.WRITE)
 		f.store_string(JSON.stringify(d, "", false, true))
 		print("BUILDINGS baked the cleared lot list")
+
+## Surface car parks round the big centres: an asphalt apron laid on the ground out to 35 m past the lot, round the
+## building (not over it), off the roads and other lots, with rows of white bay lines. One mesh per centre, no
+## collision (you drive on the ground under it).
+func _car_parks(data: Terrain3DData) -> void:
+	var t0 := Time.get_ticks_msec()
+	var asph := StandardMaterial3D.new()
+	asph.albedo_texture = load("res://assets/ph/tex/asphalt_02/asphalt_02_diffuse.jpg") if ResourceLoader.exists("res://assets/ph/tex/asphalt_02/asphalt_02_diffuse.jpg") else null
+	asph.albedo_color = Color(0.36, 0.36, 0.37)
+	asph.uv1_triplanar = true
+	asph.uv1_world_triplanar = true
+	asph.uv1_scale = Vector3.ONE * 0.12
+	asph.roughness = 0.9
+	var line := StandardMaterial3D.new()
+	line.albedo_color = Color(0.92, 0.92, 0.88)
+	line.roughness = 0.8
+	var made := 0
+	for i in lots.size():
+		var l: Array = lots[i]
+		if str(l[0]) != "mall" or float(l[4]) * float(l[5]) < 6000.0: continue
+		var nm := str(l[7]) if l.size() > 7 else ""
+		if nm.contains("/V") or nm.contains("/S"): continue
+		var outline: Array = []
+		if nm == "TWIN CITY": outline = PolyMall.data("twin_city").get("outline", [])
+		var b := Basis(Vector3.UP, float(l[3]))
+		var org := Vector3(float(l[1]), 0, float(l[2]))
+		var hw := float(l[4]) * 0.5; var hd := float(l[5]) * 0.5
+		var M := 35.0; var S := 4.0
+		var nx := int((hw + M) * 2.0 / S) + 1; var nz := int((hd + M) * 2.0 / S) + 1
+		# which grid cells are car park: outside the building, off roads and other buildings
+		var ok := PackedByteArray(); ok.resize(nx * nz)
+		var hs := PackedFloat32Array(); hs.resize(nx * nz)
+		var poly := PackedVector2Array()
+		for q in outline: poly.append(Vector2(float(q[0]), float(q[1])))
+		for ix in nx:
+			for iz in nz:
+				var lx := -hw - M + ix * S; var lz := -hd - M + iz * S
+				var wp := org + b * Vector3(lx, 0, lz)
+				var h := ServoGen._h(data, wp.x, wp.z)
+				hs[ix * nz + iz] = h
+				var inside_lot := absf(lx) < hw - 1.0 and absf(lz) < hd - 1.0
+				if inside_lot and (poly.is_empty() or Geometry2D.is_point_in_polygon(Vector2(lx, lz), poly)): continue
+				if is_nan(h) or (Roads.inst and Roads.inst.edge_dist(wp.x, wp.z) < 2.0): continue
+				var other := lot_at(wp, 1.0, true)
+				if other != -1 and other != i: continue
+				ok[ix * nz + iz] = 1
+		var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var ln := SurfaceTool.new(); ln.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var quads := 0
+		for ix in nx - 1:
+			for iz in nz - 1:
+				var k := ix * nz + iz
+				if not (ok[k] and ok[k + 1] and ok[k + nz] and ok[k + nz + 1]): continue
+				var pts := []
+				for c in [[0, 0], [1, 0], [1, 1], [0, 1]]:
+					var lx: float = -hw - M + (ix + int(c[0])) * S; var lz: float = -hd - M + (iz + int(c[1])) * S
+					pts.append(b * Vector3(lx, hs[(ix + int(c[0])) * nz + iz + int(c[1])] + 0.1, lz))
+				st.set_normal(Vector3.UP)
+				for v in [pts[0], pts[2], pts[1], pts[0], pts[3], pts[2]]: st.add_vertex(v)
+				quads += 1
+				# bays: rows of lines across the lot's width, every 2.6 m, rows 5.4 m deep with 7 m aisles (a 12.4 m
+				# repeat along the depth), drawn on cells whose 4 corners are all car park
+				var lz0 := -hd - M + iz * S
+				var rz := fposmod(lz0 + hd + M, 12.4)
+				if rz < 5.4 - S + 0.01 or true:
+					var lx0 := -hw - M + ix * S
+					var bx := ceilf(lx0 / 2.6) * 2.6
+					while bx < lx0 + S:
+						var za := lz0; var zb := lz0 + S
+						var r0 := fposmod(za + hd + M, 12.4)
+						if r0 < 5.4:
+							zb = minf(zb, za + (5.4 - r0))
+							var fx := (bx - lx0) / S
+							var h0 := lerpf(hs[ix * nz + iz], hs[(ix + 1) * nz + iz], fx) + 0.13
+							var h1 := lerpf(hs[ix * nz + iz + 1], hs[(ix + 1) * nz + iz + 1], fx) + 0.13
+							var hz := lerpf(h0, h1, (zb - za) / S)
+							var a0 := b * Vector3(bx - 0.06, h0, za); var a1 := b * Vector3(bx + 0.06, h0, za)
+							var c0 := b * Vector3(bx - 0.06, hz, zb); var c1 := b * Vector3(bx + 0.06, hz, zb)
+							ln.set_normal(Vector3.UP)
+							for v in [a0, c1, a1, a0, c0, c1]: ln.add_vertex(v)
+						bx += 2.6
+		if quads == 0: continue
+		var mesh := st.commit()
+		ln.commit(mesh)
+		mesh.surface_set_material(0, asph)
+		if mesh.get_surface_count() > 1: mesh.surface_set_material(1, line)
+		var mi := MeshInstance3D.new()
+		mi.name = "CarPark%d" % i
+		mi.mesh = mesh
+		mi.position = org
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.visibility_range_end = 1500.0
+		add_child(mi)
+		made += 1
+	print("BUILDINGS car parks round %d centres in %d ms" % [made, Time.get_ticks_msec() - t0])
 
 ## House styles (0.2.46), set in the lot's sub field (l[7]) and baked like the road pass (BAKE_LOTS=1):
 ##   cottage / qlder within 350 m of the sea (on the coast, not the river) -> "shack": a 1960s timber beach shack
@@ -269,6 +368,30 @@ func _nearest_lots(x: float, z: float, n: int, r: float) -> Array:
 	var out := []
 	for c in cand.slice(0, n): out.append(c[1])
 	return out
+
+## A shed or warehouse a road clips: shorten it from the end the road hits (up to half its length), the far end stays
+func _trim_off_road(rd, l: Array, orig: Array, margin: float) -> bool:
+	l[1] = orig[0]; l[2] = orig[1]
+	var w0 := float(l[4]); var d0 := float(l[5])
+	var b := Basis(Vector3.UP, float(l[3]))
+	for _it in 10:
+		var w := _road_worst(rd, l)
+		if w[0] >= margin: return true
+		var lp: Vector3 = b.inverse() * Vector3(float(w[1]) - float(l[1]), 0, float(w[2]) - float(l[2]))
+		var along_d := absf(lp.z) / maxf(float(l[5]), 0.1) > absf(lp.x) / maxf(float(l[4]), 0.1)
+		var cut := 0.1 * (d0 if along_d else w0)
+		if along_d:
+			if float(l[5]) - cut < d0 * 0.5: break
+			l[5] = float(l[5]) - cut
+			var sh := b * Vector3(0, 0, -signf(lp.z) * cut * 0.5)
+			l[1] = float(l[1]) + sh.x; l[2] = float(l[2]) + sh.z
+		else:
+			if float(l[4]) - cut < w0 * 0.5: break
+			l[4] = float(l[4]) - cut
+			var sh := b * Vector3(-signf(lp.x) * cut * 0.5, 0, 0)
+			l[1] = float(l[1]) + sh.x; l[2] = float(l[2]) + sh.z
+	l[1] = orig[0]; l[2] = orig[1]; l[4] = w0; l[5] = d0
+	return false
 
 ## No houses on cliffs: where the ground falls more than STEEP metres across a small building's lot nobody could have
 ## built (the steps down the low side ran to 60 and more, or stopped in mid-air). Those lots are left out. Baked into
@@ -377,6 +500,19 @@ func _level_malls() -> void:
 		var l: Array = lots[i]
 		if str(l[0]) == "mall" and l.size() > 7 and str(l[7]) == "TWIN CITY":
 			holes += PolyMall.terrain_holes("twin_city", l, data)
+			# its car park is below sea level: no sea drawn over the lot (the water plane showed in the basement)
+			if main and main.get("water_mat"):
+				var b := Basis(Vector3.UP, float(l[3]))
+				var lo := Vector2(INF, INF); var hi := Vector2(-INF, -INF)
+				for cx: float in [-0.5, 0.5]:
+					for cz: float in [-0.5, 0.5]:
+						var wpt: Vector3 = b * Vector3(float(l[4]) * cx, 0, float(l[5]) * cz)
+						lo = lo.min(Vector2(wpt.x, wpt.z)); hi = hi.max(Vector2(wpt.x, wpt.z))
+				var c := Vector2(float(l[1]), float(l[2]))
+				for wm in [main.water_mat, main.get("sea_mat")]:
+					if wm == null: continue
+					wm.set_shader_parameter("dry", [Vector4(c.x + lo.x, c.y + lo.y, c.x + hi.x, c.y + hi.y), Vector4.ZERO, Vector4.ZERO, Vector4.ZERO])
+					wm.set_shader_parameter("dry_n", 1)
 	if holes > 0:
 		data.update_maps(Terrain3DRegion.TYPE_CONTROL)
 		print("BUILDINGS terrain holes for the car park ramps: ", holes)
@@ -650,6 +786,7 @@ func _yard(i: int, p: Dictionary, b: Node3D, xf: Transform3D) -> void:
 	if absf(f.x) < 0.5 and f.y > 0: half_d += vd
 	# how far to the neighbours each side and behind
 	var gap := [3.5, 3.5]; var back := 9.0
+	var nb := [-1, -1, -1]                 # the house next door each side and behind
 	for j in nbs:
 		var lj: Array = lots[j]
 		var lp: Vector3 = xf.affine_inverse() * Vector3(float(lj[1]), xf.origin.y, float(lj[2]))
@@ -659,9 +796,14 @@ func _yard(i: int, p: Dictionary, b: Node3D, xf: Transform3D) -> void:
 		if absf(a) < half_d + 6.0 and absf(c) > half_w:
 			var g := clampf((absf(c) - half_w - nh) * 0.5, 0.8, 6.0)
 			var k := 0 if c > 0.0 else 1
-			gap[k] = minf(gap[k], g)
+			if g < gap[k]:
+				gap[k] = g
+				if str(lj[0]) in ["qlder", "cottage", "brick", "two_storey"]: nb[k] = j
 		elif a < -half_d and absf(c) < half_w + 4.0:
-			back = minf(back, clampf((-a - half_d - nh) * 0.5, 3.0, 12.0))
+			var bk := clampf((-a - half_d - nh) * 0.5, 3.0, 12.0)
+			if bk < back:
+				back = bk
+				if str(lj[0]) in ["qlder", "cottage", "brick", "two_storey"]: nb[2] = j
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(l[6]) + 5150
 	var sub := str(l[7]) if l.size() > 7 else ""
@@ -677,7 +819,10 @@ func _yard(i: int, p: Dictionary, b: Node3D, xf: Transform3D) -> void:
 	var segs := [[to_l.call(front_a, half_w + gap[0]), to_l.call(rear_a, half_w + gap[0])],
 		[to_l.call(front_a, -half_w - gap[1]), to_l.call(rear_a, -half_w - gap[1])],
 		[to_l.call(rear_a, half_w + gap[0]), to_l.call(rear_a, -half_w - gap[1])]]
-	for sg in segs: _fence(g, i, xf, gfn, sg[0], sg[1], mk, hgt)
+	# a fence between two houses is built once, by the one with the higher lot number (both used to build it)
+	for k in 3:
+		if nb[k] != -1 and nb[k] > i: continue
+		_fence(g, i, xf, gfn, segs[k][0], segs[k][1], mk, hgt)
 	# now and then a low brick wall across the front, a gap for the driveway
 	if (str(l[0]) == "brick" or sub == "units70") and rng.randf() < 0.3 and bd > 3.0:
 		var fa := half_d + clampf(bd + 6.0 - 1.5 - (half_d - (d * 0.5 if absf(f.x) < 0.5 else w * 0.5)), 2.0, 7.0)
@@ -711,10 +856,13 @@ func _fence(g: BuildGen.Geo, i: int, xf: Transform3D, gfn: Callable, a: Vector2,
 	for k in n:
 		var p0 := a.lerp(c, float(k) / n); var p1 := a.lerp(c, float(k + 1) / n)
 		var m := (p0 + p1) * 0.5
-		var wp := xf * Vector3(m.x, 0, m.y)
-		if Roads.inst and Roads.inst.edge_dist(wp.x, wp.z) < 1.2: continue
-		var other := lot_at(wp, 0.4, true)
-		if other != -1 and other != i: continue
+		var clear := true
+		for q in [p0, m, p1]:
+			var wq := xf * Vector3(q.x, 0, q.y)
+			if Roads.inst and Roads.inst.edge_dist(wq.x, wq.z) < 1.2: clear = false; break
+			var other := lot_at(wq, 1.2, true)
+			if other != -1 and other != i: clear = false; break
+		if not clear: continue
 		var gy: float = gfn.call(m.x, m.y)
 		var plen := p0.distance_to(p1)
 		g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x, gy - 0.1 + hgt * 0.5, m.y)), Vector3(thick, hgt + 0.2, plen))

@@ -349,6 +349,13 @@
    "date": "2026-11-15",
    "notes": "Suburbs: side and back yard fences between town houses (Colorbond, timber palings, low brick), some low brick front walls. New house styles: 1960s timber beach shacks and 1970s sandstone two-storey units along the beach, newer double brick estate homes with matching Colorbond fascia in their estates. Two small shopping centres: Caba (arcade level with the main street, lift on the west side down to a car park underneath that opens onto the street behind) and Kingscliff on Pearl Street. A five-storey block with ground-floor garages on Pearl Street, Kingscliff.",
    "size": 2172336
+  },
+  {
+   "file": "patch_0.2.0_0047.pck",
+   "version": "0.2.47",
+   "date": "2026-11-15",
+   "notes": "Tweed City: you can drive in now (the terrain hole at the ramp door left a gap you fell through), no more sea in the basement, the roof that ran through the cinema lobby is gone, and there are car parks round it. Servos are generated from the real ones in OpenStreetMap: concrete forecourt, canopy at its real size in the brand's colours, bowsers, pylon sign with prices and a shop with shelves to loot. The Ampol model is gone; the Chinderah truck stop has its truck canopy. Fences between neighbours aren't doubled up and keep off houses. Big sheds trimmed off roads. Kingscliff centre on its real footprint. Bug reports now record where the camera is.",
+   "size": 2348356
   }
  ],
  "full": {
