@@ -350,6 +350,16 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			var big := kind == "warehouse"
 			p.raised = 0.15
 			p.h = rng.randf_range(7.0, 8.5) if big else rng.randf_range(5.2, 6.4)
+			# a trade (0.2.49): "hardware:BUNNINGS", "parts:REPCO", "mech:<name>", "tyres:<name>", "wreckers:<name>":
+			# fitted out for it (BuildProps.TRADE_RULES) with its name over the front
+			if sub.contains(":"):
+				p.trade = sub.get_slice(":", 0)
+				p.sign = sub.get_slice(":", 1)
+				if p.trade == "hardware":
+					p.h = maxf(p.h, 8.0)
+					p.sign_h = 1.6
+				elif p.trade == "parts":
+					p.sign_h = 0.9
 			p.clad = "factory" if rng.randf() < 0.6 else "tin"
 			p.roof = {"type": "gable", "ridge": "z", "pitch": deg_to_rad(8), "mat": "tin"}
 			var od := 4.0
@@ -821,7 +831,10 @@ static func build(p: Dictionary, ground: Callable) -> Node3D:
 		if not p.has("_labels"): p["_labels"] = []
 		var vd: float = float(p.verandah.depth) if p.verandah != null else 0.0
 		var sy: float = float(p.h) - 0.45 if vd == 0.0 else float(p.h) - 0.75
-		ShopGen._label(p, Vector3(0, sy, d / 2 + T_OUT + vd + 0.05), str(p.sign), 0.34, minf(w - 1.0, 9.0), 0.0, Color(0.1, 0.1, 0.12))
+		var sh := float(p.get("sign_h", 0.34))
+		if sh > 0.5: sy = float(p.h) - sh * 0.5 - 0.4
+		ShopGen._label(p, Vector3(0, sy, d / 2 + T_OUT + vd + 0.05), str(p.sign), sh, minf(w - 1.0, 9.0 if sh <= 0.5 else 40.0), 0.0,
+			Color(0.1, 0.1, 0.12) if p.get("trade", "") != "hardware" else (Color(0.85, 0.1, 0.1) if str(p.sign).begins_with("BUNNINGS") else Color(0.95, 0.5, 0.05)))
 	if p.kind in ["shop", "mall", "tower"] or p.has("sign"):
 		ShopGen.labels(p, root)
 	return root

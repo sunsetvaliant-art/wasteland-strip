@@ -76,6 +76,7 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 		"bank": name = BANKS[rng.randi() % BANKS.size()]
 		_:
 			name = [sur + "'S BUILDINGS", sur + " & SONS", sur + " BROS", sur + "'S " + title, title][rng.randi() % 5]
+	if parts.size() > 3 and parts[3] != "": name = parts[3]           # its real name (Mitre 10 Murwillumbah)
 	p.front = {"style": style, "ph": rng.randf_range(0.9, 1.7), "year": year, "name": name, "title": title,
 		"awning": s != "pub" and (s != "bank" or rng.randf() < 0.4) and room >= 1.5, "verandah": s == "pub" and room >= 2.2,
 		"awn_d": clampf(room, 1.5, AWN_D),
@@ -103,7 +104,7 @@ static func plan_into(p: Dictionary, w: float, d: float, rng: RandomNumberGenera
 ## back hall down one side if there's a flat upstairs
 static func _ground(w: float, d: float, rng: RandomNumberGenerator, two: bool, flip: bool) -> Array:
 	var rooms := []
-	var bz := clampf(d * 0.28, 3.5, 6.0)
+	var bz := clampf(d * 0.28, 3.5, 6.0) if d < 24.0 else clampf(d * 0.25, 6.0, 10.0)   # deep ones (through to the lane): a dock at the back
 	var zb := -d / 2 + bz
 	var xa := -w / 2
 	var xb := w / 2
@@ -234,7 +235,7 @@ static func ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:
 		return
 	var ba := float(back.x0)
 	var bb := float(back.x1)
-	if p.sub == "hardware" and back.type == "store" and bb - ba > 4.2:
+	if (p.sub == "hardware" or d >= 24.0) and back.type == "store" and bb - ba > 4.2 and (p.sub == "hardware" or rng.randf() < 0.55):
 		var cc := (ba + bb) / 2.0 - 1.6
 		var op := BuildGen._add_op(back, "N", cc, cc + 3.2, "roller", 0.0, 3.0)
 		op["ext"] = true

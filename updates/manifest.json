@@ -363,6 +363,13 @@
    "date": "2026-11-15",
    "notes": "Every building in the valley now stands on a real roof: 40,000 footprints traced from satellite imagery (Microsoft) and OpenStreetMap, each in its real spot and size, facing its street, with the right number of storeys. Shops, schools, pubs and the like keep their names on their real buildings. Streets look like the real streets now. Cupboards and barricades start fresh once (your bases are kept). Building data (c) OpenStreetMap contributors, Microsoft, Overture Maps Foundation (ODbL).",
    "size": 2370428
+  },
+  {
+   "file": "patch_0.2.0_0049.pck",
+   "version": "0.2.49",
+   "date": "2026-11-15",
+   "notes": "Survival buildings at their real places: hardware stores (Bunnings, Mitre 10, True Value, Brims, Village Hardware) with racking, trolleys and a loading dock out the back; Mitre 10 Murwillumbah is double storey and runs from Wollumbin St through to Cliffords Lane. Mechanics, tyre shops and car parts stores full of tool chests, tyres and parts shelves. Six car wreckers' yards: tin fence, rows of wrecked cars, some stacked, search them for parts and scrap. Twenty caravan parks: fence, boom gate and sign, the loop road, caravans with annexes to search, cabins. Deep main-street shops have a back store with a roller door or back door onto the lane. About 450 spots where two buildings stood in one place are fixed. Cupboards and barricades start fresh once (your bases are kept).",
+   "size": 2546760
   }
  ],
  "full": {

@@ -83,6 +83,14 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   javascript_tool, read the result back in ~950-character slices). The numbers live in tools/make_servos.py, which
   writes assets/world/servos.json, removes the old ampol_servo landmarks and adds ShopGen "servo/1/0/<brand>" lots.
   ServoGen (scripts/world/servo_gen.gd) builds forecourt, canopies, bowsers, pylon within 900 m.
+- Footprints (0048): `tools/import_footprints.py` turns Overture buildings (docs/ref/2026/overture_*.geojsonl.gz,
+  downloaded in the workspace with `pip install overturemaps`; S3 is reachable) into lots; lots_ver starts "fp" and
+  Buildings._real skips the old road / cliff passes. Run order after it: `tools/place_trades.py` (0049: hardware,
+  parts, mechanics, tyres from Overture places; writes the wreckers / caravan parks to assets/world/yards.json) then
+  `tools/dedupe_lots.py` (0049: drops lots standing on each other, joins Mitre 10 through to Cliffords Lane).
+  Trade lots: workshop/warehouse sub "trade:NAME" (BuildGen sets p.trade and the sign; BuildProps.TRADE_RULES fits it
+  out), shops "hardware/<storeys>/0/NAME". YardGen (scripts/world/yard_gen.gd) builds the wreckers' yards and caravan
+  parks within 450 m; what's left in searched wrecks/vans is kept while you're in the session (not saved yet).
 - Terrain3D get_height is the nearest 5 m vertex: anything laid on the ground (car parks, forecourts) uses
   ServoGen._h (bilinear) or it sinks under the drawn surface.
 - Water: shaders/water.gdshader takes "dry" boxes (x0, z0, x1, z1; up to 4) where no water is drawn; set on both

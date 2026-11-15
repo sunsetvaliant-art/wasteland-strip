@@ -74,6 +74,8 @@ const CAT := {
 	"chem_shelf": [PH + "interior/steel_frame_shelves_02/steel_frame_shelves_02.gltf", 2.0, "chemist", true],
 	"hw_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "hardware", true],
 	"hw_shelf": [PH + "world/steel_frame_shelves_01/steel_frame_shelves_01.gltf", 2.0, "hardware", true],
+	"parts_shelf": [PH + "world/steel_frame_shelves_01/steel_frame_shelves_01.gltf", 2.0, "carparts", true],
+	"parts_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "carparts", true],
 	"grocer_shelf": [PH + "interior/steel_frame_shelves_02/steel_frame_shelves_02.gltf", 2.0, "grocer", true],
 	"grocer_rack": [PH + "world/worn_metal_rack/worn_metal_rack.gltf", 1.85, "grocer", true],
 	"news_shelf": [PH + "interior/wooden_bookshelf_worn/wooden_bookshelf_worn.gltf", 1.95, "newsagent", true],
@@ -264,9 +266,24 @@ class Room:
 const SHOP_SHELF := {"chemist": "chem_shelf", "hardware": "hw_rack|hw_shelf", "grocer": "grocer_shelf|grocer_rack", "cafe": "grocer_shelf",
 	"newsagent": "news_shelf|gen_shelf", "clothes": "clothes_shelf|clothes_cab", "sports": "sports_rack", "general": "gen_shelf|grocer_shelf", "pub": "bar_shelf", "bank": "bank_desk"}
 
+## the trades (0.2.49): a hardware's floor, a parts store, a mechanic's or tyre shop's bays, a wrecker's parts shed
+const TRADE_RULES := {
+	"hardware": [["hw_rack", "rows", 1.0], ["hw_shelf", "wall", 1.0], ["hw_shelf", "wall", 1.0], ["shop_counter", "wall", 1.0], ["shop_counter", "wall", 0.8],
+		["trolley", "center", 0.9], ["trolley", "center", 0.6], ["pallet_rack", "wall", 0.7], ["cardboard", "corner", 0.6], ["fluoro", "ceiling", 1.0]],
+	"parts": [["parts_shelf", "rows", 1.0], ["parts_rack", "wall", 1.0], ["parts_shelf", "wall", 1.0], ["shop_counter", "wall", 1.0], ["tyre", "corner", 0.7],
+		["cardboard", "corner", 0.5], ["fluoro", "ceiling", 1.0]],
+	"mech": [["wbench", "wall", 1.0], ["vice", "on:wbench", 0.9], ["parts_shelf", "wall", 1.0], ["parts_rack", "wall", 0.8], ["toolcart|toolchest", "wall", 0.9],
+		["tyre", "corner", 0.8], ["tyre", "corner", 0.6], ["drum|drum2", "corner", 0.7], ["toolchest", "wall", 0.6], ["fluoro", "ceiling", 1.0]],
+	"tyres": [["tyre", "corner", 1.0], ["tyre", "corner", 1.0], ["tyre", "corner", 0.9], ["tyre", "center", 0.8], ["tyre", "center", 0.7], ["wbench", "wall", 0.9],
+		["parts_shelf", "wall", 0.9], ["toolcart|toolchest", "wall", 0.8], ["fluoro", "ceiling", 1.0]],
+	"wreckers": [["parts_rack", "rows1", 0.9], ["parts_shelf", "wall", 1.0], ["parts_rack", "wall", 1.0], ["tyre", "corner", 1.0], ["tyre", "corner", 0.8],
+		["drum|drum2", "corner", 0.8], ["wbench", "wall", 0.8], ["fluoro", "ceiling", 1.0]]}
+
 static func _rules(p: Dictionary, r: Dictionary) -> Array:
 	if MALL_RULES.has(r.type) and p.kind == "mall":
 		return MALL_RULES[r.type]
+	if r.type in ["workshop", "warehouse"] and TRADE_RULES.has(p.get("trade", "")):
+		return TRADE_RULES[p.trade]
 	if r.type not in ["shop", "unit"]:
 		return RULES.get(r.type, [])
 	var sub: String = r.get("sub", p.get("sub", "general"))

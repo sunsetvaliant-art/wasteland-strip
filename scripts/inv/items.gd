@@ -134,6 +134,14 @@ const LOOT := {
 	"planks": [["tin_sheet", 0.4, 1, 3], ["brick", 0.3, 4, 12], ["plank", 1.0, 2, 6], ["nails", 0.25, 1, 1]],
 	"none": [],
 	# on the dead: what people had on them when it happened (pockets, a belt, a bag)
+	# car parts stores, mechanics' shelves, wrecks (0.2.49)
+	"carparts": [["car_battery", 0.4, 1, 1], ["oil_can", 0.7, 1, 3], ["tyre_iron", 0.35, 1, 1], ["wrench", 0.4, 1, 1], ["pipe_wrench", 0.2, 1, 1],
+		["tape", 0.5, 1, 2], ["wire", 0.5, 1, 3], ["scrap", 0.5, 1, 4], ["jerry_fuel", 0.12, 1, 1], ["torch", 0.25, 1, 1], ["crowbar", 0.12, 1, 1]],
+	"wreck": [["scrap", 0.9, 2, 6], ["wire", 0.5, 1, 3], ["car_battery", 0.2, 1, 1], ["oil_can", 0.25, 1, 1], ["cloth", 0.3, 1, 2], ["tyre_iron", 0.15, 1, 1], ["jerry_fuel", 0.05, 1, 1]],
+	# caravans: holidays interrupted
+	"caravan": [["food_can", 0.6, 1, 3], ["long_life", 0.4, 1, 2], ["water_bottle", 0.6, 1, 3], ["soft_drink", 0.5, 1, 4], ["lighter", 0.4, 1, 1],
+		["torch", 0.35, 1, 1], ["rope", 0.3, 1, 1], ["bandage", 0.35, 1, 2], ["cloth", 0.4, 1, 3], ["knife", 0.2, 1, 1], ["car_key", 0.2, 1, 1],
+		["radio", 0.08, 1, 1], ["jerry_fuel", 0.08, 1, 1], ["seeds", 0.05, 1, 2]],
 	"zombie": [["cloth", 0.6, 1, 2], ["lighter", 0.18, 1, 1], ["car_key", 0.07, 1, 1], ["bandage", 0.12, 1, 2], ["soft_drink", 0.08, 1, 1],
 		["water_bottle", 0.06, 1, 1], ["food_can", 0.04, 1, 1], ["long_life", 0.04, 1, 1], ["torch", 0.04, 1, 1], ["knife", 0.04, 1, 1], ["tape", 0.03, 1, 1],
 		["ammo_12g", 0.02, 2, 6], ["ammo_357", 0.015, 2, 6], ["radio", 0.01, 1, 1], ["seeds", 0.03, 1, 3]],
@@ -191,6 +199,7 @@ const CONTAINERS := {
 	"clothes": ["clothes", [7, 5]], "sports": ["sports", [8, 4]], "general": ["general", [7, 4]], "pub": ["pub", [6, 3]], "till": ["till", [4, 2]],
 	"bank": ["bank", [5, 4]], "super": ["super", [8, 4]], "security": ["security", [6, 4]],
 	"zombie": ["zombie", [4, 3]], "scav": ["scav", [5, 3]],
+	"carparts": ["carparts", [7, 4]], "wreck": ["wreck", [6, 4]], "caravan": ["caravan", [7, 5]],
 	"car_boot": ["none", [7, 4]], "car_wagon": ["none", [8, 5]], "car_tray": ["none", [10, 5]],
 }
 # small enough to pick up and carry (middle mouse) in survival, by Forge key prefix match or mass

@@ -35,6 +35,7 @@ var net: Net
 var rg_roads: RgRoads
 var interact_menu: InteractMenu
 var servos: ServoGen
+var yards: YardGen
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
@@ -158,6 +159,10 @@ func _ready() -> void:
 	servos.name = "Servos"
 	add_child(servos)
 	servos.setup(self)
+	yards = YardGen.new()
+	yards.name = "Yards"
+	add_child(yards)
+	yards.setup(self)
 	zombies = ZombieDirector.new()
 	zombies.name = "ZombieDirector"
 	add_child(zombies)

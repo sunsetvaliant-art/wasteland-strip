@@ -2,7 +2,25 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0048, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0049, 2026-11-15.
+
+## Survival buildings (asked 2026-11-15: "caravan parks, hardwares and car wreckers and mechanics are gonna do it")
+- [x] 0049 Hardware stores from the real places (Overture Maps): Bunnings (big warehouse, red sign), Mitre 10, True
+      Value, Brims, Village Hardware. hardware racks and shelves, pallet racking, trolleys; a roller door and loading dock
+      out the back
+- [x] 0049 Mitre 10 Murwillumbah: double storey, one building from Wollumbin St through to Cliffords Lane (49 m)
+- [x] 0049 Main-street shops on deep lots (24 m or more) have a back store with a loading dock roller door or a back
+      door onto the lane, as the Wollumbin St / Murwillumbah St shops do to Cliffords Lane
+- [x] 0049 Mechanics, tyre shops and car parts shops (Repco, Supercheap, Autobarn, Burson...) at their real places:
+      tool chests, tyres, parts shelves (search them for car parts)
+- [x] 0049 Car wreckers' yards (6, real places): corrugated iron fence, the yard's sign, rows of wrecked cars, some
+      stacked, every bottom one searchable for parts and scrap
+- [x] 0049 Caravan parks (20, real places): fence, boom gate and sign at the road, the loop road, caravans with
+      annexes on the sites (searchable), the cabins are real roofs
+- [x] 0049 Two buildings stood in one place in about 450 spots (a named OSM shop put back on a roof another shop
+      already had). One of each pair taken out; the shop type or the school / police station moved onto the real roof
+- [ ] Wreck yards: wrecks look like clean cars (no rust, panels, missing wheels yet)
+- [ ] Caravan parks: amenities block, camp kitchen
 
 ## Neighbourhoods from real footprints (asked 2026-11-15: "make neighbourhoods and buildings look believable")
 - [x] 0048 Every building is now a real roof: 40,501 footprints from Overture Maps (OpenStreetMap merged with Microsoft's
