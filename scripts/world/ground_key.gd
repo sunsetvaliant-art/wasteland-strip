@@ -274,7 +274,7 @@ func _build_tile(t: Dictionary) -> Node3D:
 	if _kmat == null:
 		_kmat = _mat("res://assets/ground/key/concrete_pavement", 2.0)
 		_kmat.albedo_color = Color(0.92, 0.92, 0.9)
-		_fill = {"grass": _mat("res://assets/ground/rough_grass", 2.5), "concrete": _kmat, "pavers": _mat("res://assets/ground/key/brick_pavement_02", 2.2)}
+		_fill = {"grass": _mat("res://assets/ground/rough_grass", 2.5), "concrete": _kmat, "pavers": _mat("res://assets/ground/key/brick_pavement_02", 2.2), "garden": _mat("res://assets/ground/farm_soil", 3.0)}
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var faces := PackedVector3Array()

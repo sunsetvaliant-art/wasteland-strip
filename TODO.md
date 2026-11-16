@@ -16,7 +16,12 @@ Newest requests at the top of each section. Last updated: patch 0051, 2026-11-15
       and water left to the terrain), painted lines traced from the photo and drawn sharp (white and yellow), kerb and
       gutter as real geometry along the streets, islands raised with grass/concrete/pavers, no grass on the paved
       ground (tools/sat_fetch.py, tools/sat_key.py, scripts/world/ground_key.gd)
-- [ ] Ground key: the user's verdict on the pilot, then the whole map (streamed tiles), the Queensland side
+- [x] Ground Tagger (artifact https://claude.ai/artifact/Lm32vhtFM7ebA9Pbvo2ZV1): paint/outline what the ground really
+      is over the imagery, draw kerbs, "no kerb", painted lines, drop points (speed hump, crossing, roundabout
+      garden, give way, stop) and notes; saved for Claude. tools/sat_key.py now learns from the tags and obeys them
+- [ ] Ground key: pull the user's tags, re-run, ship; then the whole map (streamed tiles), the Queensland side
+- [ ] Ground key bugs (2026-11-16 F9s): kerbs up the middle of streets; the roundabout at Wollumbin/Main (about
+      -757, -108) has a garden in the middle; hard edges on the water
 - [ ] Ground key: speed humps and raised crossings as bumps (OSM traffic calming), footpaths at kerb height,
       kerb ramps at crossings
 
@@ -36,6 +41,14 @@ owSpawnPatrol) still has the code; its strip game is still in it behind ?strip.
 - [ ] Engine bay: blower, carbies, filters, injectors, alternator as fittable parts that change power and starting
 - [ ] Bolt-ons: bull bars, side steps, drop tanks, roof racks, spare wheel carriers, roof chops
 - [ ] The garage in survival (a garage work station, parts found and traded), not just creative
+
+## Bug reports 2026-11-16 morning (9 reports)
+- [ ] STUTTER FOUND: every slow frame in the F9 logs is the building streamer (Buildings._process: 26-60 ms in one
+      frame when a building is built near you). Spread each build over several frames / build off the main thread
+- [ ] Prospero St, Murwillumbah: put in each business; J&J Tyres was there, and a Toyota dealership on the same block
+- [ ] Servo bowsers right on top of the entry: cars can't drive through between them
+- [ ] Murwillumbah bridge (the town bridge, about -283, 18) needs straightening, both sides
+- [ ] Wollumbin/Main roundabout: garden in the middle (tagger point or fixed)
 
 ## Bug reports 2026-11-15 (evening, 14 reports)
 - [x] 0051 The home pub (Riverview Hotel) was a plain generated shop; the pub generator was only used for two OSM pubs.

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ground Tagger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a surveyor's drafting table for Wasteland Strip: plain, exact, the photo first
+   IDEA: a council plan sheet: the aerial under clear film, coloured pens for what each patch is
+   PICTURE: the aerial itself, full bleed, your tags drawn over it in survey colours
+   COLOUR and TYPE: road-asphalt charcoal frame, kerb-paint yellow accent; Barlow / Barlow Condensed
+   LAYOUT: map fills the window; one tool rail on the left, the tag list on the right (folds away under 900px) */
+:root{color-scheme:light dark;--bg:light-dark(#f2f1ec,#16181b);--panel:light-dark(#ffffff,#202327);--ink:light-dark(#16181b,#ecebe6);--mute:light-dark(#5d6168,#9ea3aa);--line:light-dark(#d8d6cf,#33373d);--acc:#f2c230;--acc-ink:#16181b}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 Barlow,system-ui,sans-serif;overflow:hidden;display:grid;grid-template-columns:236px minmax(0,1fr) 260px;grid-template-rows:auto minmax(0,1fr)}
+header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+h1{font:600 22px/1 "Barlow Condensed",sans-serif;margin:0;letter-spacing:.01em}
+header .sub{color:var(--mute);font-size:13px}
+header .sp{flex:1}
+.stat{font-size:13px;color:var(--mute);white-space:nowrap}
+.stat b{color:var(--ink)}
+aside{background:var(--panel);overflow-y:auto;padding:10px;border-right:1px solid var(--line)}
+#side{border-right:0;border-left:1px solid var(--line)}
+h2{font:600 15px/1.2 "Barlow Condensed",sans-serif;margin:14px 0 6px;color:var(--mute)}
+h2:first-child{margin-top:2px}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{min-height:40px;border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 8px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:7px}
+.btn:hover{border-color:var(--mute)}
+.btn.on{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.btn:focus-visible,.sw:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btn kbd{margin-left:auto;font:12px Barlow;opacity:.6}
+.pal{display:grid;gap:4px}
+.sw{display:flex;align-items:center;gap:8px;min-height:34px;border:1px solid transparent;border-radius:7px;padding:3px 7px;background:transparent;cursor:pointer;text-align:left}
+.sw.on{border-color:var(--acc);background:light-dark(#fff7d6,#3a3320)}
+.chip{width:18px;height:18px;border-radius:4px;flex:none;border:1px solid rgba(0,0,0,.25)}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.row input[type=range]{flex:1}
+.row label{font-size:13px;color:var(--mute);white-space:nowrap}
+main{position:relative;overflow:hidden;background:#0d0e10;touch-action:none}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hint{position:absolute;left:12px;bottom:12px;background:rgba(18,19,22,.86);color:#ecebe6;padding:8px 12px;border-radius:8px;font-size:13px;max-width:min(560px,calc(100% - 24px));pointer-events:none}
+#coord{position:absolute;right:12px;bottom:12px;background:rgba(18,19,22,.86);color:#ecebe6;padding:6px 10px;border-radius:8px;font-size:13px;pointer-events:none;white-space:nowrap}
+#zoom{position:absolute;right:12px;top:12px;display:grid;gap:6px}
+#zoom button{width:44px;height:44px;border-radius:8px;border:0;background:rgba(18,19,22,.86);color:#fff;font-size:22px;cursor:pointer}
+.list{display:grid;gap:4px}
+.it{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;padding:5px 6px;border-radius:7px;cursor:pointer;border:1px solid transparent}
+.it:hover{border-color:var(--line)}
+.it.sel{border-color:var(--acc)}
+.it small{color:var(--mute);display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it button{border:0;background:transparent;cursor:pointer;color:var(--mute);font-size:18px;width:32px;height:32px}
+.empty{color:var(--mute);font-size:13px;padding:8px 2px}
+#notebox{position:absolute;inset:auto auto 50% 50%;transform:translate(-50%,50%);background:var(--panel);color:var(--ink);border-radius:12px;padding:14px;width:min(380px,calc(100% - 24px));box-shadow:0 12px 40px rgba(0,0,0,.4);display:none}
+#notebox textarea{width:100%;min-height:90px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);font-size:16px}
+#notebox .bar{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.save{font-size:13px;color:var(--mute)}
+.save.ok{color:#3f9b4a}.save.bad{color:#c4462f}
+textarea#export{width:100%;min-height:70px;font-size:12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:6px}
+@media(max-width:900px){body{grid-template-columns:200px minmax(0,1fr)}#side{display:none}}
+@media(max-width:600px){body{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto}#tools{order:3;max-height:38vh;border-right:0;border-top:1px solid var(--line)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ground Tagger</h1>
+  <span class="sub">Murwillumbah CBD pilot · tell the key what the ground really is</span>
+  <span class="sp"></span>
+  <span class="stat"><b id="ntags">0</b> tags</span>
+  <span class="save" id="save">connecting…</span>
+</header>
+
+<aside id="tools">
+  <h2>Tool</h2>
+  <div class="tools" id="toolbtns"></div>
+  <div class="row"><label for="size">Brush</label><input id="size" type="range" min="0.5" max="8" step="0.5" value="2"><span id="sizev" class="stat">2 m</span></div>
+  <h2 id="paltitle">Ground type</h2>
+  <div class="pal" id="pal"></div>
+  <h2>Show</h2>
+  <div class="row"><label><input type="checkbox" id="showkey"> The key now</label><input id="keyop" type="range" min="0.1" max="1" step="0.05" value="0.55" aria-label="Key opacity"></div>
+  <div class="row"><label><input type="checkbox" id="showkerb" checked> Kerbs it found</label></div>
+  <div class="row"><label><input type="checkbox" id="showtags" checked> My tags</label></div>
+</aside>
+
+<main id="map">
+  <canvas id="cv"></canvas>
+  <div id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button></div>
+  <div id="hint"></div>
+  <div id="coord"></div>
+  <div id="notebox" role="dialog" aria-label="Note">
+    <h2 style="margin-top:0">Note on the map</h2>
+    <textarea id="notetext" placeholder="e.g. J&amp;J Tyres was here · this roundabout has a garden in the middle"></textarea>
+    <div class="bar"><button class="btn" id="notecancel">Cancel</button><button class="btn on" id="noteok">Pin it</button></div>
+  </div>
+</main>
+
+<aside id="side">
+  <h2>Tags</h2>
+  <div class="row"><button class="btn" id="undo">Undo mine <kbd>Z</kbd></button></div>
+  <div class="list" id="list"></div>
+  <h2>Copy out</h2>
+  <p class="empty" style="padding-top:0">Saved for Claude as you go. If saving isn't working, copy this and paste it in the chat.</p>
+  <button class="btn" id="copy">Copy all tags</button>
+  <textarea id="export" readonly aria-label="Tags as text"></textarea>
+</aside>
+
+<script>
+{
+const AREAS = [
+  ["road", "Road asphalt", "#3d3f46"], ["carpark", "Car park / lane asphalt", "#8c9099"], ["concrete", "Concrete / footpath", "#e8e6dc"],
+  ["pavers", "Pavers / bricks", "#c35a3b"], ["lawn", "Lawn / grass", "#58c047"], ["garden", "Garden bed / mulch", "#7a4f2a"],
+  ["dirt", "Dirt", "#a8743e"], ["gravel", "Gravel", "#d6c08e"], ["trees", "Trees (canopy)", "#1f6b2c"], ["water", "Water", "#2a7fd0"],
+  ["building", "Building / roof", "#b04fc4"]];
+const LINES = [
+  ["kerb", "Kerb (road on either side ok)", "#f2c230", 0], ["nokerb", "No kerb here (rub out)", "#ff3b3b", 0], ["white", "White line, solid", "#ffffff", 0],
+  ["whitedash", "White line, dashed", "#ffffff", 1], ["yellow", "Yellow line", "#f6d000", 0], ["edge", "Edge of the bitumen (no kerb)", "#ff8a1c", 1]];
+const POINTS = [
+  ["hump", "Speed hump", "#ff8a1c"], ["crossing", "Pedestrian crossing", "#ffffff"], ["rgarden", "Roundabout with a garden", "#58c047"],
+  ["giveway", "Give way", "#f2c230"], ["stop", "Stop", "#e2412b"]];
+const TOOLS = [["pan", "Move", "M"], ["brush", "Paint", "B"], ["poly", "Outline", "O"], ["line", "Line", "L"], ["point", "Point", "P"], ["note", "Note", "N"], ["select", "Pick", "S"], ["rub", "Rub out", "E"]];
+const HINT = {
+  pan: "Drag to move, wheel or +/− to zoom. Hold Space with any tool to move.",
+  brush: "Paint over the ground in the colour of what it really is. Brush size on the left.",
+  poly: "Click round the edge of an area, double-click or Enter to finish, Esc to drop it.",
+  line: "Click along a kerb or painted line, double-click or Enter to finish.",
+  point: "Click to drop a point: a speed hump, a crossing, a roundabout garden…",
+  note: "Click where something was (a business, a garden, a fix) and type it.",
+  select: "Click a tag to pick it, Delete to remove it.",
+  rub: "Click a tag to remove it."};
+const $ = id => document.getElementById(id);
+const cv = $("cv"), cx = cv.getContext("2d"), map = $("map");
+let meta = null, tool = "brush", cls = {brush: "road", poly: "road", line: "kerb", point: "hump"};
+let tags = new Map(), sel = null, draft = null, me = "me", mine = [], db = null, col = null;
+let view = {x: 0, z: 0, s: 1}, kerbs = null, keyImg = null, ov = null, tiles = {};
+const colorOf = t => (t.kind === "area" || t.kind === "stroke" ? AREAS : t.kind === "line" ? LINES : t.kind === "point" ? POINTS : []).find(a => a[0] === t.cls)?.[2] || "#f2c230";
+const labelOf = t => t.kind === "note" ? t.text : ((AREAS.concat(LINES, POINTS)).find(a => a[0] === t.cls)?.[1] || t.cls);
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+
+function toolButtons() {
+  $("toolbtns").innerHTML = TOOLS.map(([k, n, s]) => `<button class="btn${k === tool ? " on" : ""}" data-t="${k}">${n}<kbd>${s}</kbd></button>`).join("");
+  $("toolbtns").querySelectorAll("button").forEach(b => b.onclick = () => setTool(b.dataset.t));
+}
+function palette() {
+  const set = tool === "line" ? LINES : tool === "point" ? POINTS : (tool === "brush" || tool === "poly") ? AREAS : null;
+  $("paltitle").textContent = tool === "line" ? "Line type" : tool === "point" ? "Point type" : "Ground type";
+  if (!set) { $("pal").innerHTML = `<p class="empty">${tool === "note" ? "Notes are free text." : "Pick a drawing tool to choose a type."}</p>`; return; }
+  $("pal").innerHTML = set.map(([k, n, c, d]) => `<button class="sw${cls[tool] === k ? " on" : ""}" data-c="${k}"><span class="chip" style="background:${c}${d ? ";background-image:repeating-linear-gradient(90deg,transparent 0 4px,#333 4px 7px)" : ""}"></span>${n}</button>`).join("");
+  $("pal").querySelectorAll("button").forEach(b => b.onclick = () => { cls[tool] = b.dataset.c; palette(); });
+}
+function setTool(t) { tool = t; draft = null; toolButtons(); palette(); $("hint").textContent = HINT[t]; draw(); }
+
+// ---- view: world (game metres, x east, z south) <-> screen
+const W2S = (x, z) => [(x - view.x) * view.s + cv.width / 2, (z - view.z) * view.s + cv.height / 2];
+const S2W = (sx, sy) => [(sx - cv.width / 2) / view.s + view.x, (sy - cv.height / 2) / view.s + view.z];
+function resize() { const r = map.getBoundingClientRect(), d = devicePixelRatio || 1; cv.width = r.width * d; cv.height = r.height * d; draw(); }
+function tile(j, i) {
+  const k = j + "_" + i;
+  if (!tiles[k]) { const im = new Image(); im.onload = draw; im.src = `tiles/t_${j}_${i}.jpg`; tiles[k] = im; }
+  return tiles[k];
+}
+function draw() {
+  if (!meta) return;
+  cx.setTransform(1, 0, 0, 1, 0, 0); cx.fillStyle = "#0d0e10"; cx.fillRect(0, 0, cv.width, cv.height);
+  const [ax, az] = W2S(meta.x0, meta.z0), size = (meta.x1 - meta.x0) * view.s;
+  if (view.s < 1.2 || true) { if (ov && ov.complete) cx.drawImage(ov, ax, az, size, size); }
+  if (view.s >= 1.2) {
+    const T = meta.tile, nt = meta.nt;
+    const [wx0, wz0] = S2W(0, 0), [wx1, wz1] = S2W(cv.width, cv.height);
+    for (let j = Math.max(0, Math.floor((wz0 - meta.z0) / T)); j <= Math.min(nt - 1, Math.floor((wz1 - meta.z0) / T)); j++)
+      for (let i = Math.max(0, Math.floor((wx0 - meta.x0) / T)); i <= Math.min(nt - 1, Math.floor((wx1 - meta.x0) / T)); i++) {
+        const im = tile(j, i); if (!im.complete || !im.naturalWidth) continue;
+        const [sx, sy] = W2S(meta.x0 + i * T, meta.z0 + j * T); cx.drawImage(im, sx, sy, T * view.s + 0.6, T * view.s + 0.6);
+      }
+  }
+  if ($("showkey").checked && keyImg && keyImg.complete) { cx.globalAlpha = +$("keyop").value; cx.imageSmoothingEnabled = false; cx.drawImage(keyImg, ax, az, size, size); cx.imageSmoothingEnabled = true; cx.globalAlpha = 1; }
+  if ($("showkerb").checked && kerbs) {
+    cx.strokeStyle = "rgba(242,194,48,.85)"; cx.lineWidth = Math.max(1, view.s * 0.25);
+    for (const l of kerbs.kerbs) { cx.beginPath(); l.forEach((p, k) => { const [x, y] = W2S(p[0], p[1]); k ? cx.lineTo(x, y) : cx.moveTo(x, y); }); cx.stroke(); }
+    cx.strokeStyle = "rgba(0,230,255,.85)";
+    for (const l of kerbs.islands) { cx.beginPath(); l.forEach((p, k) => { const [x, y] = W2S(p[0], p[1]); k ? cx.lineTo(x, y) : cx.moveTo(x, y); }); cx.closePath(); cx.stroke(); }
+  }
+  if ($("showtags").checked) for (const t of tags.values()) drawTag(t, t.id === sel);
+  if (draft) drawTag(draft, true);
+}
+function drawTag(t, hi) {
+  const c = colorOf(t), P = t.pts.map(p => W2S(p[0], p[1]));
+  cx.lineJoin = cx.lineCap = "round";
+  if (t.kind === "stroke") {
+    cx.strokeStyle = c; cx.globalAlpha = 0.55; cx.lineWidth = Math.max(2, t.r * 2 * view.s);
+    cx.beginPath(); P.forEach(([x, y], k) => k ? cx.lineTo(x, y) : cx.moveTo(x, y)); if (P.length === 1) cx.lineTo(P[0][0] + 0.1, P[0][1]); cx.stroke(); cx.globalAlpha = 1;
+  } else if (t.kind === "area") {
+    cx.fillStyle = c; cx.globalAlpha = 0.45; cx.beginPath(); P.forEach(([x, y], k) => k ? cx.lineTo(x, y) : cx.moveTo(x, y)); cx.closePath(); cx.fill();
+    cx.globalAlpha = 1; cx.strokeStyle = hi ? "#fff" : c; cx.lineWidth = 2; cx.stroke();
+  } else if (t.kind === "line") {
+    const L = LINES.find(a => a[0] === t.cls) || LINES[0];
+    cx.strokeStyle = "#000"; cx.lineWidth = Math.max(4, view.s * 0.5); cx.setLineDash([]);
+    cx.beginPath(); P.forEach(([x, y], k) => k ? cx.lineTo(x, y) : cx.moveTo(x, y)); cx.stroke();
+    cx.strokeStyle = c; cx.lineWidth = Math.max(2, view.s * 0.3); cx.setLineDash(L[3] ? [8, 6] : []); cx.stroke(); cx.setLineDash([]);
+    if (hi) P.forEach(([x, y]) => { cx.fillStyle = "#fff"; cx.fillRect(x - 3, y - 3, 6, 6); });
+  } else {
+    const [x, y] = P[0];
+    cx.fillStyle = t.kind === "note" ? "#f2c230" : c; cx.strokeStyle = "#000"; cx.lineWidth = 2;
+    cx.beginPath(); cx.arc(x, y, hi ? 9 : 7, 0, 7); cx.fill(); cx.stroke();
+    if (t.kind === "note" || view.s > 2) { cx.font = "600 13px Barlow"; cx.fillStyle = "#fff"; cx.strokeStyle = "rgba(0,0,0,.8)"; cx.lineWidth = 3; const s = labelOf(t).slice(0, 40); cx.strokeText(s, x + 11, y + 4); cx.fillText(s, x + 11, y + 4); }
+  }
+}
+function list() {
+  $("ntags").textContent = tags.size;
+  const arr = [...tags.values()].sort((a, b) => (b.t || 0) - (a.t || 0));
+  $("list").innerHTML = arr.length ? arr.slice(0, 300).map(t => `<div class="it${t.id === sel ? " sel" : ""}" data-id="${t.id}"><span class="chip" style="background:${colorOf(t)}"></span><span>${esc(labelOf(t))}<small>${t.kind === "stroke" ? "painted" : t.kind === "area" ? "outline" : t.kind}${t.kind === "line" || t.kind === "area" ? " · " + t.pts.length + " points" : ""}</small></span><button aria-label="Remove" data-del="${t.id}">×</button></div>`).join("") : `<p class="empty">Nothing tagged yet. Paint a patch the key got wrong, draw a kerb, or pin a note.</p>`;
+  $("list").querySelectorAll(".it").forEach(e => e.onclick = ev => {
+    if (ev.target.dataset.del) { remove(ev.target.dataset.del); return; }
+    const t = tags.get(e.dataset.id); sel = t.id; view.x = t.pts[0][0]; view.z = t.pts[0][1]; view.s = Math.max(view.s, 4); list(); draw();
+  });
+  $("export").value = JSON.stringify([...tags.values()].map(t => ({kind: t.kind, cls: t.cls, r: t.r, text: t.text, pts: t.pts})));
+}
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+// ---- saving
+function status(s, k) { const e = $("save"); e.textContent = s; e.className = "save " + (k || ""); }
+async function put(t) {
+  tags.set(t.id, t); mine.push(t.id); list(); draw(); local();
+  if (col) { try { await col.doc(t.id).set(t); status("saved", "ok"); } catch (e) { status("not saved: copy out", "bad"); } }
+}
+async function remove(id) {
+  tags.delete(id); if (sel === id) sel = null; list(); draw(); local();
+  if (col) { try { await col.doc(id).delete(); status("saved", "ok"); } catch (e) { status("not saved: copy out", "bad"); } }
+}
+function local() { try { localStorage.setItem("gtag", JSON.stringify([...tags.values()])); } catch (e) {} }
+
+// ---- input
+let drag = null, space = false;
+function wpos(ev) { const r = cv.getBoundingClientRect(), d = devicePixelRatio || 1; return S2W((ev.clientX - r.left) * d, (ev.clientY - r.top) * d); }
+function hit(w) {
+  let best = null, bd = 12 / view.s;
+  for (const t of tags.values()) {
+    for (let k = 0; k < t.pts.length; k++) {
+      const p = t.pts[k], q = t.pts[Math.min(k + 1, t.pts.length - 1)];
+      const d = segd(w, p, q) - (t.kind === "stroke" ? t.r : 0);
+      if (d < bd) { bd = d; best = t; }
+    }
+    if (t.kind === "area" && inside(w, t.pts) && !best) best = t;
+  }
+  return best;
+}
+function segd(w, a, b) { const dx = b[0] - a[0], dz = b[1] - a[1], L = dx * dx + dz * dz; let u = L ? ((w[0] - a[0]) * dx + (w[1] - a[1]) * dz) / L : 0; u = Math.max(0, Math.min(1, u)); return Math.hypot(w[0] - a[0] - u * dx, w[1] - a[1] - u * dz); }
+function inside(w, P) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > w[1]) !== (P[j][1] > w[1]) && w[0] < (P[j][0] - P[i][0]) * (w[1] - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c; }
+const rnd = w => [Math.round(w[0] * 100) / 100, Math.round(w[1] * 100) / 100];
+cv.addEventListener("pointerdown", ev => {
+  cv.setPointerCapture(ev.pointerId);
+  const w = wpos(ev);
+  if (tool === "pan" || space || ev.button === 1 || ev.button === 2) { drag = {mode: "pan", sx: ev.clientX, sy: ev.clientY, x: view.x, z: view.z}; return; }
+  if (tool === "brush") { draft = {id: uid(), kind: "stroke", cls: cls.brush, r: +$("size").value, pts: [rnd(w)], t: Date.now()}; drag = {mode: "paint"}; draw(); return; }
+  if (tool === "poly" || tool === "line") {
+    if (!draft) draft = {id: uid(), kind: tool === "poly" ? "area" : "line", cls: cls[tool], pts: [], t: Date.now()};
+    draft.pts.push(rnd(w)); draw(); return;
+  }
+  if (tool === "point") { put({id: uid(), kind: "point", cls: cls.point, pts: [rnd(w)], t: Date.now()}); return; }
+  if (tool === "note") { draft = {id: uid(), kind: "note", pts: [rnd(w)], t: Date.now()}; $("notebox").style.display = "block"; $("notetext").value = ""; $("notetext").focus(); return; }
+  if (tool === "select" || tool === "rub") { const t = hit(w); if (tool === "rub" && t) remove(t.id); else { sel = t ? t.id : null; list(); draw(); } }
+});
+cv.addEventListener("pointermove", ev => {
+  const w = wpos(ev);
+  $("coord").textContent = `x ${w[0].toFixed(1)}  z ${w[1].toFixed(1)}  ·  ${(1 / view.s * (devicePixelRatio || 1) * 100).toFixed(0)} cm/px`;
+  if (!drag) return;
+  if (drag.mode === "pan") { const d = devicePixelRatio || 1; view.x = drag.x - (ev.clientX - drag.sx) * d / view.s; view.z = drag.z - (ev.clientY - drag.sy) * d / view.s; draw(); }
+  else if (drag.mode === "paint" && draft) { const last = draft.pts[draft.pts.length - 1]; if (Math.hypot(w[0] - last[0], w[1] - last[1]) > draft.r * 0.4) { draft.pts.push(rnd(w)); draw(); } }
+});
+cv.addEventListener("pointerup", () => {
+  if (drag && drag.mode === "paint" && draft) { const t = draft; draft = null; put(t); }
+  drag = null;
+});
+cv.addEventListener("dblclick", () => finish());
+cv.addEventListener("contextmenu", ev => ev.preventDefault());
+cv.addEventListener("wheel", ev => { ev.preventDefault(); zoomAt(ev, ev.deltaY < 0 ? 1.2 : 1 / 1.2); }, {passive: false});
+function zoomAt(ev, f) {
+  const w = ev ? wpos(ev) : [view.x, view.z];
+  const ns = Math.max(0.15, Math.min(40, view.s * f));
+  view.x = w[0] - (w[0] - view.x) * view.s / ns; view.z = w[1] - (w[1] - view.z) * view.s / ns; view.s = ns; draw();
+}
+function finish() {
+  if (!draft || (draft.kind !== "area" && draft.kind !== "line")) return;
+  // a double-click adds the same point twice: drop repeats
+  draft.pts = draft.pts.filter((p, k, a) => !k || Math.hypot(p[0] - a[k - 1][0], p[1] - a[k - 1][1]) > 0.05);
+  const ok = draft.kind === "area" ? draft.pts.length >= 3 : draft.pts.length >= 2;
+  const t = draft; draft = null; if (ok) put(t); else draw();
+}
+addEventListener("keydown", ev => {
+  if (ev.target.tagName === "TEXTAREA" || ev.target.tagName === "INPUT") return;
+  if (ev.code === "Space") { space = true; ev.preventDefault(); }
+  if (ev.key === "Enter") finish();
+  if (ev.key === "Escape") { draft = null; $("notebox").style.display = "none"; draw(); }
+  if ((ev.key === "Delete" || ev.key === "Backspace") && sel) remove(sel);
+  if (ev.key.toLowerCase() === "z") undo();
+  const t = TOOLS.find(a => a[2].toLowerCase() === ev.key.toLowerCase()); if (t) setTool(t[0]);
+  if (ev.key === "+" || ev.key === "=") zoomAt(null, 1.25);
+  if (ev.key === "-") zoomAt(null, 0.8);
+});
+addEventListener("keyup", ev => { if (ev.code === "Space") space = false; });
+function undo() { while (mine.length) { const id = mine.pop(); if (tags.has(id)) { remove(id); return; } } }
+$("undo").onclick = undo;
+$("zin").onclick = () => zoomAt(null, 1.4); $("zout").onclick = () => zoomAt(null, 1 / 1.4);
+$("size").oninput = () => $("sizev").textContent = $("size").value + " m";
+["showkey", "showkerb", "showtags", "keyop"].forEach(k => $(k).oninput = draw);
+$("noteok").onclick = () => { const s = $("notetext").value.trim(); $("notebox").style.display = "none"; if (s && draft) { draft.text = s; const t = draft; draft = null; put(t); } else draft = null; };
+$("notecancel").onclick = () => { $("notebox").style.display = "none"; draft = null; draw(); };
+$("copy").onclick = async () => { try { await navigator.clipboard.writeText($("export").value); $("copy").textContent = "Copied"; } catch (e) { $("export").select(); $("copy").textContent = "Select and copy the box below"; } };
+
+// ---- start
+new ResizeObserver(resize).observe(map);
+toolButtons(); palette(); $("hint").textContent = HINT[tool];
+(async () => {
+  meta = await (await fetch("meta.json")).json();
+  view.x = -700; view.z = -200; view.s = 2.2;
+  ov = new Image(); ov.onload = draw; ov.src = "tiles/overview.jpg";
+  keyImg = new Image(); keyImg.onload = draw; keyImg.src = "tiles/key.png";
+  fetch("key_kerbs.json").then(r => r.json()).then(k => { kerbs = k; draw(); }).catch(() => {});
+  try { const saved = JSON.parse(localStorage.getItem("gtag") || "[]"); saved.forEach(t => tags.set(t.id, t)); } catch (e) {}
+  resize(); list();
+  const timer = setTimeout(() => status("saving off: copy out when done", "bad"), 10000);
+  try {
+    db = await claude.use("db");
+    if (!db) { clearTimeout(timer); status("saving off: copy out when done", "bad"); return; }
+    col = db.collection("tags");
+    let first = true;
+    col.onSnapshot(snap => {
+      clearTimeout(timer);
+      const remote = new Map();
+      snap.docs.forEach(d => { const t = d.data(); if (t && t.pts) remote.set(d.id, Object.assign({}, t, {id: d.id})); });
+      if (first && !snap.metadata.fromCache) {
+        // the first real answer: anything made in this browser before saving worked goes up (once)
+        first = false;
+        const up = [...tags.values()].filter(t => !remote.has(t.id));
+        tags = remote;
+        up.forEach(t => tags.set(t.id, t));
+        setTimeout(async () => { for (const t of up) { try { await col.doc(t.id).set(t); } catch (e) {} } }, 0);
+      } else if (!first) tags = remote;
+      else for (const [k, v] of remote) tags.set(k, v);
+      status("saved for Claude", "ok"); list(); draw(); local();
+    }, () => { clearTimeout(timer); status("not saved: copy out", "bad"); });
+  } catch (e) { clearTimeout(timer); status("saving off: copy out when done", "bad"); }
+})();
+}
+</script>
+</body>
+</html>

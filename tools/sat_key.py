@@ -76,6 +76,27 @@ for g in gj("water"):
     for pl in polys(g["geometry"]): cv2.fillPoly(water, [ring_px(pl[0])], 1)
 log("map data: seal %d park %d green %d foot %d water %d roof %d" % (seal.sum(), park.sum(), green.sum(), foot.sum(), water.sum(), roof.sum()))
 
+# ------------------------------------------------------------------ the user's own tags (Ground Tagger artifact)
+# docs/ref/sat/NAME_tags.json: [{kind: stroke|area|line|point|note, cls, pts [[x, z]...], r, text}] in game metres
+TAG_CLS = {"road": 1, "carpark": 2, "concrete": 3, "pavers": 4, "lawn": 5, "garden": 6, "dirt": 6, "gravel": 7, "trees": 10, "water": 11, "building": 12}
+tags = []
+tf = G + "docs/ref/sat/%s_tags.json" % name
+if os.path.exists(tf): tags = json.load(open(tf))
+told = np.zeros((N, N), np.uint8)               # 0 = not tagged, else TAG_CLS value
+for t in sorted([t for t in tags if t.get("kind") in ("area", "stroke")], key=lambda t: t["kind"] == "stroke"):
+    v = TAG_CLS.get(t.get("cls"))
+    if not v: continue
+    px, pz = to_px([p[0] for p in t["pts"]], [p[1] for p in t["pts"]])
+    pts = np.round(np.stack([px, pz], 1) * 4).astype(np.int32)
+    if t["kind"] == "area": cv2.fillPoly(told, [pts], v, shift=2)
+    else:
+        r = max(1, int(round(float(t.get("r", 1.0)) / R)))
+        if len(pts) == 1: cv2.circle(told, (int(pts[0][0]) >> 2, int(pts[0][1]) >> 2), r, v, -1)
+        else: cv2.polylines(told, [pts], False, v, 2 * r, shift=2)
+roof[told == 12] = 1
+water[told == 11] = 1
+log("tags: %d (%d px told)" % (len(tags), int((told > 0).sum())))
+
 # ------------------------------------------------------------------ features
 hsv = cv2.cvtColor(small, cv2.COLOR_RGB2HSV)            # h 0..360, s, v 0..1
 lum = small.mean(2)
@@ -97,6 +118,8 @@ lab[(foot > 0) & (seal == 0) & (rb > 0.1) & (hsv[:, :, 1] > 0.24) & (exg < 0.05)
 lab[(green > 0) & (exg > 0.12) & (sd7 < 0.035) & (lum > 0.25)] = 5
 lab[(exg > 0.08) & (sd7 > 0.06) & (lum < 0.4) & (seal == 0)] = 10
 lab[(green > 0) & (exg < 0.02) & (rb > 0.09) & (hsv[:, :, 1] > 0.22) & (sd7 < 0.05)] = 6
+for v, k in ((1, 1), (2, 1), (3, 3), (4, 4), (5, 5), (6, 6), (7, 6), (10, 10)):
+    lab[told == v] = k
 lab[roof > 0] = 0
 lab[water > 0] = 0
 counts = {int(k): int((lab == k).sum()) for k in (1, 3, 4, 5, 6, 10)}
@@ -139,11 +162,16 @@ cls = np.where(hole, filled, cls)
 # under a roof: no trees, no road - lawn if it was green round it, concrete otherwise
 cls[(roof > 0) & (cls == 10)] = 5
 cls[(roof > 0) & np.isin(cls, (1, 2))] = 3
+# what the user tagged is what it is
+for v, k in ((1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (10, 10), (11, 0)):
+    cls[told == v] = k
 # smooth: the commonest class over 1.25 m
 oh = np.stack([(cls == k).astype(np.float32) for k in range(11)], -1)
 for k in range(11): oh[:, :, k] = cv2.blur(oh[:, :, k], (5, 5))
 cls = oh.argmax(-1).astype(np.uint8)
 cls[core & (cls != 3) & (cls != 4)] = 1
+for v, k in ((1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (11, 0)):
+    cls[told == v] = k                                        # tags survive the smoothing too
 cls[cls == 10] = 0                                            # trees: the terrain and its trees do those
 log("classes", {int(k): int((cls == k).sum()) for k in np.unique(cls)})
 
@@ -171,9 +199,31 @@ for i in range(1, n):
     if a < 40 and max(bw, bh) < 3.0 * max(1, min(bw, bh)): continue   # small and squat: not a line
     keep[i] = True
 paint = keep[cc].astype(np.uint8)
+yellow_u8 = (yellow & (paint > 0)).astype(np.uint8)
+# painted lines the user drew (0.12 m wide; dashed: 3 m on, 6 m off)
+for t in tags:
+    if t.get("kind") != "line" or t.get("cls") not in ("white", "whitedash", "yellow"): continue
+    pts = [np.array(p, np.float64) for p in t["pts"]]
+    segs = []
+    if t["cls"] == "whitedash":
+        acc = 0.0
+        for a, b in zip(pts[:-1], pts[1:]):
+            L = np.linalg.norm(b - a); u = 0.0
+            while u < L:
+                ph = acc % 9.0; step = (3.0 - ph) if ph < 3.0 else (9.0 - ph)
+                v = min(u + step, L)
+                if ph < 3.0: segs.append((a + (b - a) * u / L, a + (b - a) * v / L))
+                acc += v - u; u = v
+    else:
+        segs = list(zip(pts[:-1], pts[1:]))
+    for a, b in segs:
+        ax, az = to_px(a[0], a[1], RF_); bx, bz = to_px(b[0], b[1], RF_)
+        cv2.line(paint, (int(round(ax * 4)), int(round(az * 4))), (int(round(bx * 4)), int(round(bz * 4))), 1, 1, shift=2)
+        if t["cls"] == "yellow":
+            cv2.line(yellow_u8, (int(round(ax * 4)), int(round(az * 4))), (int(round(bx * 4)), int(round(bz * 4))), 1, 1, shift=2)
 log("paint px", int(paint.sum()), "components kept", int(keep.sum()))
 # yellow: mark the class texels that hold yellow paint
-ysmall = cv2.resize((yellow & (paint > 0)).astype(np.uint8), (N, N), interpolation=cv2.INTER_AREA)
+ysmall = cv2.resize(yellow_u8, (N, N), interpolation=cv2.INTER_AREA)
 cls[(ysmall > 0) & np.isin(cls, (1, 2))] = 9
 # a distance field at twice the resolution, stored at 0.125 m
 marks = np.zeros((NF, NF), np.uint8)
@@ -287,13 +337,48 @@ for i, cnt in enumerate(contours):
     for run in runs_of(cnt):
         o = oriented(run)
         if o and len(o) >= 2: kerbs.append(o)
+# kerbs: "no kerb" and "edge of the bitumen" lines rub out what was found within 1.5 m; drawn kerbs go in as drawn
+rub = np.zeros((N, N), np.uint8)
+for t in tags:
+    if t.get("kind") == "line" and t.get("cls") in ("nokerb", "edge"):
+        px, pz = to_px([p[0] for p in t["pts"]], [p[1] for p in t["pts"]])
+        cv2.polylines(rub, [np.round(np.stack([px, pz], 1) * 4).astype(np.int32)], False, 1, 12, shift=2)
+def cut(line):
+    out, cur = [], []
+    for p in line:
+        i, j = int((p[0] - X0) / R), int((p[1] - Z0) / R)
+        if 0 <= i < N and 0 <= j < N and rub[j, i]:
+            if len(cur) >= 2: out.append(cur)
+            cur = []
+        else: cur.append(p)
+    if len(cur) >= 2: out.append(cur)
+    return out
+kerbs = [c for k in kerbs for c in cut(k)]
+for t in tags:
+    if t.get("kind") == "line" and t.get("cls") == "kerb" and len(t["pts"]) >= 2:
+        p = np.array([to_px(q[0], q[1]) for q in t["pts"]], np.float32)
+        o = oriented(p)
+        if o: kerbs.append(o)
+features = [{"kind": t["cls"], "at": t["pts"][0]} for t in tags if t.get("kind") == "point"]
+notes = [{"text": t.get("text", ""), "at": t["pts"][0]} for t in tags if t.get("kind") == "note"]
+# a roundabout with a garden: the island round that point gets a garden fill (or a 4 m one if none was found)
+for f in features:
+    if f["kind"] != "rgarden": continue
+    best = None
+    for isl in islands:
+        poly = np.array(isl["poly"], np.float32)
+        if cv2.pointPolygonTest(poly, (float(f["at"][0]), float(f["at"][1])), False) >= 0: best = isl
+    if best: best["fill"] = "garden"
+    else:
+        islands.append({"poly": [[round(f["at"][0] + 4 * math.cos(a), 2), round(f["at"][1] + 4 * math.sin(a), 2)] for a in np.linspace(0, 2 * math.pi, 24, endpoint=False)], "fill": "garden", "area": 50.0})
+        kerbs.append([[round(f["at"][0] + 4 * math.cos(a), 2), round(f["at"][1] - 4 * math.sin(a), 2)] for a in np.linspace(0, 2 * math.pi, 25)])
 klen = sum(sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(k[:-1], k[1:])) for k in kerbs)
 log("kerbs %d (%.1f km), islands %d" % (len(kerbs), klen / 1000, len(islands)))
 
 # ------------------------------------------------------------------ write
 open(OUT + name + "_class.bin.gz", "wb").write(gzip.compress(cls.tobytes(), 9))
 open(OUT + name + "_marks.bin.gz", "wb").write(gzip.compress(marks.tobytes(), 9))
-json.dump({"kerbs": kerbs, "islands": islands}, open(OUT + name + "_kerbs.json", "w"), separators=(",", ":"))
+json.dump({"kerbs": kerbs, "islands": islands, "features": features, "notes": notes}, open(OUT + name + "_kerbs.json", "w"), separators=(",", ":"))
 json.dump({"x0": X0, "z0": Z0, "x1": X1, "z1": Z1, "class_res": R, "class_n": N, "marks_res": RF_, "marks_n": NF,
            "classes": {"0": "terrain", "1": "road", "2": "worn asphalt", "3": "concrete", "4": "pavers", "5": "lawn", "6": "dirt", "7": "gravel", "9": "yellow paint"},
            "source": meta.get("source", "")}, open(OUT + name + ".json", "w"), indent=1)

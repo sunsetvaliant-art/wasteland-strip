@@ -100,6 +100,9 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   NAME_class.bin.gz (R8 0.25 m), NAME_marks.bin.gz (R8 SDF 0.125 m), NAME_kerbs.json. GroundKey injects into the
   terrain shader before Roads' road_paint (which it switches off inside the key) and builds kerb tiles near you.
   Export include_filter carries assets/world/ground_key/*.gz.
+- Ground Tagger (artifact slug a0039d09-9574-471d-a9a4-a13b2a635580; page source tools/tagger/index.html, tiles made from docs/ref/sat/NAME_rgb.png):
+  the user's tags live in its db collection "tags" (db_list with that slug). Save them as
+  docs/ref/sat/NAME_tags.json ([{kind, cls, pts [[x, z]], r, text}], game metres) and re-run tools/sat_key.py NAME.
 - Landmarks (0052): scripts/world/herogen.gd builds the user's reference buildings with full interiors (Imperial,
   Austral as ShopGen heroes: sub part 5; Riverview as a CivicGen pub: "NAME|riverview"); tools/place_heroes.py
   puts them on their lots. Buildings._level_malls also drops shop/pub floors to the footpath on a slope and cuts the
