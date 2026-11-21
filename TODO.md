@@ -2,7 +2,19 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0054, 2026-11-21.
+Newest requests at the top of each section. Last updated: patch 0055, 2026-11-22.
+
+## F9 reports 2026-11-21 (fixed in 0055)
+- [x] 0055 Footpath / car park paint streaky (texture was stretched one way)
+- [x] 0055 Paint and shopping-street footpaths climbing banks; footpath rising into a big ramp / wall behind the shops
+      (the paved footpath now keeps the kerb's level; nothing painted up steep banks)
+- [x] 0055 Wide paving in front of houses ("house on the road"): the 8 m paving only runs in front of shops now
+- [x] 0055 Stairs into the water / into the road / long stairs on the ambulance depot: long flights are switchbacks now
+- [x] 0055 Bridge turning both lanes 90 degrees at its ends (7 bridge ends had a hook baked in)
+- [x] 0055 FPS drop near the main street (38 NPCs 16 ms, 10 parked cars 8 ms): far idle NPCs think every third frame,
+      still cars nobody's near are parked out of the physics
+- [ ] Tall buildings on steep blocks still sit on a high base wall (the ambulance depot); level the ground under them
+- [ ] Diesel smoke from a turned-up pump isn't drawn yet; turbos next (low-comp heads pay off then)
 
 ## Streets by the block (asked 2026-11-21: "gutters, road islands, road markings, parking lot logic, footpath infrastructure")
 User: bracket each block with hard-edge gutters instead of reading the street off the photos; estates flush-ish.
@@ -38,18 +50,18 @@ User: put the old engine models away. Every part is generated in code from one s
 bolt patterns always line up and everything interchanges. Decided so far: the FUEL SYSTEM decides diesel vs petrol
 (heads only set compression: low / med / high, no exact ratios); engines are built both in the car (bolt-ons, click
 install/remove for now) and on an engine stand at base (full rebuild, then drop it in).
-- [ ] Blocks: i4, i6, V6, V8 (all banks share one deck / bolt pattern)
-- [ ] Heads: 3, 4, 6 cylinder, each as flathead, pushrod, SOHC, DOHC; any head on any block bank of the same count.
+- [x] 0055 Blocks: i3, i4, i6, V6, V8, small and big (all banks share one deck / bolt pattern) (scripts/vehicle/engine_kit.gd)
+- [x] 0055 Heads: 3, 4, 6 cylinder, each as flathead, pushrod, SOHC, DOHC, low/med/high compression; any head on any block bank of the same count.
       V6 = two 3-cyl heads, V8 = two 4-cyl heads, mirrored (intake ports to the valley, exhaust out)
-- [ ] Exhaust manifolds: 3, 4, 6 cylinder (V6 uses a 3 per bank, V8 a 4 per bank, same parts as the inlines)
-- [ ] Intake manifolds: inline 4, inline 6, V6 valley, V8 valley
-- [ ] Carby (no ECU) or EFI throttle body (needs ECU), bolts on any intake; diesels won't run on either
-- [ ] Diesel: mechanical injection pump (no ECU) or electronic pump (needs ECU, tuneable through the ECU)
-- [ ] ECU: silver box up top in the engine bay; must match fuel type and cylinder count or it won't run; bolt on / off
-- [ ] Front of the engine: one belt crank > water pump > alternator; one alternator fits all (no idlers, PS, A/C)
-- [ ] Head type shows (finned flathead, rocker cover, single-cam, wide twin-cam) and sets the rev range / power band
-- [ ] Engine stand at base for full rebuilds; then the engine drops into a car (click to move for now; the block and
-      tackle replaces that when it's built)
+- [x] 0055 Exhaust manifolds: 3, 4, 6 cylinder (V6 uses a 3 per bank, V8 a 4 per bank, same parts as the inlines)
+- [x] 0055 Intake manifolds: inline 3, inline 4, inline 6, V6 valley, V8 valley
+- [x] 0055 Carby (no ECU, needs a distributor + coil) or EFI throttle body (needs ECU), bolts on any intake
+- [x] 0055 Diesel: mechanical injection pump (no ECU, turn it up with a spanner) or electronic pump (needs ECU, tuneable); needs a high-compression head
+- [x] 0055 ECU: silver box up top in the engine bay; must match fuel type and cylinder count; laptop tune (fuel, timing, rev limit)
+- [x] 0055 Front of the engine: one belt crank > water pump > alternator; no alternator = battery drains, injected engines die
+- [x] 0055 Head type shows (finned flathead, rocker cover, single-cam, wide twin-cam) and sets the rev range / power band; sound by layout
+- [x] 0055 Engine stand (base building): pull an engine out (bonnet off first), strip and build it part by part, drop it
+      into another car (click to move for now; the block and tackle replaces that when it's built)
 Decisions (2026-11-21 Q&A):
 - Build both this batch and the cab/tub tools in one go
 - Blocks: i3, i4, i6, V6, V8, each in a SMALL and a BIG size; big = taller deck and wider sump, same bolt pattern, so
@@ -79,11 +91,15 @@ User's models (Drive, link-shared): all models folder 12PKYCZ4V7Hwj_KWWWw5breIX_
 Rustbound relics, Rusty Blue Wagon, bikes); ute folder 1icHx0xIwXpd2HGmXcPZ18tq6WidFUxxx = vehicles that can be cut at
 the C/B pillar to remove the styleside tub, or already have a clear cab / chassis line (Rustbound Cab, Rustbound
 Chevy Relic, two Rustbound Relics, Rusty Pickup Bo, Rusty Red Pickup, Rusty White Pickup, Rusty Yellow Workhorse).
-- [ ] Pause-menu tools to do each model in game, set and forget: TUB CUT line and BONNET cut / stitch line per model.
+- [x] 0055 Pause-menu Body tools to do each model in game, set and forget: TUB line (plane or clicked seam) and BONNET shut line per model.
       Lines save to a file on his PC; he drops it in the Drive folder and it ships in the next patch for everyone
-- [ ] Cut tubs come off as their own part (cap the cab's back wall and the tub's front wall, tub gets mount points)
-- [ ] Custom trays generated in code to fit the chassis: deck, headboard + ladder rack, drop sides, optional
-      toolboxes and under-tray spare ("Aussies love their custom trays and removing their factory tubs")
+- [x] 0055 Cut tubs come off as their own part (unbolt, bolt back on, scrap); bonnet hinges open and comes off as a panel; engine bay
+      under it is clipped to the bonnet's outline (user's idea)
+- [ ] Cut faces aren't capped yet (the cab's back wall and the tub's front wall are open where Meshy fused them)
+- [ ] No model has its lines yet: set them in Body tools, drop user://body_cuts.json in the Drive folder to ship them
+- [x] 0055 Custom trays generated in code to fit the chassis: alloy / steel, headboard + ladder rack, drop sides that hinge,
+      under-tray / double tapered / marine-carpet gullwing boxes, spare carrier, water tank, jerry holders, canopy with
+      lift-up doors, round / LED / sequential / recessed tail lights (garage, or 12 scrap from the K menu)
 - [ ] Dual cab ute: none in the game yet; user to make one in Meshy (cab-chassis photo) plus a tub on its own
 Decisions (2026-11-21 Q&A):
 - Tub cut: a see-through plane you slide and tilt (preview in two colours), or click points along the seam for odd ones
@@ -113,8 +129,8 @@ and diffs, with a single cab tub and canopy.
 - [ ] Wireframe ghost of the body while lowering, red where the engine or gearbox would foul it
 - [ ] Compatibility: bellhousing patterns and adapter plates, wheelbase vs tub length (cut / stretch the chassis at the
       welder), body mounts that don't line up need fabricated mounts, common-rail diesels need their loom and ECU
-- [ ] Under the bonnet for now: click to remove / install (Meshy bonnets are fixed); physical engine lifts first on cars
-      that come without a bonnet (the Monaro project)
+- [x] 0055 Under the bonnet: click to remove / install every engine part (K menu)
+- [ ] Physical engine lifts first on cars that come without a bonnet (the Monaro project)
 - [ ] Bonnet cut tool (Forge): draw the shut line on any car, it cuts the bonnet off as a hinged panel (thickened, with an
       underside), and a generic engine bay fills the hole. USER'S IDEA: never draw any of the bay outside the bonnet,
       guard and grille shell (stencil mask / clip to the body), so it can't poke through anywhere. Pilot on 2-3 cars

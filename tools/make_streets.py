@@ -363,6 +363,7 @@ def kerb_for(part, prof, urban_keep, face_lots):
             if ok and gravel_zone.contains(P_): ok = False
             if ok and prof in ("MAIN", "TOWN", "EST", "IND") and urban_keep is not None and not urban_keep.contains(P_): ok = False
             if ok and servo_zone.contains(P_): k = PROF["LAY"]
+            elif prof == "MAIN" and not shop_zone.contains(P_): k = PROF["TOWN"]
             keep.append(ok); kinds.append(k)
         # laybacks where a service road / driveway meets the kerb
         if gap_tree is not None:
@@ -386,7 +387,7 @@ def kerb_for(part, prof, urban_keep, face_lots):
                         if kinds[jj] != PROF["LAY"]: kinds[jj] = PROF["RAMP"]
                     stats["kerb ramps"] += 1
         # house driveways: the kerb point nearest each house lot's front gets a 3.4 m layback and a crossover
-        if prof in ("TOWN", "EST") and face_lots:
+        if prof in ("TOWN", "EST", "MAIN") and face_lots:
             ring_ls = LineString(pts)
             for li in face_lots:
                 if lot_kind[li] not in HOUSE: continue
@@ -475,6 +476,7 @@ for gx in np.arange(bx.bounds[0], bx.bounds[2], 2000.0):
 log("block units", len(unit_list))
 
 main_polys = []
+shop_zone = Polygon()
 for ui, (part, rounded, big) in enumerate(unit_list):
     c = part.representative_point()
     if not in_area(c.x, c.y): continue
@@ -496,6 +498,11 @@ for ui, (part, rounded, big) in enumerate(unit_list):
                 add_paint(fp, 0.0)
     if prof == "MAIN": main_polys.append(part.buffer(1.0))
     face_lots = lots_in(part) if prof in ("TOWN", "EST", "MAIN") else []
+    shop_zone = Polygon()
+    if prof == "MAIN":
+        sl = [lot_rect[i] for i in lots_in(part.buffer(12.0)) if lot_kind[i] in SHOPK or lot_kind[i] in ("bank", "hall", "civic")]
+        shop_zone = unary_union([r.buffer(10.0) for r in sl]) if sl else Polygon()
+        shapely.prepare(shop_zone)
     keep = None
     if prof in ("MAIN", "TOWN", "EST", "IND") and (big or part.area > 6e4):
         near = [lot_rect[i] for i in lots_in(part)]
@@ -506,18 +513,26 @@ for ui, (part, rounded, big) in enumerate(unit_list):
         kerb_for(p, prof, keep, face_lots)
         stats["blocks " + prof] += 1
         if prof == "MAIN":
-            fp = p.buffer(-0.8).difference(p.buffer(-8.0))
+            # 0.2.55: the wide paving only runs in front of the shops; houses in a shopping block get a town path
+            fp = p.buffer(-0.8).difference(p.buffer(-8.0)).intersection(shop_zone)
+            tp = p.buffer(-2.2).difference(p.buffer(-3.4)).difference(shop_zone)
+            if keep is not None: tp = tp.intersection(keep)
+            tp = tp.intersection(local_roads(p, 1.0).buffer(4.9))
             bl = [lot_rect[i] for i in rect_tree.query(p)]
+            if bl:
+                tp = tp.difference(unary_union([lot_rect[i].buffer(3.5 if lot_kind[i] == "qlder" else 0.3) for i in rect_tree.query(p)]))
+            add_paint(tp, 1.0)
             if bl: fp = fp.difference(unary_union(bl))
             if keep is not None: fp = fp.intersection(keep)
             fp = fp.intersection(local_roads(p, 1.0).buffer(9.0))          # not along a cell's cut edge
             if gap_tree is not None:
                 cut = [gap_lines[i][0].buffer(gap_lines[i][1]) for i in gap_tree.query(p)]
                 if cut: fp = fp.difference(unary_union(cut))
+            kerbline = p.boundary
             for sp in getattr(fp, "geoms", [fp]):
                 if sp.geom_type == "Polygon" and sp.area > 1.0:
                     c2 = sp.representative_point()
-                    tiles[tkey(c2.x, c2.y)]["slab"].append(sp)
+                    tiles[tkey(c2.x, c2.y)]["slab"].append((sp, kerbline))
             add_paint(fp, 1.0)
         elif prof in ("TOWN", "EST"):
             a_, b_ = (2.2, 3.4) if prof == "TOWN" else (1.6, 3.1)
@@ -834,18 +849,26 @@ def wtile(k, td):
     b += struct.pack("<I", len(td["furn"]))
     for kind, x, z, yaw, prm in td["furn"]: b += struct.pack("<Iffff", kind, x, z, yaw, prm)
     # raised slabs (shopping-street footpaths): triangles plus the outline for the skirt
+    # each slab vertex carries its anchor: the nearest point on the kerb line, whose road level the footpath keeps
+    # (0.2.55: a footpath no longer climbs the bank behind the shops)
+    def anchored(a, kl):
+        pts = shapely.points(a.astype(np.float64))
+        q = shapely.line_interpolate_point(kl, shapely.line_locate_point(kl, pts))
+        qa = np.stack([shapely.get_x(q), shapely.get_y(q)], 1)
+        return np.hstack([a, qa]).astype("<f4")
     slabs = []
-    for sp in td["slab"]:
+    for sp, kl in td["slab"]:
         sp = sp.simplify(0.05)
         if sp.is_empty or sp.geom_type != "Polygon": continue
         rings = [np.array(sp.exterior.coords)[:-1]] + [np.array(r.coords)[:-1] for r in sp.interiors]
         rings = [r for r in rings if len(r) >= 3]
         v = np.concatenate(rings); ends = np.cumsum([len(r) for r in rings]).astype(np.uint32)
         idx = earcut.triangulate_float64(v, ends)
-        slabs.append((v[idx].astype("<f4"), [np.vstack([r, r[:1]]).astype("<f4") for r in rings]))
+        if len(idx) == 0: continue
+        slabs.append((anchored(v[idx], kl), [anchored(np.vstack([r, r[:1]]), kl) for r in rings]))
     b += struct.pack("<I", len(slabs))
     for tri, rings in slabs:
-        b += struct.pack("<I", len(tri)) + tri.tobytes()
+        b += struct.pack("<I", len(tri)) + tri.tobytes()          # 4 floats a vertex: x, z, anchor x, anchor z
         b += struct.pack("<I", len(rings))
         for r in rings: b += struct.pack("<I", len(r)) + r.tobytes()
     mk = raster_mask(td, k)
@@ -856,7 +879,7 @@ out = f"{GAME}/assets/world/streets.bin"
 keys = sorted(k for k, td in tiles.items() if td["kerb"] or td["paint"] or td["furn"] or td["slab"])
 blobs = [wtile(k, tiles[k]) for k in keys]
 with open(out, "wb") as f:
-    f.write(b"STR1" + struct.pack("<ffI", X0, Z0, len(keys)))
+    f.write(b"STR2" + struct.pack("<ffI", X0, Z0, len(keys)))
     off = 16 + len(keys) * 16
     for k, bl in zip(keys, blobs):
         f.write(struct.pack("<iiII", k[0], k[1], off, len(bl))); off += len(bl)

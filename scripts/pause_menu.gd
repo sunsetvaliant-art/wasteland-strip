@@ -53,6 +53,10 @@ func setup(m) -> void:
 		close()
 		if main.forge.active: main.forge.toggle()
 		main.garage.show_garage())
+	_btn(home, "Body tools: tub and bonnet lines", func():
+		close()
+		if main.forge.active: main.forge.toggle()
+		main.body_tools.show_tools())
 	_btn(home, "Reset world", func(): main.reset_world())
 	_btn(home, "Multiplayer (LAN)", func():
 		mp_panel.visible = not mp_panel.visible

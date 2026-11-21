@@ -152,6 +152,9 @@ func _setup_scav() -> void:
 	state = "patrol"
 
 # ---------------------------------------------------------------- brain
+var _lod_acc := 0.0
+var _lod_phase := randi() % 3
+
 func _physics_process(dt: float) -> void:
 	var _pt := Prof.t()
 	_physics_process_inner(dt)
@@ -190,7 +193,17 @@ func _physics_process_inner(dt: float) -> void:
 					bd = dd
 					best = pl
 		player = best
-	var far: bool = player == null or global_position.distance_to(player.global_position) > 160.0
+	var pd: float = 1e9 if player == null else global_position.distance_to(player.global_position)
+	var far: bool = pd > 160.0
+	# 0.2.55: past 50 m and not after anyone, think and look round every third frame (38 of them cost 16 ms a frame);
+	# in between it just keeps walking the way it was going
+	if pd > 50.0 and state in ["idle", "wander", "patrol"]:
+		_lod_acc += dt
+		if (Engine.get_physics_frames() + _lod_phase) % 3 != 0:
+			if velocity.length_squared() > 0.01: move_and_slide()
+			return
+		dt = _lod_acc
+	_lod_acc = 0.0
 	_check_cars()
 	if dead:
 		return

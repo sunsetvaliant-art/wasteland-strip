@@ -168,6 +168,14 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   world (road.gdshader style > 0.9 = solid paint). Streets.hard() masks veg. Tests: `PT="*res://tools/_streettest.gd"`
   (counts, kerb heights by ray, build time per tile); `tools/_streetshots.gd` (ST_X, ST_Z, ST_ONLY) photographs a
   shopping / town / estate street, lights, bus stop, car park. GroundKey is off unless GROUND_KEY=1.
+- 0055 engine kit / body cuts / trays: scripts/vehicle/engine_kit.gd (EngineKit: parts, item ids eb_/eh_/ex_/ei_/ef_/
+  ecu_, faults, stats() in VehicleSpecs.ENGINES shape, code-made meshes; design.kit on every car, old designs get
+  EngineKit.stock(def)), body_cut.gd (BodyCut: user://body_cuts.json over res://assets/vehicles/body_cuts.json,
+  pieces() splits a model's index arrays into cab/tub/bonnet, bay_node() clipped by a polygon shader), tray_gen.gd
+  (design.tray), scripts/body_tools.gd (pause menu). Car: rebuild_body(), take_off_bonnet()/refit_bonnet(),
+  unbolt_tub()/bolt_tub(), build_tray(), refresh_engine(). Engine stand = BasePiece kind "stand". Tests:
+  PT="*res://tools/_kittest.gd" (480 builds, rules, a pickup cut / tray / bonnet / tub); tools/_kitshots.gd (lineup,
+  trays, the F9 spots). Parked-car LOD: meta "lod_parked" (car.gd); NPC LOD past 50 m (npc.gd).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

@@ -52,6 +52,16 @@ var cab_yaw := 0.0
 var cab_pitch := 0.0
 var lights: Array[SpotLight3D] = []
 var parts: Node3D                            # the visible chassis / suspension (VehicleRig)
+var bonnet_pivot: Node3D = null              # the bonnet on its hinge, when the body has a bonnet line (0.2.55)
+var bonnet_open := 0.0                       # 0 shut .. 1 open (animated toward bonnet_want)
+var bonnet_want := 0.0
+var tub_front := -1e9                        # where the cab ends, when the tub's off
+var tray := {}                               # TrayGen.build result
+var sides_down := false
+var doors_open := false
+var _side_t := 0.0
+var _door_t := 0.0
+var _seq_t := 0.0
 var audio: Node                              # EngineAudio
 
 static func catalog() -> Dictionary:
@@ -80,7 +90,9 @@ func _ready() -> void:
 		set_meta("container", storage_key(def))
 		set_meta("container_name", {"car_tray": "tray", "car_wagon": "back of the wagon", "car_boot": "boot"}[storage_key(def)])
 		set_meta("empty", true)
-	eng = VehicleSpecs.ENGINES[design.engine]
+	# 0.2.55: every engine is built from the kit; old designs get their body's stock kit engine
+	if not design.has("kit"): design["kit"] = EngineKit.stock(def)
+	eng = EngineKit.stats(design.kit) if (design.kit as Dictionary).has("block") and str(design.kit.block) != "" else VehicleSpecs.ENGINES.get(str(design.get("engine", "202")), VehicleSpecs.ENGINES["202"])
 	box = VehicleSpecs.GEARBOXES[design.gearbox]
 	mass = float(design.mass)
 	continuous_cd = true
@@ -116,15 +128,42 @@ func _ready() -> void:
 	else: gear = 1
 
 # ---------------------------------------------------------------- build
+var _body_nodes: Array = []
 func _build_body() -> void:
 	var off: Array = design.cab_offset
 	var holder := Node3D.new()
 	holder.name = "Cab"
 	holder.position = Vector3(off[0], off[1], off[2])
 	add_child(holder)
+	var _n0 := get_child_count() - 1
 	var mn: Array = def.min
 	var bare: bool = design.get("no_cab", false)          # a rolling chassis: no body on it yet
-	if not bare:
+	var cut := BodyCut.of(str(def.glb))
+	var tub_off: bool = str(design.get("tub", "stock")) != "stock" and cut.has("tub")
+	var has_bonnet: bool = cut.has("bonnet") and (cut.bonnet.get("pts", []) as Array).size() >= 3
+	if not bare and (tub_off or has_bonnet):
+		# 0.2.55: the body in pieces from its cut lines (Body tools): the cab, maybe the tub, the bonnet on its hinge
+		var pcs := BodyCut.pieces(str(def.glb), tub_off, has_bonnet)
+		var keep: Array = pcs.cab.duplicate()
+		if not tub_off: keep.append_array(pcs.tub)
+		for am in keep:
+			var mi := MeshInstance3D.new(); mi.mesh = am
+			holder.add_child(mi)
+		if has_bonnet:
+			var hg := BodyCut.hinge(cut.bonnet)
+			bonnet_pivot = Node3D.new()
+			bonnet_pivot.name = "Bonnet"
+			bonnet_pivot.position = hg[0]
+			holder.add_child(bonnet_pivot)
+			for am in pcs.bonnet + pcs.under:
+				var mi := MeshInstance3D.new(); mi.mesh = am
+				mi.position = -hg[0]
+				bonnet_pivot.add_child(mi)
+			bonnet_pivot.visible = not design.get("bonnet_off", false)
+			var bay := BodyCut.bay_node(cut.bonnet, float(design.ride) + 0.2 - float(off[1]))
+			if bay: holder.add_child(bay)
+		if tub_off: tub_front = BodyCut.tub_front_z(cut.tub, float(design.ride) + 0.36 - float(off[1])) + float(off[2])
+	elif not bare:
 		var body: Node3D = load("res://assets/vehicles/%s.glb" % def.glb).instantiate()
 		body.rotation_degrees.y = -90      # the model's nose is +X; this car drives towards +Z
 		holder.add_child(body)
@@ -134,9 +173,12 @@ func _build_body() -> void:
 	if not bare:
 		var cs := CollisionShape3D.new()
 		var b := BoxShape3D.new()
-		b.size = Vector3(ext[2] * 0.96, h * 0.55, ext[0] * 0.97)
+		var z0b := float(mn[0]) + float(off[2])
+		var z1b := float(mn[0]) + float(ext[0]) + float(off[2])
+		if tub_front > -1e8: z0b = tub_front + 0.05          # the tub's off: the body ends at the back of the cab
+		b.size = Vector3(ext[2] * 0.96, h * 0.55, (z1b - z0b) * 0.97)
 		cs.shape = b
-		cs.position = Vector3(off[0], lo + h * 0.275, float(mn[0]) + float(ext[0]) * 0.5 + float(off[2]))
+		cs.position = Vector3(off[0], lo + h * 0.275, (z0b + z1b) * 0.5)
 		add_child(cs)
 		var roof := CollisionShape3D.new()
 		var rb := BoxShape3D.new()
@@ -144,6 +186,19 @@ func _build_body() -> void:
 		roof.shape = rb
 		roof.position = Vector3(off[0], lo + h * 0.66, float(mn[0]) + float(ext[0]) * 0.45 + float(off[2]))
 		add_child(roof)
+	# a custom tray where the tub was (0.2.55)
+	if not bare and tub_front > -1e8 and str(design.get("tub", "")) == "tray":
+		var fr0: Dictionary = design.frame
+		var y_deck := float(design.ride) + 0.36
+		var tr := TrayGen.build(TrayGen.cfg_of(design), tub_front - 0.04, y_deck, float(fr0.z) - float(fr0.len) * 0.5,
+			float(ext[2]) * 0.96, float(mn[1]) + float(ext[1]) + float(off[1]))
+		tray = tr
+		add_child(tr.node)
+		for shp in tr.shapes:
+			var tcs := CollisionShape3D.new()
+			var tb := BoxShape3D.new(); tb.size = shp[1]
+			tcs.shape = tb; tcs.transform = shp[0]
+			add_child(tcs)
 	# the chassis rails, low and narrow, so a car with the cab lifted off still has something to land on
 	var fr: Dictionary = design.frame
 	var rail := CollisionShape3D.new()
@@ -152,6 +207,7 @@ func _build_body() -> void:
 	rail.shape = rs
 	rail.position = Vector3(0, float(design.ride) + 0.1, float(fr.z))
 	add_child(rail)
+	_body_nodes = get_children().slice(_n0)
 
 func _build_wheels() -> void:
 	var g := 9.81
@@ -221,6 +277,136 @@ func _build_lights_and_cameras() -> void:
 	add_child(cam_cab)
 
 # ---------------------------------------------------------------- api used by the rest of the game
+## Pull the body apart and put it back together from the design (the tub came off or went on, a tray was built)
+func rebuild_body() -> void:
+	for n in _body_nodes:
+		if is_instance_valid(n): n.queue_free()
+	_body_nodes = []
+	bonnet_pivot = null
+	tub_front = -1e9
+	tray = {}
+	_build_body()
+
+func toggle_bonnet() -> void:
+	bonnet_want = 0.0 if bonnet_want > 0.5 else 1.0
+
+## The bonnet comes off whole, as its own heavy panel (an engine swap needs it out of the way)
+func take_off_bonnet() -> RigidBody3D:
+	if bonnet_pivot == null or design.get("bonnet_off", false): return null
+	var rb := RigidBody3D.new()
+	rb.mass = 18.0
+	rb.add_to_group("physgun")
+	rb.set_meta("bonnet_of", str(def.glb))
+	rb.set_meta("forge_name", "Bonnet")
+	var aabb := AABB()
+	var first := true
+	for mi in bonnet_pivot.get_children():
+		if not (mi is MeshInstance3D): continue
+		var m2 := MeshInstance3D.new(); m2.mesh = (mi as MeshInstance3D).mesh
+		m2.position = (mi as MeshInstance3D).position
+		rb.add_child(m2)
+		var a := (mi as MeshInstance3D).mesh.get_aabb()
+		a.position += (mi as MeshInstance3D).position
+		aabb = a if first else aabb.merge(a)
+		first = false
+	var cs := CollisionShape3D.new()
+	var bx := BoxShape3D.new(); bx.size = Vector3(maxf(aabb.size.x, 0.3), maxf(aabb.size.y, 0.05), maxf(aabb.size.z, 0.3))
+	cs.shape = bx; cs.position = aabb.get_center()
+	rb.add_child(cs)
+	get_parent().add_child(rb)
+	rb.global_transform = bonnet_pivot.global_transform
+	rb.global_position += global_transform.basis.x * (float(def.ext[2]) * 0.5 + 1.0) + Vector3.UP * 0.2
+	design["bonnet_off"] = true
+	bonnet_pivot.visible = false
+	return rb
+
+func refit_bonnet() -> bool:
+	for n in get_tree().get_nodes_in_group("physgun"):
+		if n.get_meta("bonnet_of", "") == str(def.glb) and (n as Node3D).global_position.distance_to(global_position) < 6.0:
+			n.queue_free()
+			design["bonnet_off"] = false
+			if bonnet_pivot: bonnet_pivot.visible = true
+			return true
+	return false
+
+## The factory tub off: it's a part now (keep it, swap it onto another ute, scrap it)
+func unbolt_tub() -> RigidBody3D:
+	var cut := BodyCut.of(str(def.glb))
+	if not cut.has("tub") or str(design.get("tub", "stock")) != "stock": return null
+	var pcs := BodyCut.pieces(str(def.glb), true, false)
+	var rb := RigidBody3D.new()
+	rb.mass = 110.0
+	rb.add_to_group("physgun")
+	rb.set_meta("tub_of", str(def.glb))
+	var aabb := AABB(); var first := true
+	for am in pcs.tub:
+		var mi := MeshInstance3D.new(); mi.mesh = am
+		rb.add_child(mi)
+		aabb = am.get_aabb() if first else aabb.merge(am.get_aabb())
+		first = false
+	if first: return null
+	var cs := CollisionShape3D.new()
+	var bx := BoxShape3D.new(); bx.size = aabb.size.max(Vector3.ONE * 0.2)
+	cs.shape = bx; cs.position = aabb.get_center()
+	rb.add_child(cs)
+	get_parent().add_child(rb)
+	var off: Array = design.cab_offset
+	rb.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(off[0], off[1], off[2]))
+	rb.global_position -= global_transform.basis.z * 2.5
+	rb.global_position += global_transform.basis.x * (float(def.ext[2]) + 0.6)
+	design["tub"] = "none"
+	rebuild_body()
+	return rb
+
+func bolt_tub() -> bool:
+	for n in get_tree().get_nodes_in_group("physgun"):
+		if n.get_meta("tub_of", "") == str(def.glb) and (n as Node3D).global_position.distance_to(global_position) < 8.0:
+			n.queue_free()
+			design["tub"] = "stock"
+			rebuild_body()
+			return true
+	return false
+
+func build_tray(cfg := {}) -> void:
+	if not BodyCut.of(str(def.glb)).has("tub"): return
+	design["tub"] = "tray"
+	if not cfg.is_empty(): design["tray"] = cfg
+	rebuild_body()
+
+## Bonnet, tray sides, box and canopy doors swinging; tray brake lights and sequential indicators (0.2.55)
+func _body_anim(dt: float) -> void:
+	if bonnet_pivot != null:
+		bonnet_open = move_toward(bonnet_open, bonnet_want, dt * 1.6)
+		var front: bool = str(BodyCut.of(str(def.glb)).get("bonnet", {}).get("hinge", "rear")) == "front"
+		bonnet_pivot.rotation.x = -deg_to_rad(58.0) * smoothstep(0.0, 1.0, bonnet_open) * (-1.0 if front else 1.0)
+	if tray.is_empty(): return
+	_side_t = move_toward(_side_t, 1.0 if sides_down else 0.0, dt * 2.0)
+	_door_t = move_toward(_door_t, 1.0 if doors_open else 0.0, dt * 1.5)
+	for piv in tray.sides:
+		var ax: Vector3 = piv.get_meta("hinge_axis"); var sg: float = piv.get_meta("drop_sign")
+		piv.basis = Basis(ax, sg * deg_to_rad(95.0) * smoothstep(0.0, 1.0, _side_t))
+	for piv in tray.doors:
+		var ax: Vector3 = piv.get_meta("hinge_axis"); var sg: float = piv.get_meta("drop_sign")
+		piv.basis = Basis(ax, sg * deg_to_rad(80.0) * smoothstep(0.0, 1.0, _door_t))
+	var braking := brake_in > 0.1 and driver != null
+	var lit := not lights.is_empty() and lights[0].visible
+	for lm in tray.brake: (lm as StandardMaterial3D).emission_energy_multiplier = 3.0 if braking else (0.8 if lit else 0.0)
+	if not tray.seq.is_empty():
+		_seq_t += dt
+		var sweeping := handbrake and running
+		for e in tray.seq:
+			var on: bool = sweeping and fmod(_seq_t, 0.8) > 0.12 * float(e[1])
+			(e[0] as StandardMaterial3D).emission_energy_multiplier = 3.0 if on else 0.0
+
+## A part went on or came off the engine: new numbers, new look (0.2.55)
+func refresh_engine() -> void:
+	if design.has("kit") and str(design.kit.get("block", "")) != "":
+		eng = EngineKit.stats(design.kit)
+	if parts and parts.has_method("rebuild_engine"): parts.rebuild_engine()
+	var f := EngineKit.fault(design.get("kit", {}))
+	if f != "" and running:
+		running = false
+
 func active_camera() -> Camera3D:
 	return cam_cab if cab_view else cam_chase
 
@@ -305,8 +491,50 @@ func _shift(d: int) -> void:
 var _why_t := 0.0
 func _physics_process(dt: float) -> void:
 	var _pt := Prof.t()
-	_physics_process_inner(dt)
+	if get_meta("lod_parked", false):
+		_lod_check(dt)
+	else:
+		_physics_process_inner(dt)
+		_lod_rest(dt)
 	Prof.add("car physics", _pt)
+
+## 0.2.55: a car sitting still with nobody in it and nobody near is parked out of the physics (frozen solid, still
+## there to hit and loot) until someone or something moving comes within 40 m. Ten parked cars were 8 ms a frame.
+var _rest_t := 0.0
+var _lod_t := 0.0
+func _lod_rest(dt: float) -> void:
+	if freeze or driver != null or linear_velocity.length_squared() > 0.01 or angular_velocity.length_squared() > 0.01:
+		_rest_t = 0.0
+		return
+	_rest_t += dt
+	if _rest_t > 2.5 and not _active_near(55.0):
+		_rest_t = 0.0
+		set_meta("lod_parked", true)
+		freeze = true
+
+func _lod_check(dt: float) -> void:
+	_lod_t -= dt
+	if _lod_t > 0.0 and driver == null: return
+	_lod_t = 0.4
+	if driver != null or not freeze or _active_near(40.0):
+		set_meta("lod_parked", false)
+		freeze = false
+		_rest_t = 0.0
+
+func _active_near(r: float) -> bool:
+	var r2 := r * r
+	var m = get_tree().current_scene
+	var who: Array = []
+	if m and m.get("net") and m.net and m.net.online(): who = m.net.all_players()
+	elif m and m.get("player") and m.player: who = [m.player]
+	for pl in who:
+		if is_instance_valid(pl) and (pl as Node3D).global_position.distance_squared_to(global_position) < r2: return true
+	if m and m.get("forge") and m.forge and m.forge.active and m.forge.cam.global_position.distance_squared_to(global_position) < r2:
+		return true
+	for c in get_tree().get_nodes_in_group("vehicles"):
+		if c != self and c.get("driver") != null and (c as Node3D).global_position.distance_squared_to(global_position) < r2:
+			return true
+	return false
 
 func _physics_process_inner(dt: float) -> void:
 	if running and driver: CarCare.burn(self, dt, throttle)
@@ -701,6 +929,7 @@ func _driveline(dt: float) -> void:
 func _process(dt: float) -> void:
 	for w in wheels:
 		w.spin = fmod(w.spin + w.omega * dt, TAU)
+	_body_anim(dt)
 	if driver == null or cab_view:
 		return
 	chase_yaw = lerp(chase_yaw, 0.0, 1.2 * dt) if Input.get_last_mouse_velocity().length() < 5 else chase_yaw

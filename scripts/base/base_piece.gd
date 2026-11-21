@@ -3,17 +3,17 @@ extends StaticBody3D
 ## One piece of something you built: a floor, a wall, a doorway, a window wall, a half wall, stairs, a storage crate.
 ## Wood, tin or brick. Zombies beat on it until it gives way.
 
-const KINDS := ["wall", "doorway", "window", "half", "floor", "stairs", "crate", "bench", "fire", "garden"]
+const KINDS := ["wall", "doorway", "window", "half", "floor", "stairs", "crate", "bench", "fire", "garden", "stand"]
 ## pieces that come in one material only, with their own cost (the work stations and the crate)
-const FIXED := {"crate": {"plank": 4, "nails": 1}, "bench": {"plank": 4, "nails": 1, "scrap": 2}, "fire": {"rock": 6}, "garden": {"plank": 3, "nails": 1}}
+const FIXED := {"crate": {"plank": 4, "nails": 1}, "bench": {"plank": 4, "nails": 1, "scrap": 2}, "fire": {"rock": 6}, "garden": {"plank": 3, "nails": 1}, "stand": {"scrap": 10, "nails": 1}}
 const FIRE_BURN := 480.0        # seconds a fire burns on one lot of wood
 const GROW := 1200.0            # seconds from seed to vegies
-const NAMES := {"wall": "Wall", "doorway": "Doorway", "window": "Window wall", "half": "Half wall", "floor": "Floor / roof", "stairs": "Stairs", "crate": "Storage crate", "bench": "Workbench", "fire": "Campfire", "garden": "Vegie garden"}
+const NAMES := {"wall": "Wall", "doorway": "Doorway", "window": "Window wall", "half": "Half wall", "floor": "Floor / roof", "stairs": "Stairs", "crate": "Storage crate", "bench": "Workbench", "fire": "Campfire", "garden": "Vegie garden", "stand": "Engine stand"}
 const TIERS := ["wood", "tin", "brick"]
 const HP := {"wood": 250.0, "tin": 500.0, "brick": 1000.0}
 const MAT := {"wood": "timber", "tin": "tin:grey", "brick": "brick"}
 const BASE_COST := {"wood": {"plank": 3, "nails": 1}, "tin": {"tin_sheet": 2, "plank": 1, "nails": 1}, "brick": {"brick": 6}}
-const SCALE := {"wall": 1.0, "doorway": 1.0, "window": 1.0, "half": 0.5, "floor": 1.0, "stairs": 2.0, "crate": 1.0, "bench": 1.0, "fire": 1.0, "garden": 1.0}
+const SCALE := {"wall": 1.0, "doorway": 1.0, "window": 1.0, "half": 0.5, "floor": 1.0, "stairs": 2.0, "crate": 1.0, "bench": 1.0, "fire": 1.0, "garden": 1.0, "stand": 1.0}
 
 var kind := "wall"
 var tier := "wood"
@@ -42,6 +42,7 @@ static func boxes(k: String) -> Array:
 		"bench": return [[Vector3(0, 0.86, 0), Vector3(1.8, 0.08, 0.75), I], [Vector3(0, 0.42, 0), Vector3(1.7, 0.8, 0.65), I]]
 		"fire": return [[Vector3(0, 0.1, 0), Vector3(1.1, 0.2, 1.1), I]]
 		"garden": return [[Vector3(0, 0.2, 0), Vector3(2.4, 0.4, 1.2), I]]
+		"stand": return [[Vector3(0, 0.04, 0), Vector3(1.2, 0.08, 0.9), I], [Vector3(0, 0.45, -0.3), Vector3(0.1, 0.8, 0.1), I], [Vector3(0, 0.8, -0.18), Vector3(0.3, 0.06, 0.3), I]]
 	return []
 
 func setup(k: String, t: String, ghost := false) -> void:
@@ -53,6 +54,7 @@ func setup(k: String, t: String, ghost := false) -> void:
 	var mat: Material = BuildGen.mat(MAT[tier])
 	if k == "fire": mat = BuildGen.mat("concrete_worn")
 	if k == "garden": mat = BuildGen.mat("timber")
+	if k == "stand": mat = EngineKit.mat("red")
 	for b in boxes(k):
 		var mi := MeshInstance3D.new()
 		var bm := BoxMesh.new()
@@ -71,7 +73,7 @@ func setup(k: String, t: String, ghost := false) -> void:
 		add_child(cs)
 	if ghost: return
 	add_to_group("base_pieces")
-	if k in ["bench", "fire", "garden"]:
+	if k in ["bench", "fire", "garden", "stand"]:
 		add_to_group("stations")
 		if not has_meta("st"): set_meta("st", {})
 		_dress()
@@ -235,6 +237,8 @@ func menu(p) -> Array:
 			else:
 				var tool: bool = p.inv.count("lighter") > 0 or p.inv.count("flint") > 0
 				out.append(["Light fire", func(): _light(p), tool and p.inv.count("wood") >= 2, "To light it: 2 firewood and a lighter or flint and steel"])
+		"stand":
+			out.append_array(_stand_menu(p))
 		"garden":
 			var pl := float(st().get("planted", 0.0))
 			if pl <= 0.0:
@@ -275,3 +279,115 @@ func _harvest(p) -> void:
 	p.inv.add(Items.fresh("seeds", randi_range(1, 2)))
 	if left > 0: p._toast("No room for all of it")
 	_refresh()
+
+# ------------------------------------------------------------------------------------------------ the engine stand (0.2.55)
+## Pull an engine out of a car (bonnet off first if it has one), strip it, build it up part by part, drop it in another
+var _eng_node: Node3D = null
+
+func _stand_kit() -> Dictionary:
+	return st().get("kit", {})
+
+func _stand_show() -> void:
+	if _eng_node and is_instance_valid(_eng_node): _eng_node.queue_free()
+	_eng_node = null
+	var k := _stand_kit()
+	if k.is_empty() or str(k.get("block", "")) == "": return
+	_eng_node = EngineKit.build_node(k)
+	_eng_node.position = Vector3(0, 1.05, 0.1)
+	add_child(_eng_node)
+
+func _near_car(r := 9.0) -> Car:
+	var best: Car = null; var bd := r
+	for c in get_tree().get_nodes_in_group("vehicles"):
+		if c is Car and (c as Car).global_position.distance_to(global_position) < bd:
+			bd = (c as Car).global_position.distance_to(global_position); best = c
+	return best
+
+func _stand_menu(p) -> Array:
+	var out := []
+	var free: bool = Settings.creative()
+	var spanner: bool = free or p.inv.count("wrench") > 0
+	var k := _stand_kit()
+	var car := _near_car()
+	if _eng_node == null and not k.is_empty(): _stand_show()
+	if k.is_empty() or str(k.get("block", "")) == "":
+		if car and str(car.design.get("kit", {}).get("block", "")) != "":
+			var ok: bool = spanner and (car.bonnet_pivot == null or car.design.get("bonnet_off", false))
+			out.append(["Pull the engine out of the %s" % str(car.def.name).to_lower(), func():
+				st()["kit"] = (car.design.kit as Dictionary).duplicate(true)
+				car.design.kit = {"block": "", "heads": [], "exhaust": [], "intake": "", "fuel": "", "ign": "", "ecu": "", "alt": false, "rolled": true}
+				car.refresh_engine()
+				_stand_show(), ok, "A shifter, and the bonnet off first"])
+		for g in p.inv.grids():
+			for s2 in g[1].items:
+				if str(s2.id).begins_with("eb_"):
+					var id := str(s2.id)
+					out.append(["Put the %s on the stand" % Items.def(id).name, func():
+						p.inv.take(id, 1)
+						var pb := EngineKit.parse_block(id)
+						var banks := int(EngineKit.BLOCKS[pb[0]].banks)
+						var heads := []; var ex := []
+						for i in banks: heads.append(""); ex.append("")
+						st()["kit"] = {"block": id, "heads": heads, "exhaust": ex, "intake": "", "fuel": "", "ign": "", "ecu": "", "alt": false, "rolled": true, "tune": {}}
+						_stand_show(), true, ""])
+					break
+		if out.is_empty(): out.append(["Empty engine stand", func(): pass, false, "Bring a car with its bonnet off, or carry a block here"])
+		return out
+	out.append(["%s  ·  %s" % [EngineKit.describe(k), "ready to go in" if EngineKit.fault(k) == "" else EngineKit.fault(k)], func(): pass, false, ""])
+	if car and str(car.design.get("kit", {}).get("block", "")) == "":
+		out.append(["Drop it into the %s" % str(car.def.name).to_lower(), func():
+			car.design.kit = k.duplicate(true)
+			st()["kit"] = {}
+			car.refresh_engine()
+			_stand_show(), spanner, "You need a shifter"])
+	# strip and fit parts, straight from the stand
+	var give := func(id: String) -> void:
+		if free: return
+		var o := Items.fresh(id, 1)
+		if p.inv.add(o) > 0:
+			var iu = get_tree().current_scene.get("inv_ui")
+			if iu: iu._drop_world([o])
+	for slot in ["heads", "exhaust"]:
+		var arr: Array = k.get(slot, [])
+		for i in arr.size():
+			if str(arr[i]) == "": continue
+			var id := str(arr[i])
+			out.append(["Take off the %s" % Items.def(id).name, func():
+				give.call(id); arr[i] = ""; _stand_show(), spanner, "You need a shifter"])
+	for slot in ["intake", "fuel", "ign", "ecu"]:
+		if str(k.get(slot, "")) == "": continue
+		var id := str(k[slot])
+		out.append(["Take off the %s" % Items.def(id).name, func():
+			give.call(id); k[slot] = ""; _stand_show(), spanner, "You need a shifter"])
+	if k.get("alt", false):
+		out.append(["Take off the alternator", func(): give.call("alternator"); k.alt = false; _stand_show(), spanner, "You need a shifter"])
+	var pb := EngineKit.parse_block(str(k.block))
+	var bc := EngineKit.bank_cyl(pb[0])
+	var seen := {}
+	for g in p.inv.grids():
+		for s2 in g[1].items:
+			var id := str(s2.id)
+			if seen.has(id): continue
+			seen[id] = true
+			var d := EngineKit.item_def(id)
+			var part := str(d.get("part", ""))
+			var fits := false
+			match part:
+				"head": fits = int(EngineKit.parse_head(id)[0]) == bc and (k.heads as Array).has("")
+				"exhaust": fits = int(id.trim_prefix("ex_")) == bc and (k.exhaust as Array).has("")
+				"intake": fits = str(k.get("intake", "")) == "" and id == EngineKit.intake_id(pb[0])
+				"fuel", "ign", "ecu": fits = str(k.get(part, "")) == ""
+				"alt": fits = not k.get("alt", false)
+			if not fits: continue
+			out.append(["Fit the %s" % d.name, func():
+				p.inv.take(id, 1)
+				match part:
+					"head": (k.heads as Array)[(k.heads as Array).find("")] = id
+					"exhaust": (k.exhaust as Array)[(k.exhaust as Array).find("")] = id
+					"alt": k.alt = true
+					_: k[part] = id
+				_stand_show(), spanner, "You need a shifter"])
+	if EngineKit.fault(k) != "" and str(k.get("heads", [""])[0]) == "" and str(k.get("intake", "")) == "" and str(k.get("fuel", "")) == "":
+		out.append(["Take the bare block off the stand", func():
+			give.call(str(k.block)); st()["kit"] = {}; _stand_show(), true, ""])
+	return out

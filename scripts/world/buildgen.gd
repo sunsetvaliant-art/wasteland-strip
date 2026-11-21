@@ -1189,20 +1189,62 @@ static func _ramp(g: Geo, foot: Vector3, top: Vector3, width: float) -> void:
 	var mid := (foot + top) * 0.5 - y * 0.06
 	g.shapes.append([Transform3D(basis, mid), Vector3(width, 0.12, len)])
 
-## Steps (a flight of them, as many as it takes) from the ground up to a door sill at `top`, going out along `out`
+const LEG_MAX := 11            # steps in one run before a landing turns it back (0.2.55)
+
+## Steps (a flight of them, as many as it takes) from the ground up to a door sill at `top`, going out along `out`.
+## 0.2.55: a long drop (a house high on stumps over a falling block) no longer runs one flight 10 m out into the
+## creek or the street: it goes down in runs of 11 steps, landing, back the other way, stacked out from the wall.
 static func _flight(g: Geo, top: Vector3, out: Vector3, width: float, ground: Callable, mk := "timber") -> void:
-	var gy: float = ground.call(top.x + out.x * 0.5, top.z + out.z * 0.5)
-	if top.y - gy < 0.08:
+	var need := 0
+	while need < 70:
+		var c := top + out * (GOING * (need + 0.5))
+		if top.y - (need + 1) * RISE <= float(ground.call(c.x, c.z)) + 0.03:
+			break
+		need += 1
+	if need <= LEG_MAX + 3:
+		_flight_leg(g, top, out, width, ground, mk, -1)
 		return
+	# which way is 'away from the building' across this flight (the local origin is the building's middle)
+	var side := out.cross(Vector3.UP).normalized()
+	if side.dot(Vector3(top.x, 0, top.z)) < 0.0: side = -side
+	var t := top
+	var d := out
+	for leg in 8:
+		var left := int(roundf((t.y - float(ground.call(t.x + d.x * 1.5, t.z + d.z * 1.5))) / RISE))
+		if left <= LEG_MAX + 2:
+			_flight_leg(g, t, d, width, ground, mk, -1)
+			return
+		var foot: Vector3 = _flight_leg(g, t, d, width, ground, mk, LEG_MAX)
+		# the landing at the foot of this run, wide enough for the next run beside it
+		var lw := width * 2.0 + 0.2
+		var a := foot + d * 0.05 - side * (width * 0.5 + 0.05)
+		var b := foot + d * 1.15 + side * (width * 1.5 + 0.15)
+		g.aabb("deck" if mk == "timber" else mk, Vector3(minf(a.x, b.x), foot.y - 0.12, minf(a.z, b.z)), Vector3(maxf(a.x, b.x), foot.y, maxf(a.z, b.z)))
+		for pc in [foot + d * 1.05 - side * (width * 0.45), foot + d * 1.05 + side * (width * 1.45)]:
+			var gy: float = ground.call(pc.x, pc.z)
+			g.aabb("timber" if mk == "timber" else "steel", Vector3(pc.x - 0.07, gy - 0.3, pc.z - 0.07), Vector3(pc.x + 0.07, foot.y - 0.12, pc.z + 0.07), false)
+		# rail across the far end of the landing
+		var r0 := foot + d * 1.12 - side * (width * 0.5); var r1 := foot + d * 1.12 + side * (width * 1.5 + 0.15)
+		g.aabb("trim", Vector3(minf(r0.x, r1.x) - 0.02, foot.y + 0.9, minf(r0.z, r1.z) - 0.02), Vector3(maxf(r0.x, r1.x) + 0.02, foot.y + 0.97, maxf(r0.z, r1.z) + 0.02), true)
+		t = foot + d * 0.6 + side * (width + 0.15)
+		d = -d
+
+## One run of steps from `top` along `out`: n steps, or (n < 0) as many as it takes to reach the ground. Returns the
+## foot (the top of the ground or landing it stops on)
+static func _flight_leg(g: Geo, top: Vector3, out: Vector3, width: float, ground: Callable, mk: String, fixed: int) -> Vector3:
+	var gy: float = ground.call(top.x + out.x * 0.5, top.z + out.z * 0.5)
+	if top.y - gy < 0.08 and fixed < 0:
+		return top
 	# step down and out until the steps meet the ground where they are (ground falling away under a flight just
 	# makes it longer, so it never stops short in mid-air)
 	var rise := RISE
 	var n := 0
-	while n < 70:
+	while n < 70 and fixed < 0:
 		var c := top + out * (GOING * (n + 0.5))
 		if top.y - (n + 1) * rise <= float(ground.call(c.x, c.z)) + 0.03:
 			break
 		n += 1
+	if fixed > 0: n = fixed
 	if n == 0:
 		n = 1
 	var rise_to := n * rise
@@ -1241,6 +1283,7 @@ static func _flight(g: Geo, top: Vector3, out: Vector3, width: float, ground: Ca
 		if not pl.has("flights"): pl["flights"] = []
 		pl.flights.append({"top": top, "foot": foot + (foot - top).normalized() * 0.5})
 	_ramp(g, foot + (foot - top).normalized() * 0.9, top, width)
+	return foot
 
 ## A front verandah (and sometimes down the sides) on posts, with a rail and its own skillion roof
 static func _verandah(p: Dictionary, g: Geo, ground: Callable) -> void:

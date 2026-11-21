@@ -31,10 +31,28 @@ static func load_all() -> Array:
 	for b in d.bridges:
 		var raw := PackedVector3Array()
 		for p in b.pts: raw.append(Vector3(p[0], p[1], p[2]))
+		raw = _trim_hooks(raw)
 		var P := _smooth_profile(_densify(raw))
 		if P.size() < 2: continue
 		bridges.append({"P": P, "hw": float(b.hw), "mark": float(b.mark), "wild": float(b.wild), "L": _length(P)})
 	return bridges
+
+## 0.2.55: some deck lines were baked with a short bit of the joining road on an end, so the bridge turned both lanes
+## 90 degrees at its ends. Drop end points (within 7 m) that turn more than 35 degrees off the deck's own line.
+static func _trim_hooks(raw: PackedVector3Array) -> PackedVector3Array:
+	var P := raw
+	for _pass in 2:
+		for end in [0, 1]:
+			while P.size() > 3:
+				var a: Vector3 = P[0] if end == 0 else P[P.size() - 1]
+				var b: Vector3 = P[1] if end == 0 else P[P.size() - 2]
+				var c: Vector3 = P[2] if end == 0 else P[P.size() - 3]
+				var d1 := Vector2(b.x - a.x, b.z - a.z); var d2 := Vector2(c.x - b.x, c.z - b.z)
+				if d1.length() > 7.0 or d1.length() < 0.01 or d2.length() < 0.01: break
+				if absf(d1.angle_to(d2)) < deg_to_rad(35.0): break
+				if end == 0: P.remove_at(0)
+				else: P.remove_at(P.size() - 1)
+	return P
 
 ## The old decks were pulled to the road heights at their ends, which left short steep humps (up to ~30%): smooth
 ## the height along the deck (about 12 m each way, passes of a box filter), keeping both end heights where they are.

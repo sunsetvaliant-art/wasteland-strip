@@ -53,7 +53,7 @@ func setup(m) -> void:
 	var path := "res://assets/world/streets.bin"
 	if not FileAccess.file_exists(path) or OS.get_environment("STREETS_OFF") != "": return
 	_bytes = FileAccess.get_file_as_bytes(path)
-	if _bytes.size() < 16 or _bytes.slice(0, 4).get_string_from_ascii() != "STR1":
+	if _bytes.size() < 16 or _bytes.slice(0, 4).get_string_from_ascii() != "STR2":
 		push_warning("streets: bad file"); _bytes = PackedByteArray(); return
 	_ox = _bytes.decode_float(4); _oz = _bytes.decode_float(8)
 	var n := _bytes.decode_u32(12)
@@ -97,11 +97,11 @@ func _tile_data(k: Vector2i) -> Dictionary:
 		d.furn.append([sp.get_u32(), sp.get_float(), sp.get_float(), sp.get_float(), sp.get_float()])
 	for _i in sp.get_u32():
 		var nv := sp.get_u32()
-		var tri := (sp.get_data(nv * 8)[1] as PackedByteArray).to_float32_array()
+		var tri := (sp.get_data(nv * 16)[1] as PackedByteArray).to_float32_array()     # x, z, anchor x, anchor z
 		var rings := []
 		for _r in sp.get_u32():
 			var nr := sp.get_u32()
-			rings.append((sp.get_data(nr * 8)[1] as PackedByteArray).to_float32_array())
+			rings.append((sp.get_data(nr * 16)[1] as PackedByteArray).to_float32_array())
 		d.slab.append([tri, rings])
 	var ml := sp.get_u32()
 	d["mask"] = sp.get_data(ml)[1] if ml > 0 else PackedByteArray()
@@ -285,12 +285,20 @@ func _build(k: Vector2i) -> Dictionary:
 				await _slice("paint")
 				var tri: PackedFloat32Array = p[2]
 				var col := Color(float(p[0]), 1.0 if mark else 0.0, 0.0, 0.12)
-				for i in tri.size() / 2:
-					var x := tri[i * 2]; var z := tri[i * 2 + 1]
-					vs.append(Vector3(x - org.x, 0.0, z - org.z))
-					uv.append(Vector2(0.0, z * 0.7 + x * 0.3))
-					uv2.append(Vector2(1.0e5, 1.0))
-					cs.append(col)
+				for i in range(0, tri.size() / 2, 3):
+					# 0.2.55: nothing painted up a bank (it smears down the slope from above)
+					var h0 := _h(tri[i * 2], tri[i * 2 + 1]); var h1 := _h(tri[i * 2 + 2], tri[i * 2 + 3]); var h2 := _h(tri[i * 2 + 4], tri[i * 2 + 5])
+					var cx := (tri[i * 2] + tri[i * 2 + 2] + tri[i * 2 + 4]) / 3.0; var cz := (tri[i * 2 + 1] + tri[i * 2 + 3] + tri[i * 2 + 5]) / 3.0
+					var hc := _h(cx, cz)
+					var lo := minf(minf(h0, h1), minf(h2, hc)); var hi := maxf(maxf(h0, h1), maxf(h2, hc))
+					var span := maxf(Vector2(tri[i * 2], tri[i * 2 + 1]).distance_to(Vector2(tri[i * 2 + 2], tri[i * 2 + 3])), Vector2(tri[i * 2], tri[i * 2 + 1]).distance_to(Vector2(tri[i * 2 + 4], tri[i * 2 + 5])))
+					if hi - lo > 1.0 and (hi - lo) / maxf(span, 1.0) > 0.22: continue
+					for j in 3:
+						var x := tri[(i + j) * 2]; var z := tri[(i + j) * 2 + 1]
+						vs.append(Vector3(x - org.x, 0.0, z - org.z))
+						uv.append(Vector2(x, z))           # world-mapped: texture the same size every way (0.2.55: was streaky)
+						uv2.append(Vector2(1.0e5, 1.0))
+						cs.append(col)
 			if vs.is_empty(): continue
 			var arr := []; arr.resize(Mesh.ARRAY_MAX)
 			arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_TEX_UV] = uv; arr[Mesh.ARRAY_TEX_UV2] = uv2; arr[Mesh.ARRAY_COLOR] = cs
@@ -351,22 +359,33 @@ func _kerb(st: SurfaceTool, pts: PackedVector2Array, kinds: PackedInt32Array, or
 	return n
 
 func _slab(st: SurfaceTool, tri: PackedFloat32Array, rings: Array, org: Vector3, faces: PackedVector3Array) -> void:
-	for i in range(0, tri.size() / 2, 3):
+	## the shopping-street footpath sits at kerb-top height off the road edge (its anchor), not on the ground behind;
+	## where the ground falls away more than a metre or climbs well above it (a bank) that bit is left out
+	for i in range(0, tri.size() / 4, 3):
 		var vv := []
+		var ok := true
 		for j in 3:
-			var x := tri[(i + j) * 2]; var z := tri[(i + j) * 2 + 1]
-			vv.append(Vector3(x - org.x, _h(x, z) + 0.02 + SLAB_Y, z - org.z))
+			var o := (i + j) * 4
+			var x := tri[o]; var z := tri[o + 1]
+			var y := _h(tri[o + 2], tri[o + 3]) + 0.02 + SLAB_Y
+			var g := _h(x, z)
+			if g < y - 1.2 or g > y + 0.9: ok = false
+			vv.append(Vector3(x - org.x, y, z - org.z))
+		if not ok: continue
 		var order := [vv[0], vv[2], vv[1]] if ((vv[1] - vv[0]) as Vector3).cross(vv[2] - vv[0]).y > 0.0 else [vv[0], vv[1], vv[2]]
 		for v in order:
 			st.set_normal(Vector3.UP); st.add_vertex(v); faces.append(v)
 	# a skirt down to the ground round the edge (shows at the block ends and the lane side)
 	for r in rings:
 		var rr: PackedFloat32Array = r
-		for i in rr.size() / 2 - 1:
-			var ax := rr[i * 2]; var az := rr[i * 2 + 1]; var bx := rr[i * 2 + 2]; var bz := rr[i * 2 + 3]
-			var ha := _h(ax, az); var hb := _h(bx, bz)
-			var a0 := Vector3(ax - org.x, ha - 0.05, az - org.z); var a1 := Vector3(ax - org.x, ha + 0.02 + SLAB_Y, az - org.z)
-			var b0 := Vector3(bx - org.x, hb - 0.05, bz - org.z); var b1 := Vector3(bx - org.x, hb + 0.02 + SLAB_Y, bz - org.z)
+		for i in rr.size() / 4 - 1:
+			var o := i * 4
+			var ax := rr[o]; var az := rr[o + 1]; var bx := rr[o + 4]; var bz := rr[o + 5]
+			var ya := _h(rr[o + 2], rr[o + 3]) + 0.02 + SLAB_Y; var yb := _h(rr[o + 6], rr[o + 7]) + 0.02 + SLAB_Y
+			var ga := _h(ax, az); var gb := _h(bx, bz)
+			if ga < ya - 1.2 or gb < yb - 1.2 or ga > ya + 0.9 or gb > yb + 0.9: continue
+			var a0 := Vector3(ax - org.x, minf(ga, ya) - 0.05, az - org.z); var a1 := Vector3(ax - org.x, ya, az - org.z)
+			var b0 := Vector3(bx - org.x, minf(gb, yb) - 0.05, bz - org.z); var b1 := Vector3(bx - org.x, yb, bz - org.z)
 			var sn := Vector3(bz - az, 0.0, ax - bx).normalized()
 			for v in [a0, b0, b1, a0, b1, a1]:
 				st.set_normal(sn); st.add_vertex(v)

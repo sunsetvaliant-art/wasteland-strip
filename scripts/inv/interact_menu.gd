@@ -118,7 +118,22 @@ func _pick(p) -> Array:
 			var o := [_o("Drive", func(): p._try_get_in(c))]
 			o.append(_o("Repair", _repair.bind(c)))
 			if InventoryUI.is_container(c): o.append(_o("Inventory", _open.bind(c)))
+			# 0.2.55: bonnet, tray sides, toolbox and canopy doors
+			if c.bonnet_pivot != null and c.bonnet_pivot.visible:
+				o.append(_o("Close the bonnet" if c.bonnet_want > 0.5 else "Open the bonnet", c.toggle_bonnet))
+			if not c.tray.is_empty():
+				if not (c.tray.sides as Array).is_empty():
+					o.append(_o("Raise the tray sides" if c.sides_down else "Drop the tray sides", func(): c.sides_down = not c.sides_down))
+				if not (c.tray.doors as Array).is_empty():
+					o.append(_o("Close the doors" if c.doors_open else "Open the doors", func(): c.doors_open = not c.doors_open))
 			return [c, o]
+		if n is RigidBody3D and (n.has_meta("tub_of") or n.has_meta("bonnet_of")):
+			var what := "tub" if n.has_meta("tub_of") else "bonnet"
+			return [n, [_o("Break the %s down for scrap" % what, func():
+				var got := 8 if what == "tub" else 3
+				var it := Items.fresh("scrap", got)
+				if p.inv.add(it) > 0 and main.inv_ui: main.inv_ui._drop_world([it])
+				n.queue_free(), p.inv.count("wrench") > 0 or Settings.creative(), "You need a shifter")]]
 		if hp.distance_to(p.global_position + Vector3(0, 1.0, 0)) > 2.8:
 			return [null, []]
 		if n is BasePiece and n.is_in_group("stations"):

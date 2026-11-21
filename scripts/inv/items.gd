@@ -137,6 +137,7 @@ const LOOT := {
 	# car parts stores, mechanics' shelves, wrecks (0.2.49)
 	"carparts": [["car_battery", 0.4, 1, 1], ["oil_can", 0.7, 1, 3], ["tyre_iron", 0.35, 1, 1], ["wrench", 0.4, 1, 1], ["pipe_wrench", 0.2, 1, 1],
 		["tape", 0.5, 1, 2], ["wire", 0.5, 1, 3], ["scrap", 0.5, 1, 4], ["jerry_fuel", 0.12, 1, 1], ["torch", 0.25, 1, 1], ["crowbar", 0.12, 1, 1]],
+	"engine_parts": [],          # filled from EngineKit by roll_loot (0.2.55)
 	"wreck": [["scrap", 0.9, 2, 6], ["wire", 0.5, 1, 3], ["car_battery", 0.2, 1, 1], ["oil_can", 0.25, 1, 1], ["cloth", 0.3, 1, 2], ["tyre_iron", 0.15, 1, 1], ["jerry_fuel", 0.05, 1, 1]],
 	# caravans: holidays interrupted
 	"caravan": [["food_can", 0.6, 1, 3], ["long_life", 0.4, 1, 2], ["water_bottle", 0.6, 1, 3], ["soft_drink", 0.5, 1, 4], ["lighter", 0.4, 1, 1],
@@ -206,7 +207,12 @@ const CONTAINERS := {
 const CARRY_MAX_KG := 45.0
 
 static func def(id: String) -> Dictionary:
-	return DEFS.get(id, {"name": id, "w": 1, "h": 1, "stack": 1, "kind": "misc"})
+	if DEFS.has(id): return DEFS[id]
+	var k := EngineKit.item_def(id)              # engine kit parts (0.2.55)
+	if not k.is_empty(): return k
+	var t := TrayGen.item_def(id)                # trays, canopies, tubs (0.2.55)
+	if not t.is_empty(): return t
+	return {"name": id, "w": 1, "h": 1, "stack": 1, "kind": "misc"}
 
 static func stack(id: String, n := 1, data := {}) -> Dictionary:
 	return {"id": id, "n": n, "x": 0, "y": 0, "r": false, "data": data.duplicate(true)}
@@ -232,6 +238,10 @@ static func new_grid(w: int, h: int) -> Dictionary:
 
 static func roll_loot(table: String, rng: RandomNumberGenerator) -> Array:
 	var out: Array = []
+	# engine kit parts: on mechanics' and wreckers' shelves, workbenches, sheds and in wrecks (0.2.55)
+	var ep := {"carparts": 0.45, "workbench": 0.25, "shed_shelf": 0.12, "wreck": 0.3, "hardware": 0.08, "servo_shelf": 0.1}
+	if ep.has(table) and rng.randf() < float(ep[table]):
+		out.append(fresh(_engine_part(rng), 1))
 	for e in LOOT.get(table, []):
 		if rng.randf() < float(e[1]):
 			out.append(fresh(e[0], rng.randi_range(int(e[2]), int(e[3]))))
@@ -239,3 +249,16 @@ static func roll_loot(table: String, rng: RandomNumberGenerator) -> Array:
 		var e: Array = LOOT[table][0]
 		out.append(fresh(e[0], rng.randi_range(int(e[2]), int(e[3]))))
 	return out
+
+## A loose engine part, weighted toward the small stuff (blocks are rare: they're mostly in cars)
+static func _engine_part(rng: RandomNumberGenerator) -> String:
+	var r := rng.randf()
+	if r < 0.16: return "alternator"
+	if r < 0.28: return "ign_dizzy"
+	if r < 0.38: return EngineKit.fuel_id(["carby", "carby", "tb", "mech", "epump"][rng.randi() % 5])
+	if r < 0.50: return EngineKit.ecu_id(rng.randf() < 0.35, [3, 4, 4, 6, 6, 8][rng.randi() % 6])
+	if r < 0.62: return EngineKit.exhaust_id([3, 4, 4, 6][rng.randi() % 4])
+	if r < 0.72: return EngineKit.intake_id(["i3", "i4", "i6", "v6", "v8"][rng.randi() % 5])
+	if r < 0.92: return EngineKit.head_id([3, 4, 4, 6][rng.randi() % 4], ["flat", "push", "push", "sohc", "dohc"][rng.randi() % 5], ["lo", "med", "med", "hi"][rng.randi() % 4])
+	if r < 0.97: return "laptop"
+	return EngineKit.block_id(["i3", "i4", "i6", "v6", "v8"][rng.randi() % 5], rng.randf() < 0.4)

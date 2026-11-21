@@ -35,6 +35,19 @@ static func of(c: Node) -> Dictionary:
 	if Settings.creative():
 		st = good()
 	c.set_meta("care", st)
+	# 0.2.55: a wreck's kit engine is either short a part or two (carby, ECU, alternator, intake...) or all there but dead
+	var cd = c.get("design")
+	if cd is Dictionary and cd.has("kit") and not Settings.creative() and not bool(cd.kit.get("rolled", false)):
+		var kd: Dictionary = cd.kit
+		kd["rolled"] = true
+		if rng.randf() < 0.55:
+			var slots := ["fuel", "alt", "intake", "ecu" if str(kd.get("ecu", "")) != "" else "ign", "exhaust"]
+			for i in rng.randi_range(1, 2):
+				var sl: String = slots[rng.randi() % slots.size()]
+				if sl == "alt": kd.alt = false
+				elif sl == "exhaust": kd.exhaust[rng.randi() % (kd.exhaust as Array).size()] = ""
+				else: kd[sl] = ""
+		if c.has_method("refresh_engine"): c.call_deferred("refresh_engine")
 	return st
 
 static func good() -> Dictionary:
@@ -42,6 +55,10 @@ static func good() -> Dictionary:
 
 ## Why it won't go ("" if it will)
 static func blocked(c: Node) -> String:
+	var cd = c.get("design")
+	if cd is Dictionary and cd.has("kit"):
+		var f := EngineKit.fault(cd.kit)
+		if f != "": return f
 	if Settings.creative(): return ""
 	var st := of(c)
 	if st.key != "ignition" and not st.hot: return "No key. K: look for it, try one, or hotwire it"
@@ -59,7 +76,20 @@ static func burn(c: Node, dt: float, throttle: float) -> void:
 	if Settings.creative(): return
 	var st := of(c)
 	st.fuel = maxf(float(st.fuel) - dt * (0.0012 + 0.006 * throttle), 0.0)
-	st.battery = minf(float(st.battery) + dt * 0.4, 100.0)
+	var k: Dictionary = c.design.get("kit", {})
+	if k.is_empty() or bool(k.get("alt", true)):
+		st.battery = minf(float(st.battery) + dt * 0.4, 100.0)
+	else:
+		# no alternator: the battery runs down; an injected engine dies when it's flat
+		st.battery = maxf(float(st.battery) - dt * 0.12, 0.0)
+		if float(st.battery) < 5.0 and (EngineKit.has_ecu(k) or not EngineKit.is_diesel(k)):
+			c.running = false
+			c.crank = -2.0
+			return
+	# pinging under load wears the engine
+	var pg := EngineKit.pings(k) if not k.is_empty() else 0.0
+	if pg > 0.0 and throttle > 0.6 and float(c.rpm) > 2200.0:
+		st.engine = maxf(float(st.engine) - dt * pg * 0.08, 0.0)
 	if float(st.fuel) <= 0.0 or (float(st.engine) < 22.0 and throttle > 0.5 and randf() < dt * 0.06):
 		c.running = false
 		c.crank = -1.2             # a moment before it'll turn over again
@@ -160,6 +190,7 @@ func _fill() -> void:
 	t += "\nMechanic level %d   ·   %s\n" % [CarCare.level(p), "shifter in hand" if spanner else "[color=#db5]no shifter: basic jobs only[/color]"]
 	var why := CarCare.blocked(car)
 	t += "\n" + ("[color=#9c6]It'll go.[/color]" if why == "" else "[color=#d66]%s[/color]" % why.split(".")[0])
+	t += _engine_text()
 	if msg != "": t += "\n\n[b]%s[/b]" % msg
 	info.text = t
 	for ch in btns.get_children():
@@ -250,10 +281,171 @@ func _fill() -> void:
 		st.battery = 0.0
 		CarCare.gain(p, 3)
 		msg = "Battery's out.")
+	_body_buttons(add, spanner, free, p)
+	_engine_buttons(add, spanner, free, p, st)
 	add.call("SHIFTER: rebuild it (the garage)", spanner and main.get("garage") != null, func():
 		var c := car
 		close()
 		main.garage.show_garage(c.design, c))
+
+# ------------------------------------------------------------------------------------------------ the engine (0.2.55)
+const SLOT_NAMES := {"heads": "Head", "exhaust": "Exhaust", "intake": "Intake", "fuel": "Fuel", "ign": "Ignition", "ecu": "ECU", "alt": "Alternator"}
+
+func _body_buttons(add: Callable, spanner: bool, free: bool, p) -> void:
+	var cut := BodyCut.of(str(car.def.glb))
+	if car.bonnet_pivot != null:
+		if car.design.get("bonnet_off", false):
+			add.call("SHIFTER: bolt the bonnet back on (it must be beside the car)", spanner, func():
+				msg = "Bonnet's back on." if car.refit_bonnet() else "Bring the bonnet over first.")
+		else:
+			add.call("SHIFTER: take the bonnet off (for an engine swap)", spanner, func():
+				car.take_off_bonnet()
+				msg = "Off it comes. It's leaning against the guard.")
+	elif not cut.has("bonnet"):
+		pass
+	if cut.has("tub"):
+		var tub := str(car.design.get("tub", "stock"))
+		if tub == "stock":
+			add.call("SHIFTER: unbolt the factory tub", spanner, func():
+				car.unbolt_tub()
+				msg = "The tub's off. Keep it, swap it onto another ute, or scrap it.")
+		else:
+			add.call("SHIFTER: bolt a tub back on (one off this model, beside the car)", spanner, func():
+				msg = "Tub's back on." if car.bolt_tub() else "No tub off this model nearby.")
+			if tub == "none":
+				add.call("Build a custom tray (12 scrap metal, a shifter)", spanner and (free or p.inv.count("scrap") >= 12), func():
+					if not free: p.inv.take("scrap", 12)
+					car.build_tray()
+					CarCare.gain(p, 15)
+					msg = "A tray on the back. Spec it out in the garage.")
+
+func _engine_text() -> String:
+	var k: Dictionary = car.design.get("kit", {})
+	if k.is_empty(): return ""
+	var t := "\n\n[b]ENGINE[/b]  %s\n" % EngineKit.describe(k)
+	var nm := func(id) -> String: return "[color=#d66]none[/color]" if str(id) == "" else str(Items.def(str(id)).name)
+	var heads: Array = k.get("heads", [])
+	for i in heads.size(): t += "Head%s:  %s\n" % ["" if heads.size() == 1 else (" L" if i == 0 else " R"), nm.call(heads[i])]
+	var ex: Array = k.get("exhaust", [])
+	for i in ex.size(): t += "Exhaust%s:  %s\n" % ["" if ex.size() == 1 else (" L" if i == 0 else " R"), nm.call(ex[i])]
+	t += "Intake:  %s\nFuel:  %s\n" % [nm.call(k.get("intake", "")), nm.call(k.get("fuel", ""))]
+	if str(k.get("ign", "")) != "" or (not EngineKit.has_ecu(k) and not EngineKit.is_diesel(k)): t += "Ignition:  %s\n" % nm.call(k.get("ign", ""))
+	if str(k.get("ecu", "")) != "" or str(k.get("fuel", "")) in ["ef_tb", "ef_epump"]: t += "ECU:  %s\n" % nm.call(k.get("ecu", ""))
+	t += "Alternator:  %s\n" % ("fitted" if k.get("alt", false) else "[color=#d66]none[/color]")
+	if EngineKit.pings(k) > 0.3: t += "[color=#db5]Pings under load (high compression on petrol): an ECU tune with the timing pulled back stops it[/color]\n"
+	if EngineKit.smokes(k) > 0.2: t += "[color=#db5]Turned up: it'll smoke[/color]\n"
+	return t
+
+func _engine_buttons(add: Callable, spanner: bool, free: bool, p, st: Dictionary) -> void:
+	var k: Dictionary = car.design.get("kit", {})
+	if k.is_empty(): return
+	var changed := func(m: String) -> void:
+		msg = m
+		car.call("refresh_engine")
+		CarCare.gain(p, 3)
+	var give := func(id: String) -> void:
+		if free: return
+		var o := Items.fresh(id, 1)
+		if p.inv.add(o) > 0 and main.inv_ui: main.inv_ui._drop_world([o])
+	var take := func(id: String) -> bool:
+		if free: return true
+		return p.inv.take(id, 1) > 0 if p.inv.has_method("take") else false
+	# take parts off
+	for slot in ["heads", "exhaust"]:
+		var arr: Array = k.get(slot, [])
+		for i in arr.size():
+			var id := str(arr[i])
+			if id == "": continue
+			add.call("SHIFTER: take off the %s" % Items.def(id).name, spanner, func():
+				give.call(id)
+				arr[i] = ""
+				changed.call("Off it comes."))
+	for slot in ["intake", "fuel", "ign", "ecu"]:
+		var id := str(k.get(slot, ""))
+		if id == "": continue
+		add.call("SHIFTER: take off the %s" % Items.def(id).name, spanner, func():
+			give.call(id)
+			k[slot] = ""
+			changed.call("Off it comes."))
+	if k.get("alt", false):
+		add.call("SHIFTER: take off the alternator", spanner, func():
+			give.call("alternator")
+			k.alt = false
+			changed.call("Alternator's off. The belt's slack."))
+	# put parts on: what you're carrying (anything in creative) that fits a free spot
+	var pb := EngineKit.parse_block(str(k.get("block", "")))
+	if pb.is_empty(): return
+	var bc := EngineKit.bank_cyl(pb[0])
+	var have: Array = []
+	if free:
+		for vt in EngineKit.VALVETRAIN:
+			for c in EngineKit.COMP: have.append(EngineKit.head_id(bc, vt, c))
+		have.append_array([EngineKit.exhaust_id(bc), EngineKit.intake_id(pb[0]), "ef_carby", "ef_tb", "ef_mech", "ef_epump", "ign_dizzy", "alternator",
+			EngineKit.ecu_id(false, int(EngineKit.BLOCKS[pb[0]].cyl)), EngineKit.ecu_id(true, int(EngineKit.BLOCKS[pb[0]].cyl))])
+	else:
+		for g in p.inv.grids():
+			for s2 in g[1].items:
+				if not have.has(s2.id) and not EngineKit.item_def(s2.id).is_empty(): have.append(s2.id)
+	for id in have:
+		var d := EngineKit.item_def(id)
+		var part := str(d.get("part", ""))
+		var where := ""
+		match part:
+			"head":
+				var ph := EngineKit.parse_head(id)
+				if int(ph[0]) == bc and (k.heads as Array).has(""): where = "heads"
+			"exhaust":
+				if int(id.trim_prefix("ex_")) == bc and (k.exhaust as Array).has(""): where = "exhaust"
+			"intake":
+				if str(k.get("intake", "")) == "" and id == EngineKit.intake_id(pb[0]): where = "intake"
+			"fuel", "ign", "ecu":
+				if str(k.get(part, "")) == "": where = part
+			"alt":
+				if not k.get("alt", false): where = "alt"
+		if where == "": continue
+		add.call("SHIFTER: fit the %s" % d.name, spanner, func():
+			if not take.call(id): return
+			match where:
+				"heads", "exhaust":
+					var arr2: Array = k[where]
+					arr2[arr2.find("")] = id
+				"alt": k.alt = true
+				_: k[where] = id
+			changed.call("Bolted on."))
+	# a mechanical diesel pump turns up with a spanner; an ECU tunes on a laptop
+	if str(k.get("fuel", "")) == "ef_mech":
+		add.call("SHIFTER: turn the pump up (more power, more smoke)", spanner and float(k.get("spanner", 0.0)) < 1.0, func():
+			k.spanner = minf(float(k.get("spanner", 0.0)) + 0.5, 1.0)
+			changed.call("A quarter turn on the fuel screw."))
+		add.call("SHIFTER: wind the pump back", spanner and float(k.get("spanner", 0.0)) > 0.0, func():
+			k.spanner = maxf(float(k.get("spanner", 0.0)) - 0.5, 0.0)
+			changed.call("Back to standard."))
+	if EngineKit.has_ecu(k):
+		add.call("LAPTOP: tune the ECU (fuel, timing, rev limit)", free or p.inv.count("laptop") > 0, func():
+			_tune_panel(k))
+
+func _tune_panel(k: Dictionary) -> void:
+	for ch in btns.get_children(): ch.queue_free()
+	var t: Dictionary = k.get("tune", {"fuel": 0.0, "timing": 0.0, "limit": 0.0})
+	k["tune"] = t
+	for row in [["fuel", "Fuel (lean <> rich)", -1.0, 1.0], ["timing", "Timing (retard <> advance)", -1.0, 1.0], ["limit", "Rev limit (+600 rpm a notch)", 0.0, 1.0]]:
+		var l := Label.new(); l.text = row[1]; btns.add_child(l)
+		var sl := HSlider.new(); sl.min_value = row[2]; sl.max_value = row[3]; sl.step = 0.05; sl.value = float(t.get(row[0], 0.0))
+		sl.custom_minimum_size = Vector2(340, 26)
+		var key: String = row[0]
+		sl.value_changed.connect(func(v):
+			t[key] = v
+			car.call("refresh_engine"))
+		btns.add_child(sl)
+	var note := Label.new()
+	note.text = "Too much fuel smokes (diesel); too much timing pings (petrol)."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD
+	btns.add_child(note)
+	var b := Button.new(); b.text = "Done"
+	b.pressed.connect(func():
+		msg = "Tune saved to the ECU."
+		_fill())
+	btns.add_child(b)
 
 func _selftest() -> void:
 	var p = main.player

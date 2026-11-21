@@ -185,7 +185,8 @@ func _build_ui() -> void:
 		var keep := design.duplicate(true)
 		design = VehicleSpecs.default_design(k)
 		# keep the running gear you'd already picked
-		for f in ["engine", "gearbox", "final"]: design[f] = keep[f]
+		for f in ["engine", "gearbox", "final", "kit"]:
+			if keep.has(f): design[f] = keep[f]
 		_build_ui()
 		_changed())
 	var off: Array = design.cab_offset
@@ -195,6 +196,33 @@ func _build_ui() -> void:
 	_check("Body fitted (off = bare chassis)", not design.get("no_cab", false), func(v):
 		design.no_cab = not v
 		_changed())
+	# --- tub or tray (0.2.55)
+	var cut := BodyCut.of(str(Car.catalog().get(design.cab, {}).get("glb", "")))
+	_title("Tub / tray")
+	if not cut.has("tub"):
+		_note("This body has no tub line yet: set it in the pause menu's Body tools first.")
+	else:
+		var tubs := ["stock", "none", "tray"]
+		_choice("Back", ["Factory tub", "Nothing (cab-chassis)", "Custom tray"], tubs.find(str(design.get("tub", "stock"))), func(i):
+			design.tub = tubs[i]
+			_build_ui()
+			_changed())
+		if str(design.get("tub", "")) == "tray":
+			var tc := TrayGen.cfg_of(design)
+			design.tray = tc
+			_choice("Tray", ["Alloy (checker plate)", "Steel (timber deck)"], 0 if tc.type == "alloy" else 1, func(i): tc.type = "alloy" if i == 0 else "steel"; _changed())
+			_slider("Length (0 = fit the chassis)", 0.0, 3.2, 0.05, float(tc.len), func(v): tc.len = v; _changed())
+			_slider("Width (0 = fit the body)", 0.0, 2.2, 0.02, float(tc.wid), func(v): tc.wid = v; _changed())
+			_check("Headboard", tc.head, func(v): tc.head = v; _changed())
+			_check("Ladder rack over the cab", tc.rack, func(v): tc.rack = v; _changed())
+			_check("Drop sides (they hinge)", tc.sides, func(v): tc.sides = v; _changed())
+			_choice("Toolboxes", ["None", "Under-tray boxes", "Double tapered", "Gullwing box"], TrayGen.BOXES.find(str(tc.boxes)), func(i): tc.boxes = TrayGen.BOXES[i]; _changed())
+			_check("Marine carpet in the gullwing", tc.carpet, func(v): tc.carpet = v; _changed())
+			_check("Spare wheel carrier", tc.spare, func(v): tc.spare = v; _changed())
+			_check("Water tank", tc.tank, func(v): tc.tank = v; _changed())
+			_check("Jerry can holders", tc.jerry, func(v): tc.jerry = v; _changed())
+			_check("Canopy (lift-up doors)", tc.canopy, func(v): tc.canopy = v; _changed())
+			_choice("Tail lights", ["Plain round", "Square LED bars", "Sequential indicators", "Recessed in the bar"], TrayGen.LIGHTS.find(str(tc.lights)), func(i): tc.lights = TrayGen.LIGHTS[i]; _changed())
 	# --- chassis
 	_title("Chassis")
 	var fr: Dictionary = design.frame
@@ -206,8 +234,32 @@ func _build_ui() -> void:
 	_slider("Weight on the front axle", 0.3, 0.75, 0.01, design.front_share, func(v): design.front_share = v; _changed())
 	# --- driveline
 	_title("Driveline")
-	var engines: Array = VehicleSpecs.ENGINES.keys()
-	_choice("Engine", engines.map(func(k): return VehicleSpecs.ENGINES[k].name), engines.find(design.engine), func(i): design.engine = engines[i]; _changed())
+	# 0.2.55: the engine is built from the kit
+	if not design.has("kit"): design["kit"] = EngineKit.stock(Car.catalog().get(design.cab, {}))
+	var k: Dictionary = design.kit
+	var pb := EngineKit.parse_block(str(k.get("block", "")))
+	if pb.is_empty(): pb = ["i6", false]
+	var lays: Array = EngineKit.BLOCKS.keys()
+	var ph := EngineKit.parse_head(str((k.get("heads", [""]) as Array)[0])) if not (k.get("heads", []) as Array).is_empty() and str(k.heads[0]) != "" else [6, "push", "med"]
+	var fs := str(k.get("fuel", "ef_carby")).trim_prefix("ef_")
+	if not EngineKit.FUELS.has(fs): fs = "carby"
+	var remake := func(lay: String, big: bool, vt: String, comp: String, fuel: String) -> void:
+		var tune: Dictionary = k.get("tune", {})
+		design.kit = EngineKit.make(lay, big, vt, comp, fuel, bool(k.get("alt", true)))
+		design.kit.tune = tune
+		design.kit.rolled = true
+		_build_ui()
+		_changed()
+	_note("Engine: %s  ·  %s" % [EngineKit.describe(k), ("[!] " + EngineKit.fault(k)) if EngineKit.fault(k) != "" else "runs"])
+	_choice("Block", lays.map(func(l): return EngineKit.BLOCKS[l].name), lays.find(pb[0]), func(i): remake.call(lays[i], pb[1], ph[1], ph[2], fs))
+	_choice("Block size", ["Small", "Big"], 1 if pb[1] else 0, func(i): remake.call(pb[0], i == 1, ph[1], ph[2], fs))
+	var vts: Array = EngineKit.VALVETRAIN.keys()
+	_choice("Heads", vts.map(func(v): return EngineKit.VALVETRAIN[v].name), vts.find(ph[1]), func(i): remake.call(pb[0], pb[1], vts[i], ph[2], fs))
+	var comps: Array = EngineKit.COMP.keys()
+	_choice("Compression", comps.map(func(c): return EngineKit.COMP[c].name), comps.find(ph[2]), func(i): remake.call(pb[0], pb[1], ph[1], comps[i], fs))
+	var fls: Array = EngineKit.FUELS.keys()
+	_choice("Fuel system", fls.map(func(f): return EngineKit.FUELS[f].name), fls.find(fs), func(i): remake.call(pb[0], pb[1], ph[1], ph[2], fls[i]))
+	_check("Alternator", bool(k.get("alt", true)), func(v): k.alt = v; _changed())
 	var boxes: Array = VehicleSpecs.GEARBOXES.keys()
 	_choice("Gearbox", boxes.map(func(k): return VehicleSpecs.GEARBOXES[k].name), boxes.find(design.gearbox), func(i): design.gearbox = boxes[i]; _changed())
 	_slider("Diff ratio (final drive)", 2.5, 6.5, 0.01, design.final, func(v): design.final = v; _changed())

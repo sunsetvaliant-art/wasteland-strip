@@ -26,6 +26,7 @@ var pause_menu: PauseMenu
 var forge: Forge
 var combat_hud: CombatHUD
 var garage: Garage
+var body_tools: BodyTools
 var camps: ScavCamps
 var buildings: Buildings
 var sky: SkyCycle
@@ -121,6 +122,10 @@ func _ready() -> void:
 	garage.name = "Garage"
 	add_child(garage)
 	garage.setup(self)
+	body_tools = BodyTools.new()
+	body_tools.name = "BodyTools"
+	add_child(body_tools)
+	body_tools.setup(self)
 	Settings.changed.connect(func(): Settings.apply(self))
 	Settings.apply(self)
 	# what you're carrying: the lot in creative, a revolver and a handful of rounds in survival

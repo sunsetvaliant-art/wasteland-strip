@@ -126,14 +126,43 @@ func _build_frame() -> void:
 
 func _build_engine() -> void:
 	var e: Dictionary = car.eng
+	var fz: float = car.design.axles[0].z
+	if e.get("kit", false) or car.design.has("kit"):
+		# 0.2.55: the code-made kit engine (old Meshy engines are put away)
+		rebuild_engine()
+		return
 	var ps: PackedScene = load("res://assets/engines/%s.glb" % e.glb)
 	if ps == null:
 		return
 	engine_node = ps.instantiate()
 	engine_node.rotation_degrees.y = -90
-	var fz: float = car.design.axles[0].z
 	engine_node.position = Vector3(0, frame_y + 0.05, fz - float(e.len) * 0.5 + 0.15)
 	add_child(engine_node)
+
+## (Re)build the kit engine, ECU and battery from car.design.kit: after a part goes on or comes off
+var ecu_node: Node3D
+var batt_node: Node3D
+func rebuild_engine() -> void:
+	for n in [engine_node, ecu_node, batt_node]:
+		if n != null and is_instance_valid(n): n.queue_free()
+	engine_node = null; ecu_node = null; batt_node = null
+	var k: Dictionary = car.design.get("kit", {})
+	var fz: float = car.design.axles[0].z
+	var pb := EngineKit.parse_block(str(k.get("block", "")))
+	if not pb.is_empty():
+		engine_node = EngineKit.build_node(k)
+		var L := EngineKit.length_of(pb[0])
+		engine_node.position = Vector3(0, frame_y + 0.24, fz - L * 0.5 + 0.1)
+		add_child(engine_node)
+	var hw: float = float(car.design.frame.width) * 0.5
+	if str(k.get("ecu", "")) != "":
+		ecu_node = EngineKit.ecu_node()
+		ecu_node.position = Vector3(-hw * 0.8, frame_y + 0.55, fz - 0.55)
+		add_child(ecu_node)
+	if float(CarCare.of(car).get("battery", 0.0)) >= 1.0 or Settings.creative():
+		batt_node = EngineKit.battery_node()
+		batt_node.position = Vector3(hw * 0.85, frame_y + 0.3, fz + 0.05)
+		add_child(batt_node)
 
 func _build_tailshaft() -> void:
 	var rear := -1

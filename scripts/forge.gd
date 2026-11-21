@@ -489,7 +489,7 @@ func _grab() -> void:
 	held = o
 	held_dist = cam.global_position.distance_to(r.position)
 	held_local = held.global_transform.affine_inverse() * r.position
-	undo.append({"op": "move", "node": held, "xf": held.global_transform, "frozen": held is RigidBody3D and (held as RigidBody3D).freeze})
+	undo.append({"op": "move", "node": held, "xf": held.global_transform, "frozen": held is RigidBody3D and (held as RigidBody3D).freeze and not held.get_meta("lod_parked", false)})
 	if held is RigidBody3D:
 		(held as RigidBody3D).freeze = false
 		(held as RigidBody3D).sleeping = false
@@ -720,7 +720,7 @@ func save_layout() -> void:
 		var e: Dictionary = n.get_meta("forge").duplicate()
 		var xf: Transform3D = n.global_transform
 		e["xf"] = [xf.basis.x.x, xf.basis.x.y, xf.basis.x.z, xf.basis.y.x, xf.basis.y.y, xf.basis.y.z, xf.basis.z.x, xf.basis.z.y, xf.basis.z.z, xf.origin.x, xf.origin.y, xf.origin.z]
-		e["frozen"] = n is RigidBody3D and (n as RigidBody3D).freeze
+		e["frozen"] = n is RigidBody3D and (n as RigidBody3D).freeze and not n.get_meta("lod_parked", false)
 		out.append(e)
 	DirAccess.make_dir_recursive_absolute("user://forge")
 	var f := FileAccess.open(LAYOUT, FileAccess.WRITE)

@@ -53,6 +53,7 @@ static func default_design(kind: String) -> Dictionary:
 		"zeta_b": 0.3, "zeta_r": 0.5, "arb": 0.0, "steer": false, "drive": true, "track": track, "tyre_r": tyre_r,
 		"tyre_w": 0.26 if big else 0.2, "brake": 1500.0, "diff": "lsd" if eng == "351" else "open"}
 	return {
+		"kit": EngineKit.stock(d), "tub": "stock", "tray": {},
 		"cab": kind, "cab_offset": [0.0, 0.0, 0.0], "ride": ride, "mass": mass, "front_share": 0.56,
 		"cda": 1.75 if big else 0.95, "engine": eng, "gearbox": "man4" if (big or heavy) else "auto3", "final": 3.9 if big else 3.36,
 		"axles": [front, rear],

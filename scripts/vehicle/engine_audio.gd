@@ -125,4 +125,4 @@ func _drive(p: AudioStreamPlayer3D, amp: float, pitch: float) -> void:
 	if not p.playing:
 		p.play(randf() * p.stream.get_length())
 	p.volume_db = linear_to_db(amp)
-	p.pitch_scale = clamp(pitch, 0.25, 4.0)
+	p.pitch_scale = clamp(pitch * float(car.eng.get("pitch_mul", 1.0)), 0.25, 4.0)
