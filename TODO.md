@@ -48,7 +48,31 @@ install/remove for now) and on an engine stand at base (full rebuild, then drop 
 - [ ] ECU: silver box up top in the engine bay; must match fuel type and cylinder count or it won't run; bolt on / off
 - [ ] Front of the engine: one belt crank > water pump > alternator; one alternator fits all (no idlers, PS, A/C)
 - [ ] Head type shows (finned flathead, rocker cover, single-cam, wide twin-cam) and sets the rev range / power band
-- [ ] Engine stand at base for full rebuilds; then the engine drops into a car
+- [ ] Engine stand at base for full rebuilds; then the engine drops into a car (click to move for now; the block and
+      tackle replaces that when it's built)
+Decisions (2026-11-21 Q&A):
+- Build both this batch and the cab/tub tools in one go
+- Blocks: i3, i4, i6, V6, V8, each in a SMALL and a BIG size; big = taller deck and wider sump, same bolt pattern, so
+  heads still swap within a cylinder count. Universal engine mounts (any engine fits any car), and every engine bolts
+  to every gearbox (no bellhousing rules)
+- Head power: clear but fair. Flathead ~70% of DOHC power with the most low-down torque, pushrod torquey, SOHC middle,
+  DOHC top end; rev limits about 4.5k / 5.5k / 6.5k / 7.5k
+- Petrol on a high-compression head: more power, but it pings under load and wears the engine unless an ECU tune backs
+  it off (carbies can't)
+- Sound: tweak the existing engine sound by head type, cylinder count and V vs inline (V8 burble, i6 smooth, diesel
+  clatter)
+- Parts come from wrecks (strip them), sheds and wreckers' shelves, traders, and raider rigs
+- NO condition on engine parts
+- ECU tuning: a few sliders (fuel, timing, rev limit; boost later), too aggressive pings or smokes; needs a laptop
+  item to plug in
+- Diesel pumps: mechanical is tough (runs with no ECU or battery once going, turn it up with a spanner = smoke);
+  electronic makes more power with a tune but needs the right ECU
+- Carby engines need a distributor + coil; EFI's ECU does the spark
+- Battery to start (flat or missing = no start; push start a manual); no alternator = battery drains, lights dim,
+  ECU cars die
+- Stock engines: era-correct from the kit (old US pickups pushrod V8 + carby, Falcons i6, Japanese 4x4s diesel...)
+- Wrecks: engines are either missing a few parts (carby, ECU, alternator, battery) or complete but dead
+- Turbos later (turbo manifolds, dump, intercooler pipe); low-comp heads pay off then
 
 ## Cab / tub cutting, bonnet tool, custom trays (asked 2026-11-21)
 User's models (Drive, link-shared): all models folder 12PKYCZ4V7Hwj_KWWWw5breIX_AeXGvFe (Bare Bones Muscle, Rustbelt /
@@ -61,6 +85,17 @@ Chevy Relic, two Rustbound Relics, Rusty Pickup Bo, Rusty Red Pickup, Rusty Whit
 - [ ] Custom trays generated in code to fit the chassis: deck, headboard + ladder rack, drop sides, optional
       toolboxes and under-tray spare ("Aussies love their custom trays and removing their factory tubs")
 - [ ] Dual cab ute: none in the game yet; user to make one in Meshy (cab-chassis photo) plus a tub on its own
+Decisions (2026-11-21 Q&A):
+- Tub cut: a see-through plane you slide and tilt (preview in two colours), or click points along the seam for odd ones
+- Bonnet: click points round the shut line on the body; it cuts, thickens and hinges. Rear hinge to open it at the front
+  for repairs; for an engine swap the bonnet unbolts and comes off as its own physics piece, then bolts back on
+- Trays: steel (painted, timber or steel deck) and alloy (bare, checker-plate); fit the chassis behind the cab by
+  default with length / width sliders. Custom Aussie tray builds: headboard + ladder rack, under-tray toolboxes,
+  double tapered toolbox, marine-carpet lined with one gullwing box, spare wheel carrier, water tank and jerry
+  holders, tray sides that hinge
+- Canopies generated in code NOW (box canopy, lift-up doors, fits any tray)
+- Tail lights: plain round, square LED bars, sequential indicators, recessed in the tray
+- Cut-off tubs are real parts: keep, swap onto another ute, sell to traders, or scrap for metal
 
 ## Bikes (asked 2026-11-21: rideable, later)
 - [ ] Rideable bikes from the user's models: Rustbound Scooter, Rusty Kawasaki Mini Bike, Rusty Mini Chopper
