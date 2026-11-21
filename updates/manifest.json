@@ -405,6 +405,13 @@
    "date": "2026-11-21",
    "size": 21400220,
    "notes": "Streets by the block. Every block in every town now has a proper kerb and gutter you can feel, worked out from what's on it: barrier kerbs in town and the shopping streets, roll-top kerbs in the estates, kerbed traffic islands and roundabouts. Corners are rounded, dead ends have turning bulbs, and each house has a driveway layback with a concrete crossover. Shopping streets are paved at kerb height out to the shop fronts, with street lights, bins and benches. Town streets have a grass nature strip and a concrete path, and power poles down one side. Crossings have kerb ramps, zebras in the shopping streets and stop lines at the lights. You'll find traffic lights on the junction corners, stop and give way lines with their signs, bus stops with shelters, and every car park sealed and marked out in bays. Nothing grows on the paths, drives or car parks. The photo-read ground key from 0.2.53 is switched off (that's where its stray kerbs came from)."
+  },
+  {
+   "file": "patch_0.2.0_0055.pck",
+   "version": "0.2.55",
+   "date": "2026-11-22",
+   "size": 21690488,
+   "notes": "The modular engine kit and custom trays, plus fixes from your bug reports. Every engine is now built from code-made parts that all interchange: i3, i4, i6, V6 and V8 blocks in small and big sizes, flathead, pushrod, SOHC and DOHC heads in low, medium or high compression, exhaust and intake manifolds, a carby (with a distributor and coil) or an EFI throttle body, a mechanical or electronic diesel pump, an ECU you tune with a laptop, an alternator and one belt. Fit and remove parts under the bonnet (K), or pull a whole engine onto an engine stand at your base. Every car comes with an era-correct engine, and wrecks are short a part or two. In the pause menu, Body tools sets each model's tub line and bonnet line. Bonnets then open and come off, tubs unbolt, and the garage builds custom trays in alloy or steel: ladder rack, drop sides, toolboxes, a gullwing box, a canopy, tail lights. Fixes: streaky footpaths and car parks, paint and footpaths climbing banks, wide paving in front of houses, stairs running into water and roads (now switchbacks), a bridge that turned 90 degrees at its ends, and the frame-rate drop near the main street."
   }
  ],
  "full": {
