@@ -398,6 +398,13 @@
    "date": "2026-11-16",
    "notes": "Ground key pilot: one square kilometre round Murwillumbah's main street is now painted from the real thing. The NSW government imagery was read into a map of what the ground is, and our own textures go down where it says: road asphalt, car park asphalt, concrete footpaths, pavers, lawn, dirt and gravel. Painted lines traced from the photo are drawn sharp (lanes, parking bays, arrows, crossings, yellow lines), kerb and gutter is real 3D along the streets, islands are raised, and grass stays off the paved ground. Walk or drive the CBD and tell me what you think before it goes map-wide. Imagery (c) Spatial Services NSW, CC BY 4.0.",
    "size": 16342500
+  },
+  {
+   "file": "patch_0.2.0_0054.pck",
+   "version": "0.2.54",
+   "date": "2026-11-21",
+   "size": 21400220,
+   "notes": "Streets by the block. Every block in every town now has a proper kerb and gutter you can feel, worked out from what's on it: barrier kerbs in town and the shopping streets, roll-top kerbs in the estates, kerbed traffic islands and roundabouts. Corners are rounded, dead ends have turning bulbs, and each house has a driveway layback with a concrete crossover. Shopping streets are paved at kerb height out to the shop fronts, with street lights, bins and benches. Town streets have a grass nature strip and a concrete path, and power poles down one side. Crossings have kerb ramps, zebras in the shopping streets and stop lines at the lights. You'll find traffic lights on the junction corners, stop and give way lines with their signs, bus stops with shelters, and every car park sealed and marked out in bays. Nothing grows on the paths, drives or car parks. The photo-read ground key from 0.2.53 is switched off (that's where its stray kerbs came from)."
   }
  ],
  "full": {
