@@ -33,6 +33,39 @@ User: bracket each block with hard-edge gutters instead of reading the street of
 - [ ] Check in game: kerbs on steep streets (Murwillumbah hills), roundabout shapes, laybacks lining up with drives
 - [ ] Old-centre streets with angle parking down the middle or both sides (Murwillumbah main street)
 
+## Modular engine kit, made in code (asked 2026-11-21: "my 3D engine models are absolute shite")
+User: put the old engine models away. Every part is generated in code from one shared spacing so ports, decks and
+bolt patterns always line up and everything interchanges. Decided so far: the FUEL SYSTEM decides diesel vs petrol
+(heads only set compression: low / med / high, no exact ratios); engines are built both in the car (bolt-ons, click
+install/remove for now) and on an engine stand at base (full rebuild, then drop it in).
+- [ ] Blocks: i4, i6, V6, V8 (all banks share one deck / bolt pattern)
+- [ ] Heads: 3, 4, 6 cylinder, each as flathead, pushrod, SOHC, DOHC; any head on any block bank of the same count.
+      V6 = two 3-cyl heads, V8 = two 4-cyl heads, mirrored (intake ports to the valley, exhaust out)
+- [ ] Exhaust manifolds: 3, 4, 6 cylinder (V6 uses a 3 per bank, V8 a 4 per bank, same parts as the inlines)
+- [ ] Intake manifolds: inline 4, inline 6, V6 valley, V8 valley
+- [ ] Carby (no ECU) or EFI throttle body (needs ECU), bolts on any intake; diesels won't run on either
+- [ ] Diesel: mechanical injection pump (no ECU) or electronic pump (needs ECU, tuneable through the ECU)
+- [ ] ECU: silver box up top in the engine bay; must match fuel type and cylinder count or it won't run; bolt on / off
+- [ ] Front of the engine: one belt crank > water pump > alternator; one alternator fits all (no idlers, PS, A/C)
+- [ ] Head type shows (finned flathead, rocker cover, single-cam, wide twin-cam) and sets the rev range / power band
+- [ ] Engine stand at base for full rebuilds; then the engine drops into a car
+
+## Cab / tub cutting, bonnet tool, custom trays (asked 2026-11-21)
+User's models (Drive, link-shared): all models folder 12PKYCZ4V7Hwj_KWWWw5breIX_AeXGvFe (Bare Bones Muscle, Rustbelt /
+Rustbound relics, Rusty Blue Wagon, bikes); ute folder 1icHx0xIwXpd2HGmXcPZ18tq6WidFUxxx = vehicles that can be cut at
+the C/B pillar to remove the styleside tub, or already have a clear cab / chassis line (Rustbound Cab, Rustbound
+Chevy Relic, two Rustbound Relics, Rusty Pickup Bo, Rusty Red Pickup, Rusty White Pickup, Rusty Yellow Workhorse).
+- [ ] Pause-menu tools to do each model in game, set and forget: TUB CUT line and BONNET cut / stitch line per model.
+      Lines save to a file on his PC; he drops it in the Drive folder and it ships in the next patch for everyone
+- [ ] Cut tubs come off as their own part (cap the cab's back wall and the tub's front wall, tub gets mount points)
+- [ ] Custom trays generated in code to fit the chassis: deck, headboard + ladder rack, drop sides, optional
+      toolboxes and under-tray spare ("Aussies love their custom trays and removing their factory tubs")
+- [ ] Dual cab ute: none in the game yet; user to make one in Meshy (cab-chassis photo) plus a tub on its own
+
+## Bikes (asked 2026-11-21: rideable, later)
+- [ ] Rideable bikes from the user's models: Rustbound Scooter, Rusty Kawasaki Mini Bike, Rusty Mini Chopper
+      (balance and lean; after the engines and the cab / tub work)
+
 ## Vehicles: the mechanic's dream (asked 2026-11-21, after the streets)
 User: "a physics based block and tackle system allowing you to pull engines, gearboxes, cabs, tray or tubs and loads
 to and from vehicles"; e.g. a BT-50 single cab on an 80 Series chassis keeping the 3.0 CRD, the 80's gearbox, transfer
