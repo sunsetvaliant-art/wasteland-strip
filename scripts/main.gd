@@ -37,6 +37,7 @@ var interact_menu: InteractMenu
 var servos: ServoGen
 var yards: YardGen
 var ground_key: GroundKey
+var streets: Streets
 var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
@@ -164,10 +165,15 @@ func _ready() -> void:
 	yards.name = "Yards"
 	add_child(yards)
 	yards.setup(self)
+	# 0.2.54: the streets are built by the block (Streets) and the photo-read ground key is off unless asked for
 	ground_key = GroundKey.new()
 	ground_key.name = "GroundKey"
 	add_child(ground_key)
-	ground_key.setup(self)
+	if OS.get_environment("GROUND_KEY") != "": ground_key.setup(self)
+	streets = Streets.new()
+	streets.name = "Streets"
+	add_child(streets)
+	streets.setup(self)
 	zombies = ZombieDirector.new()
 	zombies.name = "ZombieDirector"
 	add_child(zombies)

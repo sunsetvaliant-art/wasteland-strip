@@ -158,6 +158,20 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   against the project until it has finished.
 - Screenshots render at about 1 fps here (software GL under xvfb): a two-shot run takes 5 to 10 minutes.
 
+- Streets by the block (0054): `tools/make_streets.py [x0 z0 x1 z1]` (whole map ~100 s, needs shapely, scipy,
+  mapbox-earcut, matplotlib via pip) reads lines.bin + lines_north.bin, buildings.json, bridges.json, servos.json and
+  Overture extracts in docs/ref/streets (gitignored; `overturemaps download --bbox=153.28215,-28.47565,153.58502,-28.14179
+  -f geojsonseq --type=segment|infrastructure|land_use -o docs/ref/streets/<type>.geojsonl`, S3 reachable) and writes
+  assets/world/streets.bin (in the export include_filter). Blocks = the map minus the road surface (NOT polygonize:
+  the painted centrelines don't always meet), big leftovers cut into 200 m cells. scripts/world/streets.gd streams 128 m
+  tiles within 480 m, builds over several frames (2.5 ms slices), collision within 170 m; paint goes into Roads' overlay
+  world (road.gdshader style > 0.9 = solid paint). Streets.hard() masks veg. Tests: `PT="*res://tools/_streettest.gd"`
+  (counts, kerb heights by ray, build time per tile); `tools/_streetshots.gd` (ST_X, ST_Z, ST_ONLY) photographs a
+  shopping / town / estate street, lights, bus stop, car park. GroundKey is off unless GROUND_KEY=1.
+- Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
+  doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
+  /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.
+
 ## 4. Test and release loop (all scripts exist in `tools/`)
 - `tools/smoke.sh`: boots the game headless 400 frames, prints script errors. Env flags used everywhere:
   `WASTELAND_NO_UPDATE=1 WASTELAND_AUTOPLAY=1 VEG_OFF=1`.

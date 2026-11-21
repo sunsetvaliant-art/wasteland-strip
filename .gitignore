@@ -12,3 +12,6 @@
 /assets/roads/*.glb
 /assets/roadmask.png
 /assets/ph/
+
+# Overture downloads for tools/make_streets.py (re-download with the command in its header)
+/docs/ref/streets/

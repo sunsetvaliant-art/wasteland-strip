@@ -2,7 +2,56 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0051, 2026-11-15.
+Newest requests at the top of each section. Last updated: patch 0054, 2026-11-21.
+
+## Streets by the block (asked 2026-11-21: "gutters, road islands, road markings, parking lot logic, footpath infrastructure")
+User: bracket each block with hard-edge gutters instead of reading the street off the photos; estates flush-ish.
+- [x] 0054 Every block the sealed roads close off is found (the map with the road surface cut out; big leftovers in
+      200 m cells) and given a profile from what's in it: MAIN (shops / retail), TOWN (older houses), EST (estate
+      homes), IND, ISL (medians, traffic islands), RBT (roundabout centres), or rural (no kerb). Whole map: 5,027 town,
+      354 estate, 126 shopping, 120 industrial blocks, 370 islands, 157 roundabouts (tools/make_streets.py)
+- [x] 0054 Kerb and gutter as real geometry you can hit: barrier kerb in town and shopping streets, roll-top in the
+      estates, mountable concrete on small roundabouts; kerb returns rounded at the corners (3-9 m by profile) with the
+      corner sealed; turning bulbs at town dead ends; no kerb on bridges, gravel roads or where there's no building
+      within 60 m (scripts/world/streets.gd)
+- [x] 0054 Shopping streets: footpath paved at kerb height out to the shop fronts (up to 8 m), street lights every 26 m,
+      bins and benches
+- [x] 0054 Town and estate streets: grass nature strip and a concrete path (1.2-1.5 m); 14,074 driveway laybacks with a
+      concrete crossover to the house; laybacks where every OSM driveway / service road / car park aisle meets the kerb
+      (2,198); power poles along one side (OSM's where it has them), some with a street light
+- [x] 0054 Crossings: kerb ramps both sides (1,811), zebras in shopping streets (200), stop-line pairs at the lights
+      (170); traffic light poles on the junction corners (358); stop lines and signs (34), give-way lines and signs (122)
+- [x] 0054 Bus stops: sign at the kerb, shelter behind it where there's room (362)
+- [x] 0054 Car parks: every OSM car park sealed and laid out in 2.5 x 5.4 m bays with 6.4 m aisles, or painted from
+      OSM's own bays (314 car parks, 10,617 bays); nothing grows on paths, kerbs, drives or car parks
+- [x] 0054 The photo ground key is off (its kerbs up the middle of streets and the roundabout garden went with it);
+      GROUND_KEY=1 brings it back
+- [ ] Town footpaths at kerb height (only shopping-street paths are raised; town paths are painted on the ground)
+- [ ] Car parks: kerbs round the edges and islands, wheel stops, disabled bays, trolley bays, entry/exit arrows
+- [ ] Lane arrows, turn bays and painted medians; bus zone and no-standing markings; school zones
+- [ ] Pedestrian fencing at the big intersections; guard rails on the highway; street name signs
+- [ ] Check in game: kerbs on steep streets (Murwillumbah hills), roundabout shapes, laybacks lining up with drives
+- [ ] Old-centre streets with angle parking down the middle or both sides (Murwillumbah main street)
+
+## Vehicles: the mechanic's dream (asked 2026-11-21, after the streets)
+User: "a physics based block and tackle system allowing you to pull engines, gearboxes, cabs, tray or tubs and loads
+to and from vehicles"; e.g. a BT-50 single cab on an 80 Series chassis keeping the 3.0 CRD, the 80's gearbox, transfer
+and diffs, with a single cab tub and canopy.
+- [ ] Modules: chassis, body (cab + front clip), tub / tray / canopy, engine, gearbox, transfer, diffs/axles,
+      suspension. Bolted on they're one body (mass and centre of gravity recomputed); unbolted each is its own
+- [ ] Block and tackle: anchor points on gantries, shed trusses, strong branches; hook lift points; chain it up and down;
+      load limits; it swings
+- [ ] Pull a chassis out from under a hoisted cab with a tow rope / snatch strap from any vehicle; forklift and tractor
+- [ ] Wireframe ghost of the body while lowering, red where the engine or gearbox would foul it
+- [ ] Compatibility: bellhousing patterns and adapter plates, wheelbase vs tub length (cut / stretch the chassis at the
+      welder), body mounts that don't line up need fabricated mounts, common-rail diesels need their loom and ECU
+- [ ] Under the bonnet for now: click to remove / install (Meshy bonnets are fixed); physical engine lifts first on cars
+      that come without a bonnet (the Monaro project)
+- [ ] Bonnet cut tool (Forge): draw the shut line on any car, it cuts the bonnet off as a hinged panel (thickened, with an
+      underside), and a generic engine bay fills the hole. USER'S IDEA: never draw any of the bay outside the bonnet,
+      guard and grille shell (stencil mask / clip to the body), so it can't poke through anywhere. Pilot on 2-3 cars
+- [ ] Per-part damage (bent tie rod pulls, cracked shock mount, cooked head gasket), found by symptoms
+- [ ] Tyres: road / AT / MT, pressures (air down for sand and mud), punctures, plug kits, spare carrier; alignment
 
 ## Landmark buildings from the user's pictures (2026-11-15 night: "you don't get interiors" from Meshy)
 - [x] 0052 Imperial Hotel (pink, three Dutch gables, arched verandah upstairs, the long lettered awning, stone piers;
@@ -20,7 +69,8 @@ Newest requests at the top of each section. Last updated: patch 0051, 2026-11-15
       is over the imagery, draw kerbs, "no kerb", painted lines, drop points (speed hump, crossing, roundabout
       garden, give way, stop) and notes; saved for Claude. tools/sat_key.py now learns from the tags and obeys them
 - [ ] Ground key: pull the user's tags, re-run, ship; then the whole map (streamed tiles), the Queensland side
-- [ ] Ground key bugs (2026-11-16 F9s): kerbs up the middle of streets; the roundabout at Wollumbin/Main (about
+      (0054: the key is OFF by default; the streets are built by the block now. Kept for reference)
+- [x] 0054 (key off, streets by the block) Ground key bugs (2026-11-16 F9s): kerbs up the middle of streets; the roundabout at Wollumbin/Main (about
       -757, -108) has a garden in the middle; hard edges on the water
 - [ ] Ground key: speed humps and raised crossings as bumps (OSM traffic calming), footpaths at kerb height,
       kerb ramps at crossings
@@ -48,7 +98,7 @@ owSpawnPatrol) still has the code; its strip game is still in it behind ?strip.
 - [ ] Prospero St, Murwillumbah: put in each business; J&J Tyres was there, and a Toyota dealership on the same block
 - [ ] Servo bowsers right on top of the entry: cars can't drive through between them
 - [ ] Murwillumbah bridge (the town bridge, about -283, 18) needs straightening, both sides
-- [ ] Wollumbin/Main roundabout: garden in the middle (tagger point or fixed)
+- [x] 0054 Wollumbin/Main roundabout: garden in the middle (ground key off; small roundabouts are a concrete dome now)
 
 ## Bug reports 2026-11-15 (evening, 14 reports)
 - [x] 0051 The home pub (Riverview Hotel) was a plain generated shop; the pub generator was only used for two OSM pubs.

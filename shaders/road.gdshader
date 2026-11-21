@@ -70,7 +70,9 @@ void fragment() {
 	// --- line markings (Australian: white, dashed 3 m line / 9 m gap, solid through curves)
 	float paint = 0.0;
 	float sealed = (1.0 - is_gravel) * (1.0 - is_grass) * (1.0 - is_conc);
-	if (style > 0.1) {
+	if (style > 0.9) {
+		paint = 1.0;                                     // painted shapes (crossings, stop lines, car park bays)
+	} else if (style > 0.1) {
 		float edge = (style > 0.4 && style < 0.6) ? hs - 1.1 : hs - 0.35;
 		paint = max(paint, band(abs(off), edge, 0.1, aa));
 		float dash = step(fract(along / 12.0), 0.25);

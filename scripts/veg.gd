@@ -333,6 +333,8 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 				continue
 			if GroundKey.hard(x, z):          # paved or gravelled in the ground key: nothing grows there
 				continue
+			if Streets.hard(x, z):            # footpaths, kerbs, car parks, driveways
+				continue
 			var h := _height(x, z)
 			if is_nan(h):
 				continue
