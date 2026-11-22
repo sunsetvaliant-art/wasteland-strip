@@ -461,6 +461,13 @@
    "date": "2026-11-22",
    "size": 79368,
    "notes": "Body tools: the side-panel buttons work again (0.2.61 swallowed every click, so it was stuck on Tub) and the F9 form can be clicked while body tools are open. Painting now shows as a see-through tint over the car's own textures instead of plain grey, and there's an Erase button. Wheels stay on the axle end: the hub no longer drops off it when the tyre squashes, and live-axle wheels stay square to the housing as it flexes."
+  },
+  {
+   "file": "patch_0.2.0_0063.pck",
+   "version": "0.2.63",
+   "date": "2026-11-22",
+   "size": 70088,
+   "notes": "Body tools: LIFT BONNET. The faces you've painted bonnet swing up on the hinge so you can paint the junk under the skin: paint it Bonnet to lift with the bonnet or Cab to stay put, and it moves when you let go of the mouse. DROP BONNET puts it back."
   }
  ],
  "full": {
