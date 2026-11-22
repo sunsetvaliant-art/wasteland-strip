@@ -2,7 +2,18 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0059, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0060, 2026-11-22.
+
+## Wheel packs and the F100 (0060)
+User: download these wheels (some packs have several in one file) as wheels to fit and spawnable models; add the
+1976 F100 (orange) with its wheels cut off.
+- [x] 0060 Wheels: wire spokes, Nissan factory alloys, mud terrains, and the JDM pack split into four (each tyre
+      lined up on its rim); all in the garage's wheel list and in the Forge (Car parts > "Wheel: ...")
+- [x] 0060 Ford F100: the 1976 "New Orange" one is Editorial-only on Sketchfab and the API won't download it, so the
+      low-poly 1970s F100 (CC BY) went in instead: wheels cut off into "F100 steelies", factory V8, RHD
+      (tools/import_vehicle.py works for other downloaded bodies too)
+- [ ] A better F100: if the user downloads the orange 1976 one himself (Editorial licence: personal use), drop it in
+      Drive and run tools/import_vehicle.py on it
 
 ## Driving aids, garage, body painter, Sketchfab, F9 reports 2026-11-22 (0059)
 User: W should feather so the rear doesn't break traction unless Shift's held; a BeamNG-style drift assist; tub and

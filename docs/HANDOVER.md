@@ -197,6 +197,10 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   token in /home/claude/.secrets/sketchfab_token (NOT in git; the user's, from an earlier chat); search/download
   helpers: tools/sketchfab_search.py, tools/sketchfab_dl.py (download to /home/claude/sf/dl/<name>). World data pass order now ends ... fix_types.py,
   fix_overlaps.py, then make_streets.py.
+- 0060: tools/import_vehicle.py (src glb, key, glb name, title, length, kg, cls [--flip]) cuts the four wheels off a
+  downloaded body (round parts at the corners and everything inside them), writes the body, a wheel model and the
+  catalog entry (/tmp/<key>_entry.json). tools/import_wheel.py turns the rim face to +Z; import_jdm_rims.py lines
+  the pack's tyres up. Catalog eng_y drops the engine under a low bonnet. Forge props can carry "scale".
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

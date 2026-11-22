@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """A wheel model for the garage's wheel list (0.2.59): any glb with one wheel in it -> assets/vehicles/wheels/<name>.glb,
 centred, 1 m across, the axle along Z (the way rig.gd scales and turns wheel_car.glb). Parts named in --drop (brake
-discs, calipers, logos) are left out. Usage: import_wheel.py in.glb name [--drop brake,logo]"""
+discs, calipers, logos) are left out. Usage: import_wheel.py in.glb name [--drop brake,logo] [--only rim2_]"""
 import sys, numpy as np, trimesh
 src, name = sys.argv[1], sys.argv[2]
 drop = []
 if "--drop" in sys.argv: drop = sys.argv[sys.argv.index("--drop") + 1].lower().split(",")
+only = ""
+if "--only" in sys.argv: only = sys.argv[sys.argv.index("--only") + 1].lower()       # one wheel out of a pack: node name prefix
 sc = trimesh.load(src, force="scene")
 parts = []
 for node in sc.graph.nodes_geometry:
     if any(d in node.lower() for d in drop): continue
+    if only and not node.lower().startswith(only): continue
     T, g = sc.graph[node]
     m = sc.geometry[g].copy()
     m.apply_transform(T)
@@ -30,6 +33,11 @@ for i, p in enumerate(parts):
     p.apply_transform(S @ R @ Tm)
     out.add_geometry(p, node_name="%s_%d" % (name, i))
     tris += len(p.faces)
+# the rim's face to +Z, the way wheel_car.glb has it (rig.gd turns +Z outward on both sides): the hub sits toward it
+allv2 = np.vstack([g.vertices for g in out.geometry.values()])
+hub = allv2[np.hypot(allv2[:, 0], allv2[:, 1]) < 0.22]
+if len(hub) and hub[:, 2].mean() < 0.0:
+    out.apply_transform(trimesh.transformations.rotation_matrix(np.pi, [0, 1, 0]))
 dst = "/home/claude/game/assets/vehicles/wheels/%s.glb" % name
 out.export(dst)
 v = np.vstack([g.vertices for g in out.geometry.values()])

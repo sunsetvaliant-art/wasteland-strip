@@ -373,7 +373,14 @@ func _make_visual(entry: Dictionary) -> Node3D:
 			return holder
 		"prop":
 			var path: String = entry.get("path", "res://assets/props/%s.glb" % entry.key)
-			return load(path).instantiate()
+			var inst: Node3D = load(path).instantiate()
+			if entry.has("scale"):
+				# a model made at a unit size (the wheels): put to its real size
+				var holder := Node3D.new()
+				inst.scale = Vector3.ONE * float(entry.scale)
+				holder.add_child(inst)
+				return holder
+			return inst
 		"plant":
 			var mi := MeshInstance3D.new()
 			mi.mesh = main.veg.meshes[entry.key]
@@ -845,6 +852,12 @@ func _build_ui() -> void:
 		var g: String = MESHY_TAB.get(k, "World")
 		if not groups[g].any(func(x): return x.key == k):
 			groups[g].append({"type": "prop", "key": k, "name": MESHY_NAME.get(k, _pretty(k)), "path": "res://assets/meshy/" + fn})
+	# 0.2.60: every wheel in the garage's list, to stand about the place (a car wheel's size: 0.66 m)
+	for wk in VehicleRig.WHEEL_MODELS:
+		var wp: String = str(VehicleRig.WHEEL_MODELS[wk].path)
+		if wp == "": continue
+		groups["Car parts"].append({"type": "prop", "key": "wheel_" + str(wk), "name": "Wheel: " + str(VehicleRig.WHEEL_MODELS[wk].name), "path": wp,
+			"scale": 1.6 if str(wk).begins_with("r6_rear") or str(wk) == "tractor_lug" else (1.2 if str(wk).begins_with("r6") else 0.66)})
 	var ph_tab := {"weapons": "Weapons", "carparts": "Car parts", "tools": "Tools", "survival": "Survival", "world": "World", "nature": "Nature"}
 	for d in ph_tab:
 		var base: String = "res://assets/ph/" + d

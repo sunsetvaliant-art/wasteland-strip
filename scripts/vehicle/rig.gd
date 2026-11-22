@@ -29,6 +29,15 @@ const WHEEL_MODELS := {
 	"tractor_lug": {"name": "Tractor lugs", "path": "res://assets/vehicles/wheels/tractor_lug.glb"},
 	"r6_front": {"name": "Tractor front (R6)", "path": "res://assets/vehicles/wheels/r6_front.glb"},
 	"r6_rear": {"name": "Tractor rear (R6)", "path": "res://assets/vehicles/wheels/r6_rear.glb"},
+	# 0.2.60: the user's picks (credits in assets/credits.json)
+	"wire": {"name": "Wire spokes", "path": "res://assets/vehicles/wheels/wheel_a.glb"},
+	"nissan_oem": {"name": "Nissan factory alloys", "path": "res://assets/vehicles/wheels/nissan_oem.glb"},
+	"offroad_mt": {"name": "Mud terrains", "path": "res://assets/vehicles/wheels/offroad_mt.glb"},
+	"jdm_1": {"name": "JDM rims: mesh", "path": "res://assets/vehicles/wheels/jdm_1.glb"},
+	"jdm_2": {"name": "JDM rims: ten spoke", "path": "res://assets/vehicles/wheels/jdm_2.glb"},
+	"jdm_3": {"name": "JDM rims: split spoke", "path": "res://assets/vehicles/wheels/jdm_3.glb"},
+	"jdm_4": {"name": "JDM rims: five hole", "path": "res://assets/vehicles/wheels/jdm_4.glb"},
+	"f100": {"name": "F100 steelies", "path": "res://assets/vehicles/wheels/f100.glb"},
 }
 var beams: Array = []             # [{mi, fn: Callable}] updated every frame
 var tailshaft: MeshInstance3D
@@ -160,7 +169,8 @@ func rebuild_engine() -> void:
 	if not pb.is_empty():
 		engine_node = EngineKit.build_node(k)
 		var L := EngineKit.length_of(pb[0])
-		engine_node.position = Vector3(0, frame_y + 0.24, fz - L * 0.5 + 0.1)
+		# a body with a low bonnet can drop the engine (catalog eng_y, 0.2.60: the F100's air cleaner came through it)
+		engine_node.position = Vector3(0, frame_y + 0.24 + float(car.def.get("eng_y", 0.0)), fz - L * 0.5 + 0.1)
 		add_child(engine_node)
 	var hw: float = float(car.design.frame.width) * 0.5
 	if str(k.get("ecu", "")) != "":

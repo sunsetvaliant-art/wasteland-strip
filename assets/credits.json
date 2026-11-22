@@ -214,5 +214,35 @@
   "author": "heynic",
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/lamborghini-tractor-r6-125-dcr-wwwvecarzcom-56d7c8e7e2cb4d15a3d80cc42c697c53"
+ },
+ "wheel_a": {
+  "title": "Wheel",
+  "author": "Smax4455",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/wheel-4b7ed253aa3144d28fec2b13f9f61216"
+ },
+ "wheel_nissan_oem": {
+  "title": "Wheel",
+  "author": "Object_29",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/wheel-c38eea7f81f14aa18809f6f017730606"
+ },
+ "wheel_offroad_mt": {
+  "title": "Offorad Vehicle Tires",
+  "author": "petar.gachev",
+  "license": "Free Standard",
+  "url": "https://sketchfab.com/3d-models/offorad-vehicle-tires-994b17b06d0d472587ff069c8ecdbfad"
+ },
+ "wheel_jdm_pack": {
+  "title": "Realistic JDM Rim Pack",
+  "author": "visthetique",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/realistic-jdm-rim-pack-6c0fab94636e4c60b2c2f766fe7f477f"
+ },
+ "f100": {
+  "title": "1970 Ford F100",
+  "author": "trnsfrm20",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/1970-ford-f100-451d8fe0cd4644e79ec30642a5743cec"
  }
 }
