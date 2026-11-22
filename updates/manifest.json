@@ -426,6 +426,13 @@
    "date": "2026-11-22",
    "size": 199268,
    "notes": "The engine view, your idea. Under the bonnet (K beside a car) press ENGINE VIEW, or use it from the engine stand. The engine floats and turns slowly. Hover a part and it lights up with its name; click it for what it does and a button to take it off. Empty spots show as see-through ghosts of the part that goes there. Double-click and your engine parts open on the right, with the ones that fit the spot you clicked first. Drag a part onto the engine to fit it, or onto a taken spot to swap the two. Drag a selected part onto the list to take it off. Drag or right-drag to turn it, scroll to zoom. Engine parts now have inventory pictures and look like themselves when they're dropped on the ground."
+  },
+  {
+   "file": "patch_0.2.0_0058.pck",
+   "version": "0.2.58",
+   "date": "2026-11-22",
+   "size": 28580556,
+   "notes": "Brakes, tyres and diffs, plus your bug reports. S now brakes like a driver's foot: it squeezes on and eases off the moment a wheel locks, so you get firm stops near the limit on any surface. Shift+S stomps and locks the wheels. Brake force follows the load, so the rears no longer lock first. Tyres share one grip budget between spinning and sliding, so a wheel that's lit up has little sideways grip left. A RWD car with an LSD or locked diff power-skids and steps out until wheel speed matches road speed. With an open diff, the live axle's torque unloads one rear wheel and it spins alone, so the car goes where it's steered. The inventory has a search box: matches light up and list in the middle, where you can drag them out or shift+click to send them across. Fences no longer cross back lanes, car parks or verandahs and stop 35 m behind a house. Where two yards sit at different heights, the fence becomes a retaining wall with the fence on top. The pasture grass is a photo-scanned texture. Standing on a parked truck's tray can't flip it any more, and ENGINE VIEW is now the first button under the bonnet."
   }
  ],
  "full": {
