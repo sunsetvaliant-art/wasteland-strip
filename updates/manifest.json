@@ -440,6 +440,13 @@
    "date": "2026-11-22",
    "size": 60159956,
    "notes": "Driving aids, garage, the body painter, a tractor and new wheels. W now feathers the throttle short of wheelspin, so you can drive straight; Shift+W floors it. Drift assist turns the front wheels to follow a slide, and your steering adds on top (both switches are in the pause menu under Controls). Dragging parts onto the engine in the engine view works now. The garage has a tub height slider, a ride height for each axle, ticks to keep every axle the same (wheels, track, ride height, springs), and wheels you can set per axle. Live axle wheels stay square to the housing when it flexes. Body tools has a mesh painter: brush the model's own faces as tub, bonnet or cab. The Forge palette has an Engines & parts tab with categories that open and close. New wheels from Sketchfab: 20-spoke mags, wide 13 inch steelies, turbine alloys, five-spoke alloys and tractor lugs. New vehicle: a Lamborghini R6 tractor with its own front and rear wheels. Fixes: zombies can't grab you through walls or floors, the shed with a house inside it, servo shops turned into their canopies, roller-door sheds on slopes, and taller doorsteps you can walk up."
+  },
+  {
+   "file": "patch_0.2.0_0060.pck",
+   "version": "0.2.60",
+   "date": "2026-11-22",
+   "size": 44372700,
+   "notes": "Your wheel packs and an F100. New wheels: wire spokes, Nissan factory alloys, mud terrains, and the JDM rim pack split into four separate wheels. Each one fits to cars in the garage (for the whole car or per axle) and spawns in the Forge under Car parts as 'Wheel: ...'. New vehicle: a Ford F100 with its wheels cut off into F100 steelies, a factory V8 and right-hand drive. The orange 1976 model you linked is Editorial-licensed and Sketchfab won't let it download, so this is a lower-detail 1970s F100 that is free to use."
   }
  ],
  "full": {
