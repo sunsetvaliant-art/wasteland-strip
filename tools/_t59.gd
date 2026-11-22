@@ -146,6 +146,22 @@ func _paint_only(main) -> void:
 		bt.orbit = Vector2(ox, 0.45); bt.dist = 6.0
 		for _i in 4: await get_tree().process_frame
 		await _shot("t59_paint_%d" % int(ox * 10))
+	# LIFT BONNET with a real click
+	var lbtn: Button = null
+	for n in bt.panel.find_children("*", "Button", true, false):
+		if (n as Button).text.begins_with("LIFT BONNET"): lbtn = n
+	var lp: Vector2 = lbtn.get_global_rect().get_center()
+	for pr in [true, false]:
+		var le := InputEventMouseButton.new(); le.button_index = MOUSE_BUTTON_LEFT; le.pressed = pr; le.position = lp; le.global_position = lp
+		Input.parse_input_event(le)
+		await get_tree().process_frame
+	var moved := 0
+	for i in bt.pt_base.size():
+		if bt.pt_base[i].distance_to(bt.pt_tris[i]) > 0.01: moved += 1
+	print("T59 lift: pt_lift ", bt.pt_lift, " moved verts ", moved, " lift xf ", bt._lift_xf().origin)
+	bt.orbit = Vector2(0.7, 0.45); bt.dist = 6.0
+	for _i in 4: await get_tree().process_frame
+	await _shot("t59_lift")
 	get_tree().quit()
 
 func _shot(nm: String) -> void:

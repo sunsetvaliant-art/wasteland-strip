@@ -79,7 +79,9 @@ func _load_cut() -> void:
 func _process(dt: float) -> void:
 	if not open: return
 	# a button let go over the side panel goes to the panel, not here: don't stay painting / turning
-	if painting and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT): painting = false
+	if painting and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		painting = false
+		if _lift_dirty: _lift_refresh()
 	if _drag and not (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)): _drag = false
 	if _preview_t >= 0.0:
 		_preview_t -= dt
@@ -108,6 +110,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif e.button_index == MOUSE_BUTTON_LEFT and mode == "paint":
 			painting = e.pressed
 			if e.pressed: _paint_at(e.position, true)
+			elif _lift_dirty: _lift_refresh()
 		elif e.button_index == MOUSE_BUTTON_LEFT and e.pressed: _click(e.position)
 		else: return
 		get_viewport().set_input_as_handled()
@@ -351,10 +354,15 @@ var pt_chunks: Array = []
 const PT_CH := 4096
 const PT_COL := [Color(0.62, 0.62, 0.64), Color(0.45, 0.65, 1.0), Color(1.0, 0.6, 0.25), Color(0.4, 1.0, 0.45)]
 
+var pt_base := PackedVector3Array()        # the model's triangles as they are (pt_tris is what's shown: bonnet lifted or not)
+var pt_lift := false                       # 0.2.63: "Lift bonnet": the bonnet faces swing up on the hinge so you can paint under
+var _lift_dirty := false
+const LIFT_DEG := 60.0
+
 func _paint_load() -> void:
-	if pt_glb == glb and not pt_tris.is_empty(): return
+	if pt_glb == glb and not pt_base.is_empty(): return
 	pt_glb = glb
-	pt_tris = PackedVector3Array(); pt_ctr = PackedVector3Array(); pt_nrm = PackedVector3Array(); pt_grid = {}
+	pt_base = PackedVector3Array()
 	for m in BodyCut.meshes_of(glb):
 		var mesh: Mesh = m.mesh
 		var xf: Transform3D = m.xf
@@ -364,34 +372,79 @@ func _paint_load() -> void:
 			var I: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
 			var nt := (I.size() if not I.is_empty() else V.size()) / 3
 			for t in nt:
-				var a: Vector3 = xf * V[I[t * 3] if not I.is_empty() else t * 3]
-				var b: Vector3 = xf * V[I[t * 3 + 1] if not I.is_empty() else t * 3 + 1]
-				var c: Vector3 = xf * V[I[t * 3 + 2] if not I.is_empty() else t * 3 + 2]
-				pt_tris.append(a); pt_tris.append(b); pt_tris.append(c)
-				var ctr := (a + b + c) / 3.0
-				pt_ctr.append(ctr)
-				var n := (b - a).cross(c - a)
-				pt_nrm.append(n.normalized() if n.length_squared() > 1e-14 else Vector3.UP)
-				var ti := pt_ctr.size() - 1
-				var lo := Vector3i((a.min(b).min(c) / PT_CELL).floor())
-				var hi := Vector3i((a.max(b).max(c) / PT_CELL).floor())
-				if (hi.x - lo.x + 1) * (hi.y - lo.y + 1) * (hi.z - lo.z + 1) > 400: hi = lo     # a stray giant face: one cell (the hit face still paints)
-				for gx in range(lo.x, hi.x + 1):
-					for gy in range(lo.y, hi.y + 1):
-						for gz in range(lo.z, hi.z + 1):
-							var k := Vector3i(gx, gy, gz)
-							if not pt_grid.has(k): pt_grid[k] = []
-							(pt_grid[k] as Array).append(ti)
+				for k in 3:
+					pt_base.append(xf * V[I[t * 3 + k] if not I.is_empty() else t * 3 + k])
+	var ntri := pt_base.size() / 3
+	var raw: Dictionary = BodyCut.all().get(glb, {})
+	pt_lab = BodyCut.labels_of(raw.get("paint", {})) if int(raw.get("paint", {}).get("n", -1)) == ntri else PackedByteArray()
+	if pt_lab.size() != ntri:
+		pt_lab = PackedByteArray(); pt_lab.resize(ntri)
+	_paint_geom()
+
+## The bonnet's hinge from the faces painted bonnet: across the car at its back edge (front edge if it hinges at
+## the front), at the top of that edge; swung LIFT_DEG open
+func _lift_xf() -> Transform3D:
+	var front := str(bon.get("hinge", "rear")) == "front"
+	var zz := -INF if front else INF
+	var any := false
+	for i in pt_lab.size():
+		if pt_lab[i] != 3: continue
+		any = true
+		for k in 3:
+			var z := pt_base[i * 3 + k].z
+			zz = maxf(zz, z) if front else minf(zz, z)
+	if not any: return Transform3D.IDENTITY
+	var yy := -INF
+	for i in pt_lab.size():
+		if pt_lab[i] != 3: continue
+		for k in 3:
+			var v := pt_base[i * 3 + k]
+			if absf(v.z - zz) < 0.2: yy = maxf(yy, v.y)
+	var piv := Vector3(0, yy, zz)
+	var ang := deg_to_rad(LIFT_DEG) * (1.0 if front else -1.0)
+	return Transform3D(Basis.IDENTITY, piv) * Transform3D(Basis(Vector3.RIGHT, ang), Vector3.ZERO) * Transform3D(Basis.IDENTITY, -piv)
+
+## What's shown and picked: the base triangles, the bonnet ones swung open when lifted; grid and picking mesh to match
+func _paint_geom() -> void:
+	var L := _lift_xf() if pt_lift else Transform3D.IDENTITY
+	pt_tris = pt_base.duplicate()
+	if pt_lift:
+		for i in pt_lab.size():
+			if pt_lab[i] == 3:
+				for k in 3: pt_tris[i * 3 + k] = L * pt_base[i * 3 + k]
+	pt_ctr = PackedVector3Array(); pt_nrm = PackedVector3Array(); pt_grid = {}
+	var ntri := pt_tris.size() / 3
+	pt_ctr.resize(ntri); pt_nrm.resize(ntri)
+	for ti in ntri:
+		var a := pt_tris[ti * 3]; var b := pt_tris[ti * 3 + 1]; var c := pt_tris[ti * 3 + 2]
+		pt_ctr[ti] = (a + b + c) / 3.0
+		var n := (b - a).cross(c - a)
+		pt_nrm[ti] = n.normalized() if n.length_squared() > 1e-14 else Vector3.UP
+		var lo := Vector3i((a.min(b).min(c) / PT_CELL).floor())
+		var hi := Vector3i((a.max(b).max(c) / PT_CELL).floor())
+		if (hi.x - lo.x + 1) * (hi.y - lo.y + 1) * (hi.z - lo.z + 1) > 400: hi = lo     # a stray giant face: one cell (the hit face still paints)
+		for gx in range(lo.x, hi.x + 1):
+			for gy in range(lo.y, hi.y + 1):
+				for gz in range(lo.z, hi.z + 1):
+					var k := Vector3i(gx, gy, gz)
+					if not pt_grid.has(k): pt_grid[k] = []
+					(pt_grid[k] as Array).append(ti)
 	_pt_adj = []
 	pt_tm = TriangleMesh.new()
 	pt_tm.create_from_faces(pt_tris)
-	var raw: Dictionary = BodyCut.all().get(glb, {})
-	pt_lab = BodyCut.labels_of(raw.get("paint", {})) if int(raw.get("paint", {}).get("n", -1)) == pt_ctr.size() else PackedByteArray()
-	if pt_lab.size() != pt_ctr.size():
-		pt_lab = PackedByteArray(); pt_lab.resize(pt_ctr.size())
+	_lift_dirty = false
+
+## Lift / drop the bonnet, or after a stroke that changed what's bonnet while it's up
+func _lift_refresh() -> void:
+	_paint_geom()
+	_rebuild_model()
 
 ## Start the paint from what the lines cut now (tub plane / seam, bonnet shut line)
 func _paint_from_lines() -> void:
+	if pt_lift:                                  # the lines are drawn on the closed body
+		pt_lift = false
+		_paint_geom()
+		_build_ui()
 	var poly := BodyCut.bonnet_poly(bon)
 	var fy := BodyCut.bonnet_floor(bon)
 	for i in pt_ctr.size():
@@ -428,12 +481,15 @@ func _paint_mesh(ci: int) -> ArrayMesh:
 var _pt_mat: StandardMaterial3D
 func _paint_build() -> void:
 	_paint_load()
-	# the model itself, textures and all
-	for m in BodyCut.meshes_of(glb):
-		var mi := MeshInstance3D.new()
-		mi.mesh = m.mesh
-		mi.transform = m.xf
-		model.add_child(mi)
+	# the model itself, textures and all (the bonnet's faces in their own pieces, swung up, when it's lifted)
+	if not pt_lift:
+		for m in BodyCut.meshes_of(glb):
+			var mi := MeshInstance3D.new()
+			mi.mesh = m.mesh
+			mi.transform = m.xf
+			model.add_child(mi)
+	else:
+		_paint_textured_lifted()
 	if _pt_mat == null:
 		_pt_mat = StandardMaterial3D.new()
 		_pt_mat.vertex_color_use_as_albedo = true
@@ -450,6 +506,36 @@ func _paint_build() -> void:
 		model.add_child(mi)
 		pt_chunks.append(mi)
 	_paint_status()
+
+func _paint_textured_lifted() -> void:
+	var L := _lift_xf()
+	var lid := Node3D.new(); lid.transform = L; model.add_child(lid)
+	var ti := 0
+	for m in BodyCut.meshes_of(glb):
+		var mesh: Mesh = m.mesh
+		for si in mesh.get_surface_count():
+			var arr := mesh.surface_get_arrays(si)
+			var V: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var I: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			if I.is_empty():
+				I.resize(V.size())
+				for i in V.size(): I[i] = i
+			var keep := PackedInt32Array(); var up := PackedInt32Array()
+			for t in range(0, I.size(), 3):
+				var lv := pt_lab[ti] if ti < pt_lab.size() else 0
+				ti += 1
+				if lv == 3: up.append_array([I[t], I[t + 1], I[t + 2]])
+				else: keep.append_array([I[t], I[t + 1], I[t + 2]])
+			for pair in [[keep, model], [up, lid]]:
+				if (pair[0] as PackedInt32Array).is_empty(): continue
+				var a2 := arr.duplicate()
+				a2[Mesh.ARRAY_INDEX] = pair[0]
+				a2[Mesh.ARRAY_TANGENT] = null
+				var am := ArrayMesh.new()
+				am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a2)
+				am.surface_set_material(0, mesh.surface_get_material(si))
+				var mi := MeshInstance3D.new(); mi.mesh = am; mi.transform = m.xf
+				(pair[1] as Node3D).add_child(mi)
 
 func _paint_status() -> void:
 	if status == null: return
@@ -481,6 +567,7 @@ var _pt_adj: Array = []                    # per triangle: Array of edge neighbo
 
 func _paint_set(i: int, dirty: Dictionary) -> void:
 	if pt_lab[i] != pt_part:
+		if pt_lift and (pt_lab[i] == 3 or pt_part == 3): _lift_dirty = true
 		pt_lab[i] = pt_part
 		dirty[i / PT_CH] = true
 
@@ -569,6 +656,13 @@ func _paint_ui() -> void:
 		b.pressed.connect(func():
 			pt_part = pp[0]; _build_ui())
 		hb.add_child(b)
+	var lb := Button.new(); lb.toggle_mode = true; lb.button_pressed = pt_lift
+	lb.text = "DROP BONNET" if pt_lift else "LIFT BONNET (paint what's under it)"
+	lb.pressed.connect(func():
+		pt_lift = not pt_lift
+		_lift_refresh()
+		_build_ui())
+	panel.add_child(lb)
 	var hf := HBoxContainer.new(); panel.add_child(hf)
 	for fm in [[false, "Brush (drag)"], [true, "Fill panel (click)"]]:
 		var b := Button.new(); b.text = fm[1]; b.toggle_mode = true; b.button_pressed = pt_fill == fm[0]
@@ -586,7 +680,9 @@ func _paint_ui() -> void:
 	for h in [["rear", "Bonnet hinge at the back"], ["front", "at the front"]]:
 		var b := Button.new(); b.text = h[1]; b.toggle_mode = true; b.button_pressed = str(bon.get("hinge", "rear")) == h[0]
 		b.pressed.connect(func():
-			bon.hinge = h[0]; _build_ui())
+			bon.hinge = h[0]
+			if pt_lift: _lift_refresh()
+			_build_ui())
 		hg.add_child(b)
 	_button("Start from the lines (tub cut, bonnet shut line)", _paint_from_lines)
 	_button("Clear the tub paint", func():
@@ -594,7 +690,8 @@ func _paint_ui() -> void:
 		_rebuild_model())
 	_button("Clear the bonnet paint", func():
 		for i in pt_lab.size(): if pt_lab[i] == 3: pt_lab[i] = 0
-		_rebuild_model())
+		if pt_lift: _lift_refresh()
+		else: _rebuild_model())
 	var l := Label.new()
-	l.text = "Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in Cab and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = kept as cab, no tint = left to the lines. Erase takes the paint off."
+	l.text = "Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in Cab and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = kept as cab, no tint = left to the lines. Erase takes the paint off. LIFT BONNET swings the green faces up on the hinge so you can paint the junk under the skin: paint it Bonnet to lift with it, Cab to stay, and it moves when you let go."
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)

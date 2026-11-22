@@ -215,6 +215,12 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   tools/mixamo_rename.py (bones to mixamorig_X, their clip dropped) then tools/setup_retarget.gd and
   an --editor import; check poses with tools/_zlab.gd (BODIES=..., CLIPS=...). glb material fixes:
   tools/glb_mats.py.
+- 0063: body tools LIFT BONNET (pt_lift): pt_base holds the model's triangles, pt_tris what's shown/picked
+  (bonnet-labelled faces through _lift_xf: 60 deg about the hinge edge of the painted bonnet); _paint_geom rebuilds
+  grid/TriangleMesh; a stroke that changes bonnet faces while lifted sets _lift_dirty and refreshes on release.
+  assets/TODOwnload (.gdignore'd, README.md): staged Sketchfab vehicles. Pipeline: gltfpack (local npm install in
+  /home/claude/npmtools: `npm i gltfpack`) -si ratio -noq -kn -km, tools/glb_upright.py, tools/glb_slim_post.py;
+  tools/_todlshot.tscn renders a .glb straight from disk (GLTFDocument) for checking windows and interiors.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

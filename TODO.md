@@ -2,7 +2,20 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0062, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0063, 2026-11-22.
+
+## Lift bonnet, TODOwnload utes 2026-11-22 (0063)
+User: a LIFT BONNET button in body tools so the Meshy junk under the bonnet skin can be painted (the paint tool
+works fantastic); get rid of some triangles; vehicles MUST have clear windows and either no interior or an accurate
+one, nothing in between; put his links (VZ ute, Mazda B-Series dual cab, Res1n's Mazdas, Hiluxes, Ranger Mk1, truck
+wheels, LIAZ fire truck, a low-poly pickup) in a TODOwnload asset folder.
+- [x] 0063 LIFT BONNET: the faces painted bonnet swing 60 degrees up on the hinge; paint what's under them (Bonnet
+      to lift with it, Cab to stay) and they move when you let go of the mouse
+- [x] 0063 assets/TODOwnload: 31 models cut from 0.5-3.5 million triangles to ~45-55k, stood upright in metres,
+      glass see-through, textures capped at 1024; every one looked at (README.md has the table and verdicts).
+      Fails the window rule: the LIAZ (a photo scan) and the low-poly pickup (black windows)
+- [ ] Bring TODOwnload utes into the game: Hilux Mk6 dual cab, Mazda B-Series dual cab, Ranger Mk1 dual cab,
+      VZ ute first (cut wheels, catalog entries, merge by material)
 
 ## Body tools clicks, textures, wheels on the axle 2026-11-22 (0062)
 User: can't left click in the F9 window; in body tools left click does nothing and the tub paint is stuck on; turn
@@ -13,7 +26,7 @@ flange. He's looking for 2000s and 2010s dual cab utes.
 - [x] 0062 Painting shows over the textured model (see-through tint) instead of plain grey; an Erase button
 - [x] 0062 Wheels: the hub no longer drops off the axle end by half the tyre squash; live-axle wheels stay square
       to the housing (checked with one wheel up a block, tools/_flexshot.tscn)
-- [ ] 2000s/2010s dual cab utes (Hilux, Navara, Triton, Ranger, D-Max, BT-50, Colorado): user is finding models
+- [x] 0063 2000s/2010s dual cab utes: user found Hilux, Ranger, B-Series, VZ links; staged in assets/TODOwnload
 
 ## Bonnet painter, wheels, zombies, stutter, F9 reports 2026-11-22 (0061)
 User: the bonnet painter doesn't paint when you click and drag (the points method worked well; keep it); find more
