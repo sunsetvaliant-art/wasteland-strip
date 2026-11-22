@@ -14,6 +14,10 @@ func _ready():
 		await _brake(mode)
 	for diff in ["open", "lsd", "locked"]:
 		await _launch(diff)
+	Settings.v["drift_assist"] = false
+	await _launch("lsd", true, "lsd no assist")
+	Settings.v["drift_assist"] = true
+	await _launch("lsd", false, "lsd feathered")
 	get_tree().quit()
 
 func _car(diff: String, v8: bool) -> Car:
@@ -55,11 +59,12 @@ func _brake(mode: String) -> void:
 	c.queue_free()
 	for i in 10: await get_tree().physics_frame
 
-func _launch(diff: String) -> void:
+func _launch(diff: String, floor_it := true, label := "") -> void:
 	var c := await _car(diff, true)
 	c.gear = 2           # first
 	var yaw0 := c.global_rotation.y
-	Input.action_press("move_forward"); Input.action_press("sprint")
+	Input.action_press("move_forward")
+	if floor_it: Input.action_press("sprint")
 	var max_yaw := 0.0; var max_beta := 0.0
 	var line := ""
 	for i in Engine.physics_ticks_per_second * 4:
@@ -79,6 +84,6 @@ func _launch(diff: String) -> void:
 			line += "\nTT   t=%.1f %5.1f km/h %s rpm %4d yaw %+5.2f slip angle %+5.1f deg%s" % [i / float(Engine.physics_ticks_per_second), c.speed_kmh(), c.gear_name(), c.rpm, c.angular_velocity.y, rad_to_deg(beta), s]
 		if i == 240 and c.box.auto == false: c._shift(1)
 	Input.action_release("move_forward"); Input.action_release("sprint")
-	print("TT launch %-6s heading change %+.1f deg, peak yaw %.2f rad/s, peak tail-out %.1f deg%s" % [diff, rad_to_deg(wrapf(c.global_rotation.y - yaw0, -PI, PI)), max_yaw, rad_to_deg(max_beta), line])
+	print("TT launch %-14s heading change %+.1f deg, peak yaw %.2f rad/s, peak tail-out %.1f deg%s" % [label if label != "" else diff, rad_to_deg(wrapf(c.global_rotation.y - yaw0, -PI, PI)), max_yaw, rad_to_deg(max_beta), line if label == "" else ""])
 	c.queue_free()
 	for i in 10: await get_tree().physics_frame

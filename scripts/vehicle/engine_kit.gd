@@ -117,6 +117,7 @@ static func make(lay: String, big: bool, vt: String, comp: String, fuel: String,
 static func stock(def: Dictionary) -> Dictionary:
 	var n := str(def.get("name", "")).to_lower()
 	var big4 := str(def.get("cls", "")) == "4x4"
+	if n.contains("tractor"): return make("i6", true, "push", "hi", "mech")          # a farm diesel
 	if n.contains("hemi") or n.contains("blown") or n.contains("muscle") or n.contains("charger"): return make("v8", true, "push", "hi", "carby")
 	if n.contains("chevy") or n.contains("f-series") or n.contains("relic pickup") or n.contains("workhorse") or n.contains("ford"): return make("v8", true, "push", "med", "carby")
 	if n.contains("gt") or n.contains("fairlane") or n.contains("monaro"): return make("v8", false, "push", "med", "carby")

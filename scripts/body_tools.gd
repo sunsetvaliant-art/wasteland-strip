@@ -22,7 +22,7 @@ var model: Node3D                 # the preview: raw meshes, or the cut pieces t
 var plane_mi: MeshInstance3D
 var markers: Node3D
 var tri: Array = []               # [TriangleMesh, Transform3D (body frame -> world)] per mesh for clicking
-var mode := "tub"                 # tub / bonnet
+var mode := "paint"               # paint (0.2.59) / tub / bonnet
 var tub := {"mode": "plane", "z": -0.4, "tilt": 0.0, "y": 0.7}
 var bon := {"pts": [], "hinge": "rear"}
 var tub_pts: Array = []           # [[y, z]]
@@ -71,7 +71,7 @@ func close() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _load_cut() -> void:
-	var c := BodyCut.of(glb)
+	var c: Dictionary = BodyCut.all().get(glb, {})          # the saved entry itself, not what paint works out from it
 	tub = c.get("tub", {"mode": "plane", "z": -0.4, "tilt": 0.0, "y": 0.7}).duplicate(true)
 	tub_pts = tub.get("pts", []).duplicate(true)
 	bon = c.get("bonnet", {"pts": [], "hinge": "rear"}).duplicate(true)
@@ -96,7 +96,12 @@ func _unhandled_input(e: InputEvent) -> void:
 			_drag = e.pressed
 		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed: dist = maxf(dist * 0.9, 2.0)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed: dist = minf(dist * 1.1, 20.0)
+		elif e.button_index == MOUSE_BUTTON_LEFT and mode == "paint":
+			painting = e.pressed
+			if e.pressed: _paint_at(e.position)
 		elif e.button_index == MOUSE_BUTTON_LEFT and e.pressed: _click(e.position)
+	elif e is InputEventMouseMotion and painting:
+		_paint_at(e.position)
 	elif e is InputEventMouseMotion and _drag:
 		orbit.x -= e.relative.x * 0.006
 		orbit.y = clampf(orbit.y + e.relative.y * 0.004, -0.6, 1.45)
@@ -153,10 +158,16 @@ func _rebuild_model() -> void:
 	main.add_child(model)
 	model.global_position = spot
 	tri.clear()
+	if mode == "paint":
+		_paint_build()
+		if plane_mi and is_instance_valid(plane_mi): plane_mi.visible = false
+		_markers()
+		return
 	# save into the live table temporarily so BodyCut.pieces sees the current lines
 	var entry := {}
 	if str(tub.get("mode", "plane")) == "plane" or tub_pts.size() >= 2: entry["tub"] = tub
 	if (bon.get("pts", []) as Array).size() >= 3: entry["bonnet"] = bon
+	if pt_glb == glb and pt_lab.size() > 0: entry["paint"] = {"n": pt_lab.size(), "runs": BodyCut.runs_of(pt_lab)}
 	var prev = BodyCut.all().get(glb)
 	BodyCut._cuts[glb] = entry
 	BodyCut._cache.clear()
@@ -193,6 +204,17 @@ func _save() -> void:
 	elif tub_pts.size() >= 2: entry["tub"] = {"mode": "points", "pts": tub_pts}
 	if (bon.get("pts", []) as Array).size() >= 3: entry["bonnet"] = bon
 	if not use_tub: entry.erase("tub")
+	# 0.2.59: the paint, as runs of triangles; a painted bonnet keeps its hinge side
+	if pt_glb == glb and pt_lab.size() > 0:
+		var runs := BodyCut.runs_of(pt_lab)
+		if not runs.is_empty():
+			entry["paint"] = {"n": pt_lab.size(), "runs": runs}
+			var has_t := false; var has_b := false
+			for r in runs:
+				if int(r[2]) == 2: has_t = true
+				if int(r[2]) == 3: has_b = true
+			if has_t: entry.erase("tub")                         # a painted tub is the tub, no plane behind it
+			if has_b: entry["bonnet"] = {"hinge": str(bon.get("hinge", "rear")), "pts": []}
 	BodyCut.save(glb, entry)
 	if status: status.text = "Saved to %s  (put that file in the Drive folder to ship it)" % BodyCut.user_file_path()
 
@@ -227,14 +249,16 @@ func _build_ui() -> void:
 		_rebuild_model())
 	panel.add_child(ob)
 	var tabs := HBoxContainer.new(); panel.add_child(tabs)
-	for md in [["tub", "Tub line"], ["bonnet", "Bonnet line"]]:
+	for md in [["paint", "Paint"], ["tub", "Tub line"], ["bonnet", "Bonnet line"]]:
 		var b := Button.new(); b.text = md[1]; b.toggle_mode = true; b.button_pressed = mode == md[0]
 		b.pressed.connect(func():
 			mode = md[0]
 			_build_ui()
 			_rebuild_model())
 		tabs.add_child(b)
-	if mode == "tub":
+	if mode == "paint":
+		_paint_ui()
+	elif mode == "tub":
 		var uc := CheckBox.new(); uc.text = "This model has a separate tub"; uc.button_pressed = use_tub
 		uc.toggled.connect(func(v): use_tub = v)
 		panel.add_child(uc)
@@ -269,7 +293,7 @@ func _build_ui() -> void:
 			bon.pts = []; _markers(); _preview_t = 0.2)
 		var l := Label.new(); l.text = "Click round the bonnet's edge in order (8-20 points). Green = what comes off."
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)
-	_button("SAVE this model's lines", _save)
+	_button("SAVE this model's cut", _save)
 	_button("Close", close)
 	status = Label.new(); status.autowrap_mode = TextServer.AUTOWRAP_WORD; status.custom_minimum_size = Vector2(400, 0)
 	status.text = glb
@@ -286,3 +310,157 @@ func _slider(label: String, lo: float, hi: float, step: float, val: float, cb: C
 
 func _button(label: String, cb: Callable) -> void:
 	var b := Button.new(); b.text = label; b.pressed.connect(cb); panel.add_child(b)
+
+# ------------------------------------------------------------------------------------------------ the mesh painter (0.2.59)
+## Brush the model's own triangles: tub, bonnet, or back to cab. Works on any shape of tub or bonnet, both skins of a
+## panel at once ("through"), and starts from whatever the lines already cut if you like.
+var pt_lab := PackedByteArray()          # per triangle: 0 unpainted, 1 cab, 2 tub, 3 bonnet
+var pt_tris := PackedVector3Array()      # body frame, 3 a triangle, in BodyCut's triangle order
+var pt_ctr := PackedVector3Array()
+var pt_nrm := PackedVector3Array()
+var pt_grid := {}                        # Vector3i (10 cm cells) -> PackedInt32Array of triangles
+var pt_tm: TriangleMesh
+var pt_glb := ""
+var pt_part := 2
+var pt_rad := 0.12
+var pt_through := true
+var painting := false
+var pt_chunks: Array = []
+const PT_CH := 4096
+const PT_COL := [Color(0.62, 0.62, 0.64), Color(0.45, 0.65, 1.0), Color(1.0, 0.6, 0.25), Color(0.4, 1.0, 0.45)]
+
+func _paint_load() -> void:
+	if pt_glb == glb and not pt_tris.is_empty(): return
+	pt_glb = glb
+	pt_tris = PackedVector3Array(); pt_ctr = PackedVector3Array(); pt_nrm = PackedVector3Array(); pt_grid = {}
+	for m in BodyCut.meshes_of(glb):
+		var mesh: Mesh = m.mesh
+		var xf: Transform3D = m.xf
+		for si in mesh.get_surface_count():
+			var arr := mesh.surface_get_arrays(si)
+			var V: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var I: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var nt := (I.size() if not I.is_empty() else V.size()) / 3
+			for t in nt:
+				var a: Vector3 = xf * V[I[t * 3] if not I.is_empty() else t * 3]
+				var b: Vector3 = xf * V[I[t * 3 + 1] if not I.is_empty() else t * 3 + 1]
+				var c: Vector3 = xf * V[I[t * 3 + 2] if not I.is_empty() else t * 3 + 2]
+				pt_tris.append(a); pt_tris.append(b); pt_tris.append(c)
+				var ctr := (a + b + c) / 3.0
+				pt_ctr.append(ctr)
+				var n := (b - a).cross(c - a)
+				pt_nrm.append(n.normalized() if n.length_squared() > 1e-14 else Vector3.UP)
+				var k := Vector3i((ctr * 10.0).floor())
+				if not pt_grid.has(k): pt_grid[k] = PackedInt32Array()
+				(pt_grid[k] as PackedInt32Array).append(pt_ctr.size() - 1)
+	pt_tm = TriangleMesh.new()
+	pt_tm.create_from_faces(pt_tris)
+	var raw: Dictionary = BodyCut.all().get(glb, {})
+	pt_lab = BodyCut.labels_of(raw.get("paint", {})) if int(raw.get("paint", {}).get("n", -1)) == pt_ctr.size() else PackedByteArray()
+	if pt_lab.size() != pt_ctr.size():
+		pt_lab = PackedByteArray(); pt_lab.resize(pt_ctr.size())
+
+## Start the paint from what the lines cut now (tub plane / seam, bonnet shut line)
+func _paint_from_lines() -> void:
+	var poly := BodyCut.bonnet_poly(bon)
+	var fy := BodyCut.bonnet_floor(bon)
+	for i in pt_ctr.size():
+		if pt_lab[i] != 0: continue
+		var c := pt_ctr[i]
+		if poly.size() >= 3 and c.y > fy - 0.1 and Geometry2D.is_point_in_polygon(Vector2(c.x, c.z), poly) and pt_nrm[i].y > -0.7: pt_lab[i] = 3
+		elif use_tub and not tub.is_empty() and BodyCut.behind_tub(tub, c): pt_lab[i] = 2
+	_rebuild_model()
+
+func _paint_mesh(ci: int) -> ArrayMesh:
+	var a := ci * PT_CH
+	var b := mini(a + PT_CH, pt_ctr.size())
+	if b <= a: return null
+	var V := pt_tris.slice(a * 3, b * 3)
+	var N := PackedVector3Array(); N.resize(V.size())
+	var C := PackedColorArray(); C.resize(V.size())
+	for t in b - a:
+		var col: Color = PT_COL[pt_lab[a + t]]
+		var n := pt_nrm[a + t]
+		for k in 3:
+			N[t * 3 + k] = n; C[t * 3 + k] = col
+	var arr := []; arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = V; arr[Mesh.ARRAY_NORMAL] = N; arr[Mesh.ARRAY_COLOR] = C
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return am
+
+var _pt_mat: StandardMaterial3D
+func _paint_build() -> void:
+	_paint_load()
+	if _pt_mat == null:
+		_pt_mat = StandardMaterial3D.new()
+		_pt_mat.vertex_color_use_as_albedo = true
+		_pt_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_pt_mat.roughness = 0.8
+	pt_chunks.clear()
+	for ci in ceili(float(pt_ctr.size()) / PT_CH):
+		var mi := MeshInstance3D.new()
+		mi.mesh = _paint_mesh(ci)
+		mi.material_override = _pt_mat
+		model.add_child(mi)
+		pt_chunks.append(mi)
+	_paint_status()
+
+func _paint_status() -> void:
+	if status == null: return
+	var n := [0, 0, 0, 0]
+	for v in pt_lab: n[v] += 1
+	status.text = "%s · %d triangles · tub %d · bonnet %d · cab (painted) %d" % [glb, pt_ctr.size(), n[2], n[3], n[1]]
+
+func _paint_at(sp: Vector2) -> void:
+	if pt_tm == null: return
+	var from := cam.project_ray_origin(sp) - spot
+	var dir := cam.project_ray_normal(sp)
+	var r := pt_tm.intersect_ray(from, dir)
+	if r.is_empty(): return
+	var hit: Vector3 = r.position
+	var cr := ceili(pt_rad * 10.0)
+	var hk := Vector3i((hit * 10.0).floor())
+	var dirty := {}
+	for dx in range(-cr, cr + 1):
+		for dy in range(-cr, cr + 1):
+			for dz in range(-cr, cr + 1):
+				var ids = pt_grid.get(hk + Vector3i(dx, dy, dz))
+				if ids == null: continue
+				for i in ids:
+					if pt_ctr[i].distance_to(hit) > pt_rad: continue
+					if not pt_through and pt_nrm[i].dot(-dir) < 0.05: continue
+					if pt_lab[i] != pt_part:
+						pt_lab[i] = pt_part
+						dirty[i / PT_CH] = true
+	for ci in dirty:
+		if ci < pt_chunks.size(): (pt_chunks[ci] as MeshInstance3D).mesh = _paint_mesh(ci)
+	if not dirty.is_empty(): _paint_status()
+
+func _paint_ui() -> void:
+	var hb := HBoxContainer.new(); panel.add_child(hb)
+	for pp in [[2, "Tub"], [3, "Bonnet"], [1, "Cab (rub out)"]]:
+		var b := Button.new(); b.text = pp[1]; b.toggle_mode = true; b.button_pressed = pt_part == pp[0]
+		b.pressed.connect(func():
+			pt_part = pp[0]; _build_ui())
+		hb.add_child(b)
+	_slider("Brush size (m)", 0.02, 0.6, 0.01, pt_rad, func(v): pt_rad = v)
+	var th := CheckBox.new(); th.text = "Paint through (both skins of a panel)"; th.button_pressed = pt_through
+	th.toggled.connect(func(v): pt_through = v)
+	panel.add_child(th)
+	var hg := HBoxContainer.new(); panel.add_child(hg)
+	for h in [["rear", "Bonnet hinge at the back"], ["front", "at the front"]]:
+		var b := Button.new(); b.text = h[1]; b.toggle_mode = true; b.button_pressed = str(bon.get("hinge", "rear")) == h[0]
+		b.pressed.connect(func():
+			bon.hinge = h[0]; _build_ui())
+		hg.add_child(b)
+	_button("Start from the lines (tub cut, bonnet shut line)", _paint_from_lines)
+	_button("Clear the tub paint", func():
+		for i in pt_lab.size(): if pt_lab[i] == 2: pt_lab[i] = 0
+		_rebuild_model())
+	_button("Clear the bonnet paint", func():
+		for i in pt_lab.size(): if pt_lab[i] == 3: pt_lab[i] = 0
+		_rebuild_model())
+	var l := Label.new()
+	l.text = "Left-drag to paint the model's own faces. Orange = tub, green = bonnet, blue = painted back to cab, grey = left to the lines."
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)

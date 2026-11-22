@@ -21,6 +21,14 @@ const WHEEL_MODELS := {
 	"globe": {"name": "Globe mags (from the old build)", "path": "res://assets/props/globe.glb"},
 	"rim4x4": {"name": "4x4 steelies", "path": "res://assets/vehicles/wheel_4x4.glb"},
 	"car": {"name": "Car steelies", "path": "res://assets/vehicles/wheel_car.glb"},
+	# 0.2.59: from Sketchfab (CC Attribution, credits in assets/credits.json), put to size by tools/import_wheel.py
+	"jag20": {"name": "20-spoke mags", "path": "res://assets/vehicles/wheels/jag20.glb"},
+	"stance_r13": {"name": "Wide 13 inch steelies", "path": "res://assets/vehicles/wheels/stance_r13.glb"},
+	"saab": {"name": "Turbine alloys", "path": "res://assets/vehicles/wheels/saab.glb"},
+	"r33": {"name": "Five-spoke alloys", "path": "res://assets/vehicles/wheels/r33.glb"},
+	"tractor_lug": {"name": "Tractor lugs", "path": "res://assets/vehicles/wheels/tractor_lug.glb"},
+	"r6_front": {"name": "Tractor front (R6)", "path": "res://assets/vehicles/wheels/r6_front.glb"},
+	"r6_rear": {"name": "Tractor rear (R6)", "path": "res://assets/vehicles/wheels/r6_rear.glb"},
 }
 var beams: Array = []             # [{mi, fn: Callable}] updated every frame
 var tailshaft: MeshInstance3D
@@ -189,11 +197,16 @@ func _build_wheels() -> void:
 	if path == "": path = "res://assets/vehicles/%s.glb" % ("wheel_4x4" if big else "wheel_car")
 	var ps: PackedScene = load(path)
 	for w in car.wheels:
+		# 0.2.59: an axle can wear its own wheels (a tractor's big lugs at the back)
+		var awm := str(w.a.get("wheel_model", ""))
+		var wps: PackedScene = ps
+		if awm != "" and WHEEL_MODELS.has(awm) and str(WHEEL_MODELS[awm].path) != "":
+			wps = load(str(WHEEL_MODELS[awm].path))
 		var pivot := Node3D.new()
 		add_child(pivot)
 		var spin := Node3D.new()
 		pivot.add_child(spin)
-		var m: Node3D = ps.instantiate()
+		var m: Node3D = wps.instantiate()
 		m.scale = Vector3.ONE * float(w.r) * 2.0
 		m.rotation_degrees.y = 90 if w.side > 0 else -90
 		spin.add_child(m)
@@ -311,12 +324,19 @@ func _process(_dt: float) -> void:
 		var w: Dictionary = car.wheels[i]
 		var n: Dictionary = wheel_nodes[i]
 		n.pivot.position = _wheel_centre(w)
-		n.pivot.rotation = Vector3(0, w.steer, 0)
+		# 0.2.59: on a live axle the wheels stay square to the housing as it articulates (they used to stay upright and
+		# looked like they turned on the ends of the axle)
+		var roll := 0.0
+		if str(w.a.get("type", "live")) == "live":
+			for o in car.wheels:
+				if o.axle == w.axle and o != w:
+					var dy: float = _wheel_centre(w).y - _wheel_centre(o).y
+					roll = atan2(dy * float(w.side), 2.0 * float(w.a.track))
 		n.spin.rotation = Vector3(w.spin, 0, 0)
 		# sidewall deflection: the tyre sits down under load (more on soft pressures); a squash on the visual
 		var defl: float = w.get("defl", 0.0)
 		n.pivot.position.y -= defl * 0.5
-		n.pivot.scale = Vector3(1.0, 1.0 - defl / (float(w.r) * 2.0), 1.0)      # on the pivot, so it doesn't spin with the wheel
+		n.pivot.basis = Basis(Vector3(0, 0, 1), roll) * Basis(Vector3.UP, w.steer) * Basis.from_scale(Vector3(1.0, 1.0 - defl / (float(w.r) * 2.0), 1.0))
 	for b in beams:
 		var r = b.fn.call()
 		if r is Array:

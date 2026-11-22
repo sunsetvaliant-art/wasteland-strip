@@ -20,6 +20,8 @@ var kit: Dictionary = {}
 var ctx: Dictionary = {}         # title, changed: Callable, on_close: Callable, block_ok: bool
 var root: Control
 var vpc: SubViewportContainer
+var pad: Control                 # over the view: takes the mouse and the drops (a SubViewportContainer hands drags to
+                                 # the viewport inside it, so drops on it never reached the engine: 0.2.59)
 var vp: SubViewport
 var cam: Camera3D
 var pivot: Node3D
@@ -131,7 +133,7 @@ func _build_ui() -> void:
 	vpc = SubViewportContainer.new()
 	vpc.stretch = true
 	vpc.set_anchors_preset(Control.PRESET_FULL_RECT)
-	vpc.mouse_filter = Control.MOUSE_FILTER_STOP
+	vpc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(vpc)
 	vp = SubViewport.new()
 	vp.own_world_3d = true
@@ -150,12 +152,16 @@ func _build_ui() -> void:
 	vp.add_child(pivot)
 	eng = Node3D.new()
 	pivot.add_child(eng)
-	vpc.gui_input.connect(_view_input)
-	vpc.mouse_exited.connect(func():
+	pad = Control.new()
+	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pad.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.add_child(pad)
+	pad.gui_input.connect(_view_input)
+	pad.mouse_exited.connect(func():
 		hover = ""
 		tag.visible = false
 		_overlays())
-	vpc.set_drag_forwarding(_drag_from_engine, _can_drop_engine, _drop_engine)
+	pad.set_drag_forwarding(_drag_from_engine, _can_drop_engine, _drop_engine)
 	# top left: what it is and whether it'll run
 	title_l = RichTextLabel.new()
 	title_l.bbcode_enabled = true
@@ -277,6 +283,7 @@ static func _stage(v: SubViewport) -> void:
 
 func _layout() -> void:
 	vpc.offset_right = -SIDE_W if side.visible else 0.0
+	pad.offset_right = vpc.offset_right
 	parts_btn.text = "Hide parts" if side.visible else "Your parts  >"
 
 # ------------------------------------------------------------------------------------------------ the model
@@ -523,7 +530,7 @@ func _drag_from_engine(_at: Vector2) -> Variant:
 	var l := Label.new()
 	l.text = "  %s  " % Items.def(id).name
 	l.add_theme_color_override("font_color", Color(1, 0.85, 0.5))
-	vpc.set_drag_preview(l)
+	pad.set_drag_preview(l)
 	return {"from_slot": sel}
 
 func _can_drop_engine(at: Vector2, data: Variant) -> bool:

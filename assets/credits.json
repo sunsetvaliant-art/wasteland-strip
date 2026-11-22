@@ -178,5 +178,41 @@
   "author": "Made by the developer in Meshy AI (animations Mixamo)",
   "license": "Own work",
   "url": "https://www.meshy.ai"
+ },
+ "wheel_jag20": {
+  "title": "Jaguar 20 Spoke Wheel",
+  "author": "ministephen",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/jaguar-20-spoke-wheel-b133644163d54c94a2598abcc9262491"
+ },
+ "wheel_stance_r13": {
+  "title": "Stance Wheel R13x10\"",
+  "author": "terllok",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/stance-wheel-r13x10-6c8a9dc226b64454a3af8dc37f7359ec"
+ },
+ "wheel_saab": {
+  "title": "Tire with SAAB's Rim 205/55 R16 with brakes",
+  "author": "blendffnike",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/tire-with-saabs-rim-20555-r16-with-brakes-861df4c3dc7a4ae6878ddf6998cfad39"
+ },
+ "wheel_r33": {
+  "title": "R33 stockie",
+  "author": "gunis.david",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/r33-stockie-3ff039715d1145789093bbefc969eafe"
+ },
+ "wheel_tractor_lug": {
+  "title": "Tractor wheel,",
+  "author": "Gulgolet",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/tractor-wheel-41b1d31fcf204c448e86dda573316f80"
+ },
+ "tractor_lambo": {
+  "title": "Lamborghini Tractor R6 125 DCR | www.vecarz.com",
+  "author": "heynic",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/lamborghini-tractor-r6-125-dcr-wwwvecarzcom-56d7c8e7e2cb4d15a3d80cc42c697c53"
  }
 }

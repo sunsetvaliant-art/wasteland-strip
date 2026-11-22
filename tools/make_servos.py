@@ -103,7 +103,7 @@ for e in out:
     # snap the facing to the footprint's sides: the long axis is along ry (x of the rect)
     best = min(range(4), key=lambda k: abs(math.atan2(math.sin(face - (ry + k * math.pi / 2)), math.cos(face - (ry + k * math.pi / 2)))))
     yaw = ry + best * math.pi / 2
-    lw, ld = (d, w) if best % 2 == 0 else (w, d)
+    lw, ld = (w, d) if best % 2 == 0 else (d, w)          # 0.2.59: was the wrong way round (the shop stood 90 degrees off, into its canopy)
     lw = max(10.0, min(lw, 30.0)); ld = max(8.0, min(ld, 20.0))
     keep.append(["shop", round(cx, 2), round(cz, 2), round(yaw, 4), round(lw, 2), round(ld, 2), float(abs(hash(e["name"])) % 100000), "servo/1/0/" + e["brand"]])
 B["lots"] = keep; B["ver"] += "+servos2"

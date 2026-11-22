@@ -211,6 +211,8 @@ func _build_ui() -> void:
 			design.tub = tubs[i]
 			_build_ui()
 			_changed())
+		if str(design.get("tub", "stock")) in ["stock", "swap"]:
+			_slider("Tub height (up or down on the rails)", -0.3, 0.6, 0.01, float(design.get("tub_h", 0.0)), func(v): design.tub_h = v; _changed())
 		if str(design.get("tub", "")) == "tray":
 			var tc := TrayGen.cfg_of(design)
 			design.tray = tc
@@ -295,9 +297,31 @@ func _build_ui() -> void:
 		_build_ui()
 		_changed())
 	row.add_child(rem)
+	# 0.2.59: match settings across every axle, so they don't all have to be set by hand
+	if not design.has("match"): design["match"] = {}
+	var mt: Dictionary = design.match
+	_note("Same on every axle (tick, then change it on any axle):")
+	for g in [["wheels", "Wheels (tyre size and width)"], ["track", "Track width"], ["height", "Ride height"], ["springs", "Springs and dampers"]]:
+		var key: String = g[0]
+		_check(g[1], bool(mt.get(key, false)), func(v):
+			mt[key] = v
+			if v:
+				# everyone takes the front axle's values
+				var a0: Dictionary = design.axles[0]
+				for f in MATCH:
+					if MATCH[f] == key:
+						for b in design.axles: b[f] = a0.get(f, 0.0)
+				_build_ui()
+				_changed())
 	axle_tabs = TabContainer.new()
-	axle_tabs.custom_minimum_size = Vector2(0, 620)
+	axle_tabs.custom_minimum_size = Vector2(0, 680)
 	panel.add_child(axle_tabs)
+	axle_tabs.tab_changed.connect(func(_t):
+		if _match_dirty:
+			_match_dirty = false
+			var cur := axle_tabs.current_tab
+			_build_ui()
+			if axle_tabs: axle_tabs.current_tab = cur)
 	for ai in design.axles.size():
 		_axle_page(ai)
 	# --- save / load / go
@@ -333,6 +357,18 @@ func _build_ui() -> void:
 	cl.pressed.connect(close)
 	panel.add_child(cl)
 
+const MATCH := {"tyre_r": "wheels", "tyre_w": "wheels", "track": "track", "lift": "height", "freq": "springs", "travel": "springs", "zeta_b": "springs", "zeta_r": "springs", "arb": "springs"}
+var _match_dirty := false
+## Set an axle value; with its group matched, every axle takes it
+func _ax(a: Dictionary, key: String, v) -> void:
+	var g: String = MATCH.get(key, "")
+	if g != "" and bool(design.get("match", {}).get(g, false)):
+		for b in design.axles: b[key] = v
+		_match_dirty = true
+	else:
+		a[key] = v
+	_changed()
+
 func _axle_page(ai: int) -> void:
 	var a: Dictionary = design.axles[ai]
 	var page := VBoxContainer.new()
@@ -343,15 +379,18 @@ func _axle_page(ai: int) -> void:
 	_slider("Position (m from centre, + = forward)", -6.0, 4.0, 0.01, a.z, func(v): a.z = v; _changed())
 	_choice("Suspension", ["Independent (wishbones)", "Live axle"], 0 if a.type == "ifs" else 1, func(i): a.type = "ifs" if i == 0 else "live"; _changed())
 	_choice("Springs", ["Coils", "Leaf packs"], 0 if a.spring == "coil" else 1, func(i): a.spring = "coil" if i == 0 else "leaf"; _changed())
-	_slider("Spring rate (ride frequency, Hz)", 0.8, 2.6, 0.01, a.freq, func(v): a.freq = v; _changed())
-	_slider("Wheel travel (m)", 0.08, 0.5, 0.01, a.travel, func(v): a.travel = v; _changed())
-	_slider("Damping, bump", 0.1, 0.9, 0.01, a.zeta_b, func(v): a.zeta_b = v; _changed())
-	_slider("Damping, rebound", 0.2, 1.2, 0.01, a.zeta_r, func(v): a.zeta_r = v; _changed())
-	_slider("Sway bar (N/m, 0 = none)", 0.0, 40000.0, 500.0, a.arb, func(v): a.arb = v; _changed())
-	_slider("Track (half, m)", 0.5, 1.2, 0.01, a.track, func(v): a.track = v; _changed())
-	_slider("Tyre radius (m)", 0.26, 0.6, 0.005, a.tyre_r, func(v): a.tyre_r = v; _changed())
-	_slider("Tyre width (m)", 0.14, 0.42, 0.005, a.tyre_w, func(v): a.tyre_w = v; _changed())
+	_slider("Spring rate (ride frequency, Hz)", 0.8, 2.6, 0.01, a.freq, func(v): _ax(a, "freq", v))
+	_slider("Wheel travel (m)", 0.08, 0.5, 0.01, a.travel, func(v): _ax(a, "travel", v))
+	_slider("Ride height (lift, m: + raises the body)", -0.15, 0.35, 0.01, float(a.get("lift", 0.0)), func(v): _ax(a, "lift", v))
+	_slider("Damping, bump", 0.1, 0.9, 0.01, a.zeta_b, func(v): _ax(a, "zeta_b", v))
+	_slider("Damping, rebound", 0.2, 1.2, 0.01, a.zeta_r, func(v): _ax(a, "zeta_r", v))
+	_slider("Sway bar (N/m, 0 = none)", 0.0, 40000.0, 500.0, a.arb, func(v): _ax(a, "arb", v))
+	_slider("Track (half, m)", 0.5, 1.2, 0.01, a.track, func(v): _ax(a, "track", v))
+	_slider("Tyre radius (m)", 0.26, 0.6, 0.005, a.tyre_r, func(v): _ax(a, "tyre_r", v))
+	_slider("Tyre width (m)", 0.14, 0.42, 0.005, a.tyre_w, func(v): _ax(a, "tyre_w", v))
 	_slider("Brake torque (Nm)", 300.0, 6000.0, 50.0, a.brake, func(v): a.brake = v; _changed())
+	var wk: Array = [""] + VehicleRig.WHEEL_MODELS.keys()
+	_choice("Wheels on this axle", wk.map(func(k): return "Same as the car" if k == "" else VehicleRig.WHEEL_MODELS[k].name), maxi(wk.find(str(a.get("wheel_model", ""))), 0), func(i): a.wheel_model = wk[i]; _changed())
 	_check("Steers", a.steer, func(v): a.steer = v; _changed())
 	_check("Driven", a.drive, func(v): a.drive = v; _changed())
 	_choice("Diff", ["Open", "Limited slip", "Locked"], ["open", "lsd", "locked"].find(a.get("diff", "open")), func(i): a.diff = ["open", "lsd", "locked"][i]; _changed())

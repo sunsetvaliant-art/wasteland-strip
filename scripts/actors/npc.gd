@@ -345,7 +345,7 @@ func _think_zombie(dt: float) -> void:
 			goal = last_seen
 			var d := _flat_dist(tp)
 			var reach := 2.4 if (player and player.vehicle) else 1.35
-			if d < reach and vis > 0.0:
+			if d < reach and vis > 0.0 and _can_reach(tp):
 				move_speed = 0.0
 				face_dir = (tp - global_position).normalized()
 				if attack_t <= 0.0:
@@ -370,13 +370,32 @@ func _think_zombie(dt: float) -> void:
 		swing_t += dt
 		if swing_t > swing_len * 0.45:
 			swing_t = -1.0
-			if player and not player.dead and _flat_dist(_target_pos()) < 2.0 and player.vehicle == null:
+			if player and not player.dead and _flat_dist(_target_pos()) < 2.0 and player.vehicle == null and _can_reach(_target_pos()):
 				player.take_damage(randf_range(14.0, 22.0) * hit_dmg, global_position)
 				# sometimes it gets hold of you
 				if player.get("melee") and randf() < (0.5 if breed == "brute" else 0.22): player.melee.grabbed(self)
 			elif player and player.vehicle and _flat_dist(_target_pos()) < 3.0:
 				_say("hit_metal")
 				player.vehicle.apply_central_impulse((player.vehicle.global_position - global_position).normalized() * 120.0)
+
+## Can it actually get its hands on you: about the same height (not the floor below or above) and nothing in the
+## way (a wall, a window frame). 0.2.59: zombies were grabbing through walls and up through floors
+var _reach_t := 0.0
+var _reach_ok := false
+func _can_reach(tp: Vector3) -> bool:
+	if absf(tp.y - global_position.y) > 1.5: return false
+	var now := Time.get_ticks_msec() / 1000.0
+	if now - _reach_t < 0.25: return _reach_ok
+	_reach_t = now
+	var from := global_position + Vector3(0, 1.3, 0)
+	var to := tp + Vector3(0, 1.2, 0)
+	var ex: Array[RID] = [get_rid()]
+	if player and player is CollisionObject3D: ex.append((player as CollisionObject3D).get_rid())
+	if player and player.get("vehicle") and player.vehicle is CollisionObject3D: ex.append((player.vehicle as CollisionObject3D).get_rid())
+	var q := PhysicsRayQueryParameters3D.create(from, to, 1, ex)
+	var hit := get_world_3d().direct_space_state.intersect_ray(q)
+	_reach_ok = hit.is_empty()
+	return _reach_ok
 
 func _think_scav(dt: float) -> void:
 	# suspicion: seeing you fills it, losing you drains it

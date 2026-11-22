@@ -4,7 +4,7 @@ extends RefCounted
 ## walking along the ground into something wall-like, try the move again from a step higher and, if there's floor
 ## to land on up there, go up onto it. Everyone who walks uses it (you, zombies, scavs).
 
-const MAX_STEP := 0.42
+const MAX_STEP := 0.5             # 0.2.59: a shop's doorstep was just over 0.42
 
 static func slide(body: CharacterBody3D) -> void:
 	var hv := Vector3(body.velocity.x, 0, body.velocity.z)

@@ -24,6 +24,8 @@ var v := {
 	"show_fps": false,
 	"game_mode": "creative",   # creative: Forge (O) and god mode allowed; survival: the real thing
 	"god_mode": false,
+	"drift_assist": true,      # 0.2.59: the front wheels follow the slide, like BeamNG's steering assist
+	"traction_foot": true,     # 0.2.59: W feathers the throttle short of wheelspin; Shift+W floors it
 }
 
 func _init() -> void:

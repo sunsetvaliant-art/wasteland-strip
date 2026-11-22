@@ -30,6 +30,8 @@ var _wb := 0.0                                  # wheelbase, for the speed-sensi
 var brake_in := 0.0
 var _brake_lim := 1.0                          # the pedal the driver's found locks the wheels (0.2.58)
 var _brake_locked := false
+var _thr_lim := 1.0                           # the throttle the driver's found spins the tyres (0.2.59)
+var _thr_spun := false
 var handbrake := false
 # driveline state
 var rpm := 750.0
@@ -142,15 +144,21 @@ func _build_body() -> void:
 	var bare: bool = design.get("no_cab", false)          # a rolling chassis: no body on it yet
 	var cut := BodyCut.of(str(def.glb))
 	var tub_off: bool = str(design.get("tub", "stock")) != "stock" and cut.has("tub")
-	var has_bonnet: bool = cut.has("bonnet") and (cut.bonnet.get("pts", []) as Array).size() >= 3
-	if not bare and (tub_off or has_bonnet):
+	var has_bonnet: bool = cut.has("bonnet") and (BodyCut.has_bonnet(cut.bonnet))
+	var tub_lift := float(design.get("tub_h", 0.0))                  # 0.2.59: the tub up or down on the rails
+	var split_tub: bool = cut.has("tub") and absf(tub_lift) > 0.001
+	if not bare and (tub_off or has_bonnet or split_tub):
 		# 0.2.55: the body in pieces from its cut lines (Body tools): the cab, maybe the tub, the bonnet on its hinge
-		var pcs := BodyCut.pieces(str(def.glb), tub_off, has_bonnet)
+		var pcs := BodyCut.pieces(str(def.glb), tub_off or split_tub, has_bonnet)
 		var keep: Array = pcs.cab.duplicate()
-		if not tub_off: keep.append_array(pcs.tub)
 		for am in keep:
 			var mi := MeshInstance3D.new(); mi.mesh = am
 			holder.add_child(mi)
+		if not tub_off:
+			for am in pcs.tub:
+				var mi := MeshInstance3D.new(); mi.mesh = am
+				mi.position.y = tub_lift
+				holder.add_child(mi)
 		if has_bonnet:
 			var hg := BodyCut.hinge(cut.bonnet)
 			bonnet_pivot = Node3D.new()
@@ -180,7 +188,7 @@ func _build_body() -> void:
 				var dz := BodyCut.tub_front_z(cut.tub, y_t) - BodyCut.tub_front_z(scut.tub, y_t - dy) - 0.05
 				for am in BodyCut.pieces(src, true, false).tub:
 					var mi := MeshInstance3D.new(); mi.mesh = am
-					mi.position = Vector3(0, dy, dz)
+					mi.position = Vector3(0, dy + tub_lift, dz)
 					holder.add_child(mi)
 	elif not bare:
 		var body: Node3D = load("res://assets/vehicles/%s.glb" % def.glb).instantiate()
@@ -253,7 +261,8 @@ func _build_wheels() -> void:
 		for side in [-1.0, 1.0]:
 			var w := {
 				"axle": ai, "side": side, "a": a,
-				"mount": Vector3(side * float(a.track), float(design.ride) + L_static, float(a.z)),
+				# 0.2.59: lift (ride height) per axle: the wheel hangs further below the body
+				"mount": Vector3(side * float(a.track), float(design.ride) + L_static - float(a.get("lift", 0.0)), float(a.z)),
 				"T": T, "k": k, "pre": pre_f, "cb": c_crit * float(a.zeta_b), "cr": c_crit * float(a.zeta_r),
 				"r": float(a.tyre_r), "L": T, "L_prev": T, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
 				"steer": 0.0, "point": Vector3.ZERO, "normal": Vector3.UP, "slip": 0.0, "slip_a": 0.0, "surf": 1.0,
@@ -751,9 +760,26 @@ func _read_controls(dt: float) -> void:
 	# throttle filter: a keyboard is all or nothing, so the pedal goes down over about half a second (quicker the
 	# further it's already in) and comes up fast. Shift held with W floors it at once, for a burnout.
 	var floor_it := driver != null and thr > 0.0 and Input.is_action_pressed("sprint")
+	# 0.2.59: without Shift the foot feathers it: the moment a driven tyre starts to spin it comes back off and holds
+	# just under where it broke loose, feeling for more as the speed comes up (on any ground). Shift floors it.
+	var feather := not floor_it and thr > 0.0 and bool(Settings.get_v("traction_foot") if Settings.get_v("traction_foot") != null else true)
+	var spinning := false
+	if feather:
+		for w in wheels:
+			if w.a.drive and w.contact and float(w.get("sr", 0.0)) > 0.16: spinning = true
+		if spinning:
+			if not _thr_spun: _thr_lim = maxf(throttle * 0.85, 0.08)
+			throttle = move_toward(throttle, _thr_lim * 0.7, 6.0 * dt)
+		else:
+			_thr_lim = move_toward(_thr_lim, 1.0, 0.35 * dt)
+	elif thr <= 0.0:
+		_thr_lim = 1.0
+	_thr_spun = spinning
+	var thr_want: float = minf(thr, _thr_lim) if feather else thr
 	if floor_it: throttle = thr
-	elif thr > throttle: throttle = move_toward(throttle, thr, (1.6 + 2.4 * throttle) * dt)
-	else: throttle = move_toward(throttle, thr, 6.0 * dt)
+	elif spinning: pass
+	elif thr_want > throttle: throttle = move_toward(throttle, thr_want, (1.6 + 2.4 * throttle) * dt)
+	else: throttle = move_toward(throttle, thr_want, 6.0 * dt)
 	# brake pedal (0.2.58): a keyboard is all or nothing, and every set of brakes here can lock its tyres (they could
 	# all along: 2400 Nm a front wheel against the ~1100 Nm a loaded front tyre holds on bitumen). So S is a driver
 	# squeezing the pedal on and easing off the moment a wheel starts to lock, the way you brake an old car with no
@@ -790,7 +816,24 @@ func _read_controls(dt: float) -> void:
 	var max_steer: float = clampf(grip_lock, 0.12, 0.62)
 	var k := clampf(v / 30.0, 0.0, 1.0)
 	var rate := lerpf(2.0, 0.7, k) if steer_in != 0.0 and signf(steer_in) == signf(steer_now) or steer_now == 0.0 else lerpf(3.2, 1.6, k)
-	steer_now = move_toward(steer_now, steer_in * max_steer, rate * dt)
+	var want := steer_in * max_steer
+	# drift assist (0.2.59, like BeamNG's): once the car's sliding, the front wheels follow the way the front is
+	# actually travelling (the countersteer you'd wind on), and what you steer is added on top, up to full lock
+	var da = Settings.get_v("drift_assist")
+	if driver and (da == null or bool(da)) and v > 4.0:
+		var xf := global_transform
+		var front_z := -INF
+		for w in wheels: front_z = maxf(front_z, float(w.mount.z))
+		var vf: Vector3 = linear_velocity + angular_velocity.cross(xf.basis * Vector3(0, 0, front_z) - xf.basis * center_of_mass)
+		var lz := vf.dot(xf.basis.z)
+		if lz > 2.0:
+			var align := atan2(vf.dot(xf.basis.x), lz)
+			var beta := absf(atan2(linear_velocity.dot(xf.basis.x), maxf(linear_velocity.dot(xf.basis.z), 0.5)))
+			var k2 := smoothstep(0.06, 0.2, beta)
+			if k2 > 0.0:
+				want = clampf(lerpf(want, align + steer_in * 0.62 * 0.6, k2), -0.62, 0.62)
+				rate = maxf(rate, lerpf(rate, 5.0, k2))
+	steer_now = move_toward(steer_now, want, rate * dt)
 	if driver == null:
 		throttle = 0.0
 		handbrake = true
@@ -996,10 +1039,17 @@ func _driveline(dt: float) -> void:
 					fx *= muN / mag
 					fy *= muN / mag
 				fx -= sign(w.vx) * w.N * w.crr * clamp(abs(w.vx), 0.0, 1.0)
-			var spin_t: float = t_drive - fx * w.r
-			var om: float = w.omega + h * spin_t / WHEEL_I
+			# 0.2.59: a big wheel's heavier (a tractor's rear is ~40 kg m2), and the tyre can pull the wheel to rolling
+			# speed but not past it in one step (big, heavily loaded wheels shook back and forth at a standstill, which
+			# read as wheelspin)
+			var I_w: float = WHEEL_I * pow(float(w.r) / 0.33, 3.0)
+			var om_d: float = w.omega + h * t_drive / I_w
+			var om: float = om_d - h * fx * w.r / I_w
+			if w.contact:
+				var w0: float = w.vx / maxf(float(w.r), 0.05)
+				if (om_d - w0) * (om - w0) < 0.0: om = w0
 			# brakes act against spin but never reverse it
-			var db: float = h * tb / WHEEL_I
+			var db: float = h * tb / I_w
 			if abs(om) <= db: om = 0.0
 			else: om -= sign(om) * db
 			if not w.contact:

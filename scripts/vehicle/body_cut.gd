@@ -3,6 +3,9 @@ extends RefCounted
 ## Cutting a body model into pieces (0.2.55), from lines set once per model in the pause menu's Body tools:
 ##   tub     a cutting plane (position along the car + tilt) or a seam of clicked points; everything behind it is the
 ##           tub, in front the cab. A ute can then lose its factory tub for a custom tray, and the tub is a part
+##   paint   (0.2.59) or paint it: every triangle of the model brushed as cab, tub or bonnet in Body tools. Painted
+##           triangles go where they're painted; anything unpainted falls back to the lines. A painted bonnet's
+##           outline, hinge and bay come from the painted triangles; a painted tub's front from its front-most point
 ##   bonnet  a shut line clicked round the bonnet; the panel comes off it (thickened, with an underside), hinged at the
 ##           back (or front) to open, and comes off whole for an engine swap. Under it a generic engine bay is drawn,
 ##           but never outside the bonnet's own outline (the bay's shader throws away anything outside it)
@@ -28,7 +31,86 @@ static func all() -> Dictionary:
 	return _cuts
 
 static func of(glb: String) -> Dictionary:
-	return all().get(glb, {})
+	var c: Dictionary = all().get(glb, {})
+	if c.has("paint"): return _derived(glb, c)
+	return c
+
+## Has this cut got a bonnet to take off
+static func has_bonnet(bon: Dictionary) -> bool:
+	return (bon.get("pts", []) as Array).size() >= 3
+
+# ------------------------------------------------------------------------------------------------ painted triangles
+const PART := {"cab": 1, "tub": 2, "bonnet": 3}
+## The painted labels as a byte per triangle (0 = unpainted), in the order meshes_of / surfaces / triangles
+static func labels_of(paint: Dictionary) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(int(paint.get("n", 0)))
+	for r in paint.get("runs", []):
+		var a := int(r[0]); var n := int(r[1]); var v := int(r[2])
+		for i in range(a, mini(a + n, out.size())): out[i] = v
+	return out
+
+static func runs_of(labels: PackedByteArray) -> Array:
+	var runs: Array = []
+	var i := 0
+	while i < labels.size():
+		var v := labels[i]
+		var j := i
+		while j < labels.size() and labels[j] == v: j += 1
+		if v != 0: runs.append([i, j - i, v])
+		i = j
+	return runs
+
+static var _derived_cache := {}
+## The cut with a painted bonnet's shut line and a painted tub's front worked out from the painted triangles
+static func _derived(glb: String, c: Dictionary) -> Dictionary:
+	var key := glb + str(hash(JSON.stringify(c)))
+	if _derived_cache.has(key): return _derived_cache[key]
+	var out := c.duplicate(true)
+	var lab := labels_of(c.paint)
+	var bon_pts := PackedVector2Array()
+	var bon_y := {}
+	var tub_front := -1e9
+	var has_tub := false
+	var ti := 0
+	for m in meshes_of(glb):
+		var mesh: Mesh = m.mesh
+		var xf: Transform3D = m.xf
+		for si in mesh.get_surface_count():
+			var arr := mesh.surface_get_arrays(si)
+			var V: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var I: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+			var nt := (I.size() if not I.is_empty() else V.size()) / 3
+			for t in nt:
+				var v: int = lab[ti] if ti < lab.size() else 0
+				ti += 1
+				if v != 3 and v != 2: continue
+				for k in 3:
+					var idx: int = I[t * 3 + k] if not I.is_empty() else t * 3 + k
+					var p: Vector3 = xf * V[idx]
+					if v == 3:
+						var q := Vector2(snappedf(p.x, 0.01), snappedf(p.z, 0.01))
+						bon_pts.append(q)
+						bon_y[q] = maxf(float(bon_y.get(q, -1e9)), p.y)
+					else:
+						has_tub = true
+						tub_front = maxf(tub_front, p.z)
+	if bon_pts.size() >= 3:
+		var hull := Geometry2D.convex_hull(bon_pts)
+		var pts: Array = []
+		for i in hull.size() - 1:
+			pts.append([hull[i].x, float(bon_y.get(hull[i], 0.9)), hull[i].y])
+		var b: Dictionary = out.get("bonnet", {})
+		b["pts"] = pts
+		b["from_paint"] = true
+		if not b.has("hinge"): b["hinge"] = "rear"
+		out["bonnet"] = b
+	if has_tub and not out.has("tub"):
+		out["tub"] = {"mode": "paint", "front": tub_front}
+	if _derived_cache.size() > 32: _derived_cache.clear()
+	_derived_cache[key] = out
+	return out
+
 
 static func save(glb: String, entry: Dictionary) -> void:
 	all()
@@ -67,6 +149,7 @@ static func _collect(n: Node, parent_xf: Transform3D, out: Array) -> void:
 
 ## Is a point (body frame) behind the tub cut?
 static func behind_tub(tub: Dictionary, p: Vector3) -> bool:
+	if str(tub.get("mode", "plane")) == "paint": return false            # painted: the labels say
 	if str(tub.get("mode", "plane")) == "points":
 		var pts: Array = tub.get("pts", [])         # [[y, z], ...]
 		if pts.size() < 2: return false
@@ -88,6 +171,7 @@ static func behind_tub(tub: Dictionary, p: Vector3) -> bool:
 
 ## The front-most point of the tub cut at deck height (where a tray starts)
 static func tub_front_z(tub: Dictionary, y: float) -> float:
+	if str(tub.get("mode", "plane")) == "paint": return float(tub.get("front", -0.5))
 	if str(tub.get("mode", "plane")) == "points":
 		var pts: Array = tub.get("pts", [])
 		var z := -1e9
@@ -114,8 +198,12 @@ static func pieces(glb: String, want_tub: bool, want_bonnet: bool) -> Dictionary
 	var cut := of(glb)
 	var tub: Dictionary = cut.get("tub", {}) if want_tub else {}
 	var bon: Dictionary = cut.get("bonnet", {}) if want_bonnet else {}
-	var key := glb + JSON.stringify([tub, bon])
+	var paint: Dictionary = cut.get("paint", {})
+	var key := glb + JSON.stringify([tub, bon, hash(JSON.stringify(paint))])
 	if _cache.has(key): return _cache[key]
+	var lab := labels_of(paint) if not paint.is_empty() else PackedByteArray()
+	var ti := 0
+	var poly_rule := not bon.is_empty() and not bool(bon.get("from_paint", false))
 	var poly := bonnet_poly(bon)
 	var floor_y := bonnet_floor(bon)
 	var out := {"cab": [], "tub": [], "bonnet": [], "under": []}
@@ -135,11 +223,23 @@ static func pieces(glb: String, want_tub: bool, want_bonnet: bool) -> Dictionary
 			for i in V.size(): B[i] = xf * V[i]
 			var cabI := PackedInt32Array(); var tubI := PackedInt32Array(); var bonI := PackedInt32Array()
 			for t in range(0, I.size(), 3):
+				var lv := lab[ti] if ti < lab.size() else 0
+				ti += 1
+				if lv == 1:
+					cabI.append_array([I[t], I[t + 1], I[t + 2]]); continue
+				if lv == 2:
+					if want_tub: tubI.append_array([I[t], I[t + 1], I[t + 2]])
+					else: cabI.append_array([I[t], I[t + 1], I[t + 2]])
+					continue
+				if lv == 3:
+					if want_bonnet: bonI.append_array([I[t], I[t + 1], I[t + 2]])
+					else: cabI.append_array([I[t], I[t + 1], I[t + 2]])
+					continue
 				var a := B[I[t]]; var b := B[I[t + 1]]; var c := B[I[t + 2]]
 				var ctr := (a + b + c) / 3.0
 				# 0.2.56: everything inside the shut line above the line's lowest point (less a little: the bonnet's front
 				# edge curls down past it) is the bonnet, steep bits and all; only faces pointing straight down stay
-				if not bon.is_empty() and ctr.y > floor_y - 0.1 and in_poly(poly, Vector2(ctr.x, ctr.z)):
+				if poly_rule and ctr.y > floor_y - 0.1 and in_poly(poly, Vector2(ctr.x, ctr.z)):
 					var nrm := (b - a).cross(c - a)
 					if nrm.length_squared() < 1e-12 or nrm.normalized().y > -0.7:
 						bonI.append_array([I[t], I[t + 1], I[t + 2]])

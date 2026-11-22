@@ -189,6 +189,14 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   part_info / part_mesh. Picking is TriangleMesh.intersect_ray per part in a SubViewport with its own world.
   EngineView.icon(id) renders engine-part pictures on demand and hands them to ItemIcons.put (inventory); WorldItem
   draws dropped engine parts with part_mesh. Test: PT="*res://tools/_engviewtest.gd" under xvfb (e_*.png shots).
+- 0059: Car._read_controls has the throttle foot (_thr_lim) and drift assist (Settings traction_foot / drift_assist);
+  tools/_tyretest.tscn tests brakes, launches, assist and feathering. BodyCut paint: entry.paint = {n, runs:
+  [[start, len, part]]} over the model's triangles in meshes_of order (1 cab, 2 tub, 3 bonnet); BodyCut.of() derives
+  a painted bonnet's pts (hull) and a painted tub's front. Catalog entries can carry ride, tyre_r, track, lift,
+  wheels (per-axle wheel models), drive_f, gearbox, final, front_share (VehicleSpecs.default_design). Sketchfab
+  token in /home/claude/.secrets/sketchfab_token (NOT in git; the user's, from an earlier chat); search/download
+  helpers: tools/sketchfab_search.py, tools/sketchfab_dl.py (download to /home/claude/sf/dl/<name>). World data pass order now ends ... fix_types.py,
+  fix_overlaps.py, then make_streets.py.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

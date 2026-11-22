@@ -353,6 +353,9 @@ func spawn(entry: Dictionary, xf: Transform3D, frozen := false) -> Node3D:
 			n = _make_marker(entry.key)
 			main.add_child(n)
 			n.global_transform = xf
+		"kitpart":
+			# an engine part on the ground, to pick up and bolt on (0.2.59)
+			n = WorldItem.spawn(main, [Items.fresh(str(entry.key), 1)], xf.origin + Vector3(0, 0.3, 0))
 	if n == null:
 		return null
 	n.set_meta("forge", entry)
@@ -377,6 +380,8 @@ func _make_visual(entry: Dictionary) -> Node3D:
 			return mi
 		"marker":
 			return _make_marker(entry.key)
+		"kitpart":
+			return EngineKit.part_node(str(entry.key))
 	return Node3D.new()
 
 func _make_marker(kind: String) -> Node3D:
@@ -853,6 +858,7 @@ func _build_ui() -> void:
 		if g == "Nature":
 			for k in Vegetation.DEF: items.append({"type": "plant", "key": k, "name": k.capitalize() + " (plant)"})
 		_palette_page(tabs, g, items)
+	_engine_page(tabs)
 	var mk := []
 	for k in MARKERS: mk.append({"type": "marker", "key": k, "name": k.replace("_", " ").capitalize() + (" spawn" if not k.ends_with("spawn") else "")})
 	_palette_page(tabs, "NPCs & spawns", mk)
@@ -1044,6 +1050,67 @@ func _palette_page(tabs: TabContainer, title: String, items: Array) -> void:
 			_set_tool(0)
 			_set_palette(false))
 		g.add_child(b)
+	tabs.add_child(sc)
+
+## Engines and their parts (0.2.59): every part of the modular kit, in categories that open and close
+func _engine_page(tabs: TabContainer) -> void:
+	var sc := ScrollContainer.new()
+	sc.name = "Engines & parts"
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var vb := VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(vb)
+	var cats := {"Blocks": [], "Heads: 3 cylinder": [], "Heads: 4 cylinder": [], "Heads: 6 cylinder": [], "Exhaust manifolds": [],
+		"Intake manifolds": [], "Fuel systems": [], "Ignition and ECUs": [], "Alternator and tools": []}
+	for id: String in EngineKit.all_items():
+		var d := EngineKit.item_def(id)
+		var c := ""
+		match str(d.get("part", "")):
+			"block": c = "Blocks"
+			"head": c = "Heads: %d cylinder" % int(EngineKit.parse_head(id)[0])
+			"exhaust": c = "Exhaust manifolds"
+			"intake": c = "Intake manifolds"
+			"fuel": c = "Fuel systems"
+			"ign", "ecu": c = "Ignition and ECUs"
+			_: c = "Alternator and tools"
+		(cats[c] as Array).append({"type": "kitpart", "key": id, "name": str(d.name)})
+	for c in cats:
+		var items: Array = cats[c]
+		items.sort_custom(func(a, b): return a.name < b.name)
+		var head := Button.new()
+		head.toggle_mode = true
+		head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		head.text = "▸  %s  (%d)" % [c, items.size()]
+		vb.add_child(head)
+		var g := GridContainer.new()
+		g.columns = 2
+		g.visible = false
+		vb.add_child(g)
+		var cname: String = c
+		var cnt := items.size()
+		head.toggled.connect(func(on: bool):
+			g.visible = on
+			head.text = "%s  %s  (%d)" % ["▾" if on else "▸", cname, cnt]
+			if on:
+				# the pictures are drawn the first time a category's opened
+				for b2 in g.get_children():
+					if (b2 as Button).icon == null:
+						var bb := b2 as Button
+						EngineView.icon(str(bb.get_meta("kit")), func(tex: Texture2D) -> void:
+							if is_instance_valid(bb) and tex: bb.icon = tex))
+		for it in items:
+			var b := Button.new()
+			b.text = it.name
+			b.custom_minimum_size = Vector2(260, 36)
+			b.clip_text = true
+			b.set_meta("kit", it.key)
+			b.add_theme_constant_override("icon_max_width", 48)
+			b.pressed.connect(func():
+				selected = it
+				place_yaw = 0.0
+				_set_tool(0)
+				_set_palette(false))
+			g.add_child(b)
 	tabs.add_child(sc)
 
 func _prop_name(k: String) -> String:

@@ -152,8 +152,10 @@ func _build_settings() -> void:
 	var c := _page(tabs, "Controls")
 	_slider(c, "motion_sensitivity", "Mouse sensitivity", 0.2, 3.0, 0.05, "%.2f", 1.0, true)
 	_check(c, "invert_y", "Invert mouse Y")
+	_check(c, "traction_foot", "Feather the throttle (W won't spin the tyres; Shift+W floors it)")
+	_check(c, "drift_assist", "Drift assist (the front wheels follow a slide)")
 	var keys := Label.new()
-	keys.text = "On foot: WASD · Shift sprint · Ctrl/C crouch · Space jump · V shoulder / first person · F get in or out\nDriving: W gas · S brake · Space handbrake · Q / E gears (P R N D) · L lights · V cab view · [ ] seat height\nForge: O toggle · Tab palette · 1 place · 2 phys gun · 3 delete · 4 terrain · Ctrl+S save · Ctrl+Z undo"
+	keys.text = "On foot: WASD · Shift sprint · Ctrl/C crouch · Space jump · V shoulder / first person · F get in or out\nDriving: W gas (Shift+W floors it) · S brake (Shift+S stomps) · Space handbrake · Q / E gears (P R N D) · L lights · V cab view · [ ] seat height\nForge: O toggle · Tab palette · 1 place · 2 phys gun · 3 delete · 4 terrain · Ctrl+S save · Ctrl+Z undo"
 	keys.autowrap_mode = TextServer.AUTOWRAP_WORD
 	keys.modulate = Color(1, 1, 1, 0.75)
 	c.add_child(keys)

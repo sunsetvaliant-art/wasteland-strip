@@ -2,7 +2,36 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0058, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0059, 2026-11-22.
+
+## Driving aids, garage, body painter, Sketchfab, F9 reports 2026-11-22 (0059)
+User: W should feather so the rear doesn't break traction unless Shift's held; a BeamNG-style drift assist; tub and
+tray height; axle ride height and ticks to match axles; wheels square to the axle when it flexes; a mesh painter in
+place of the point-to-point bonnet line; can't drag heads onto the engine; Forge tab for engines and parts with
+categories; find more wheels; forklift and tractor with separate wheels (with the Sketchfab key).
+- [x] 0059 W feathers the throttle short of wheelspin (and feels for more as speed comes up); Shift+W floors it.
+      Pause menu > Controls has the switch
+- [x] 0059 Drift assist: once the car's sliding the front wheels follow the way the front's travelling and your
+      steering adds on top (pause menu > Controls, on by default)
+- [x] 0059 Engine view: drops onto the engine work (the view handed drags to its own viewport)
+- [x] 0059 Garage: tub height slider (factory or swapped tub); ride height (lift) per axle; "same on every axle"
+      ticks for wheels, track, ride height, springs and dampers; wheels on each axle can differ
+- [x] 0059 Live axle wheels stay square to the housing as it articulates
+- [x] 0059 Body tools: a mesh painter (brush the model's own faces as tub, bonnet or cab; paint through both
+      skins; start from the old lines). Saved with the cut; a painted bonnet's hinge and bay come from the paint
+- [x] 0059 Forge palette: "Engines & parts" tab, categories that open and close, pictures of each part
+- [x] 0059 Wheels from Sketchfab: 20-spoke mags, wide 13 inch steelies, turbine alloys, five-spoke alloys,
+      tractor lugs (tools/import_wheel.py; credits in assets/credits.json)
+- [x] 0059 Tractor: Lamborghini R6 (Sketchfab, CC BY) with its own front and rear wheels, 4WD farm diesel
+      (tools/import_tractor.py)
+- [ ] Forklift: the free ones on Sketchfab have the wheels baked into the body; split them out (connected parts)
+      or find one with separate wheels; rear steer and a working mast
+- [x] 0059 Zombies can't grab you through a wall or up through a floor (they need a clear line and the same level)
+- [x] 0059 Lots standing inside each other (the shed with a house in it): 26 dropped (tools/fix_overlaps.py)
+- [x] 0059 Servo shops were turned 90 degrees into their canopies (the bowsers at the door): 17 fixed, and the
+      script (tools/make_servos.py)
+- [x] 0059 Roller-door workshops and warehouses on a slope get their floor at the street like shops (the garage
+      door hung a storey up); a doorstep up to 0.5 m walks up without a jump
 
 ## Brakes, tyres, diffs, F9 reports 2026-11-22 (0058)
 User: brakes lock every tyre the instant you press S; a RWD car with an LSD or locked diff should power-skid and wiggle

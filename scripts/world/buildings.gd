@@ -509,7 +509,7 @@ func _level_malls() -> void:
 	for i in lots.size():
 		var l: Array = lots[i]
 		var k0 := str(l[0])
-		if k0 != "shop" and k0 != "pub": continue
+		if not (k0 in ["shop", "pub", "workshop", "warehouse"]): continue        # 0.2.59: sheds with roller doors too
 		var sub := str(l[7]) if l.size() > 7 else ""
 		if sub.begins_with("servo/"): continue
 		var w := float(l[4])
@@ -528,7 +528,7 @@ func _level_malls() -> void:
 			for sz in 4:
 				var h := float(data.get_height(c + basis * Vector3((sx / 2.0 - 0.5) * w, 0, (sz / 3.0 - 0.5) * d)))
 				if not is_nan(h): top = maxf(top, h)
-		if top - hf < 0.4 or top - hf > 6.0: continue
+		if top - hf < 0.4 or top - hf > 8.0: continue
 		var fl := maxf(hf, 0.3) + 0.15
 		_floor[i] = fl
 		cut_n += 1
