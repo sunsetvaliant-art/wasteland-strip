@@ -269,13 +269,16 @@ static func mat(key: String) -> StandardMaterial3D:
 	_mats[key] = m
 	return m
 
-## Collects primitives by material, then one ArrayMesh with a surface per material
+## Collects primitives by part and material. commit() makes one ArrayMesh with a surface per material (the car, one
+## draw per material); commit_parts() one ArrayMesh per part (the engine view, so each part can be picked and lit)
 class Mk:
 	var sts := {}
+	var part := "block"
 	func st(m: String) -> SurfaceTool:
-		if not sts.has(m):
-			var s := SurfaceTool.new(); s.begin(Mesh.PRIMITIVE_TRIANGLES); sts[m] = s
-		return sts[m]
+		var key := part + "|" + m
+		if not sts.has(key):
+			var s := SurfaceTool.new(); s.begin(Mesh.PRIMITIVE_TRIANGLES); sts[key] = s
+		return sts[key]
 	func box(m: String, size: Vector3, at: Vector3, basis := Basis.IDENTITY) -> void:
 		var bm := BoxMesh.new(); bm.size = size
 		st(m).append_from(bm, 0, Transform3D(basis, at))
@@ -292,12 +295,34 @@ class Mk:
 		var x := y.cross(Vector3.UP if absf(y.y) < 0.95 else Vector3.RIGHT).normalized()
 		var z := x.cross(y)
 		cyl(m, r, L, (a + b) * 0.5, Basis(x, y, z), -1.0, segs)
-	func commit() -> ArrayMesh:
-		var am := ArrayMesh.new()
-		for m in sts:
-			var s: SurfaceTool = sts[m]
+	func commit_parts() -> Dictionary:
+		var out := {}
+		for key: String in sts:
+			var pm := key.split("|")
+			var am: ArrayMesh = out.get(pm[0])
+			if am == null:
+				am = ArrayMesh.new(); out[pm[0]] = am
+			var s: SurfaceTool = sts[key]
 			s.generate_normals()
 			s.commit(am)
+			am.surface_set_material(am.get_surface_count() - 1, EngineKit.mat(pm[1]))
+		return out
+	func commit() -> ArrayMesh:
+		var by_mat := {}
+		for key: String in sts:
+			var pm := key.split("|")
+			if not by_mat.has(pm[1]): by_mat[pm[1]] = []
+			(by_mat[pm[1]] as Array).append(sts[key])
+		var am := ArrayMesh.new()
+		for m: String in by_mat:
+			var tmp := ArrayMesh.new()
+			for s: SurfaceTool in by_mat[m]:
+				s.generate_normals()
+				s.commit(tmp)
+			var all := SurfaceTool.new()
+			all.begin(Mesh.PRIMITIVE_TRIANGLES)
+			for i in tmp.get_surface_count(): all.append_from(tmp, i, Transform3D.IDENTITY)
+			all.commit(am)
 			am.surface_set_material(am.get_surface_count() - 1, EngineKit.mat(m))
 		return am
 
@@ -334,6 +359,7 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 	var stagger := PITCH * 0.5 if banks == 2 else 0.0
 	var Lb := L + stagger
 	var bw := 0.34 if big else 0.30
+	mk.part = "block"
 	# ---- the block: crankcase, skirt, sump, bellhousing flange at the back, timing cover at the front
 	mk.box("iron", Vector3(bw if banks == 1 else 0.42, 0.24, Lb), Vector3(0, 0.04, 0))
 	mk.box("iron", Vector3((bw + 0.04) if big else bw, 0.16, Lb * 0.9), Vector3(0, -0.15, -0.02))          # sump
@@ -371,6 +397,7 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 		if bas.determinant() < 0.0: bas = Basis(-out, up, Vector3(0, 0, 1)).orthonormalized()
 		var hh := 0.07 if vt == "flat" else 0.12
 		var hw := 0.25
+		mk.part = "head%d" % bi
 		mk.box("iron" if vt in ["flat", "push"] else "alloy", Vector3(hw, hh, L - 0.02), dc + up * (hh * 0.5), bas)
 		var top := dc + up * hh
 		match vt:
@@ -405,9 +432,12 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 				# exhaust primary: out from the port, bending down and back to the collector
 				var c1 := pe + out * 0.07
 				var col := Vector3(pe.x, pe.y, 0) + out * 0.13 - up * 0.16 + Vector3(0, 0, z * 0.25 - L * 0.32)
+				mk.part = "exhaust%d" % bi
 				mk.pipe("rust", pe, c1, 0.022)
 				mk.pipe("rust", c1, col, 0.022)
+				mk.part = "head%d" % bi
 		if bi < exs.size() and str(exs[bi]) != "":
+			mk.part = "exhaust%d" % bi
 			var pe0 := Vector3(dc.x, dc.y, zc) + up * (hh * 0.5) + out * (hw * 0.5)
 			var colz := Vector3(pe0.x, pe0.y, 0) + out * 0.13 - up * 0.16 + Vector3(0, 0, -L * 0.32)
 			mk.box("rust", Vector3(0.025, 0.05, bc * PITCH), Vector3(pe0.x, pe0.y, zc) + out * 0.004, bas)        # flange
@@ -416,6 +446,7 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 	# ---- intake
 	var iid := str(k.get("intake", ""))
 	var flange := Vector3(0, deck + 0.14, 0)
+	mk.part = "intake"
 	if iid != "":
 		if banks == 1:
 			var sx := -1.0
@@ -437,6 +468,7 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 			flange = Vector3(0, top_y + 0.08, 0)
 	# ---- fuel system
 	var fs := str(k.get("fuel", "")).trim_prefix("ef_")
+	mk.part = "fuel"
 	match fs:
 		"carby":
 			mk.box("silver", Vector3(0.11, 0.09, 0.11), flange + Vector3(0, 0.045, 0))
@@ -462,6 +494,7 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 				mk.pipe("black", flange + Vector3(0, 0.05, 0), flange + Vector3(0, 0.05, 0.16), 0.045)
 	# ---- distributor and coil
 	if str(k.get("ign", "")) == "ign_dizzy":
+		mk.part = "ign"
 		var dz := Vector3(0.0 if banks == 2 else -0.12, deck + (0.02 if banks == 1 else 0.05), -Lb * 0.5 + 0.06)
 		if banks == 2: dz.y = deck * cos(vee * 0.5) + 0.05
 		mk.cyl("black", 0.035, 0.12, dz)
@@ -476,11 +509,13 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 	var wp := Vector3(0, 0.2 if banks == 1 else 0.22, zf)
 	var alt := Vector3(0.21 if banks == 1 else 0.26, 0.24 if banks == 1 else 0.28, zf)
 	var pul := Basis(Vector3.RIGHT, PI * 0.5)
+	mk.part = "block"
 	mk.cyl("steel", 0.085, 0.035, crank, pul)
 	mk.cyl("iron", 0.06, 0.06, wp + Vector3(0, 0, -0.03), pul)
 	mk.cyl("steel", 0.055, 0.03, wp, pul)
 	var pulleys: Array = [[crank, 0.085], [wp, 0.055]]
 	if k.get("alt", false):
+		mk.part = "alt"
 		mk.cyl("silver", 0.065, 0.13, alt + Vector3(0, 0, -0.08), pul)
 		mk.cyl("black", 0.07, 0.02, alt + Vector3(0, 0, -0.02), pul)
 		mk.cyl("steel", 0.032, 0.03, alt, pul)
@@ -507,11 +542,14 @@ static func _belt(mk: Mk, pulleys: Array, zf: float) -> void:
 			s.add_vertex(v)
 
 ## The ECU (a silver box with a plug) and the battery, for the top of the bay
+static func _ecu(mk: Mk, at: Vector3) -> void:
+	mk.box("silver", Vector3(0.2, 0.04, 0.15), at)
+	mk.box("black", Vector3(0.06, 0.03, 0.03), at + Vector3(0.05, 0.0, 0.085))
+	for i in 5: mk.box("silver", Vector3(0.006, 0.01, 0.15), at + Vector3(-0.08 + i * 0.03, 0.025, 0))
+
 static func ecu_node() -> Node3D:
 	var mk := Mk.new()
-	mk.box("silver", Vector3(0.2, 0.04, 0.15), Vector3.ZERO)
-	mk.box("black", Vector3(0.06, 0.03, 0.03), Vector3(0.05, 0.0, 0.085))
-	for i in 5: mk.box("silver", Vector3(0.006, 0.01, 0.15), Vector3(-0.08 + i * 0.03, 0.025, 0))
+	_ecu(mk, Vector3.ZERO)
 	var mi := MeshInstance3D.new(); mi.mesh = mk.commit(); mi.name = "ECU"
 	return mi
 
@@ -523,16 +561,263 @@ static func battery_node() -> Node3D:
 	var mi := MeshInstance3D.new(); mi.mesh = mk.commit(); mi.name = "Battery"
 	return mi
 
-## A loose part on the ground or on a shelf: the same code, just that part
-static func part_node(id: String) -> Node3D:
-	var d := item_def(id)
-	var k := {}
-	match str(d.get("part", "")):
-		"block":
-			k = {"block": id, "heads": [], "exhaust": [], "intake": "", "fuel": "", "ign": "", "alt": false}
+# ------------------------------------------------------------------------------------------------ slots (the engine view, 0.2.57)
+## A build seen as spots a part goes in: block, head0/head1, exhaust0/exhaust1 (bank 0 is the left bank, -X),
+## intake, fuel, ign, ecu, alt. The engine view picks, ghosts and drops parts by slot.
+
+## The slots a build shows: every fitted part, plus the empty spots it needs or takes
+static func slots(k: Dictionary) -> Array:
+	var pb := parse_block(str(k.get("block", "")))
+	if pb.is_empty(): return ["block"]
+	var banks := int(BLOCKS[pb[0]].banks)
+	var out := ["block"]
+	for i in banks: out.append("head%d" % i)
+	for i in banks: out.append("exhaust%d" % i)
+	out.append_array(["intake", "fuel"])
+	var fs := str(k.get("fuel", "")).trim_prefix("ef_")
+	if str(k.get("ign", "")) != "" or fs == "carby": out.append("ign")
+	if str(k.get("ecu", "")) != "" or fs in ["tb", "epump"]: out.append("ecu")
+	out.append("alt")
+	return out
+
+## The part id in a slot ("" when it's empty)
+static func slot_id(k: Dictionary, slot: String) -> String:
+	match slot:
+		"block", "intake", "fuel", "ign", "ecu": return str(k.get(slot, ""))
+		"alt": return "alternator" if k.get("alt", false) else ""
+	for kind: String in ["head", "exhaust"]:
+		if slot.begins_with(kind):
+			var arr: Array = k.get("heads" if kind == "head" else "exhaust", [])
+			var i := int(slot.trim_prefix(kind))
+			return str(arr[i]) if i < arr.size() else ""
+	return ""
+
+## What the slot is called on this build
+static func slot_label(k: Dictionary, slot: String) -> String:
+	var pb := parse_block(str(k.get("block", "")))
+	var vee := not pb.is_empty() and int(BLOCKS[pb[0]].banks) == 2
+	match slot:
+		"block": return "Block"
+		"intake": return "Intake manifold"
+		"fuel": return "Fuel system"
+		"ign": return "Distributor and coil"
+		"ecu": return "ECU"
+		"alt": return "Alternator"
+	for kind: String in ["head", "exhaust"]:
+		if slot.begins_with(kind):
+			var nm := "Cylinder head" if kind == "head" else "Exhaust manifold"
+			if not vee: return nm
+			return "%s, %s bank" % [nm, "left" if slot.ends_with("0") else "right"]
+	return slot
+
+## The build with every empty slot filled by a stand-in part: what the ghosts are drawn from
+static func ghost_kit(k: Dictionary) -> Dictionary:
+	var pb := parse_block(str(k.get("block", "")))
+	if pb.is_empty(): return {"block": block_id("i6", false), "heads": [], "exhaust": [], "intake": "", "fuel": "", "ign": "", "ecu": "", "alt": false}
+	var g := k.duplicate(true)
+	var lay: String = pb[0]
+	var banks := int(BLOCKS[lay].banks)
+	var bc := bank_cyl(lay)
+	for key: String in ["heads", "exhaust"]:
+		var arr: Array = g.get(key, [])
+		while arr.size() < banks: arr.append("")
+		for i in banks:
+			if str(arr[i]) == "": arr[i] = head_id(bc, "push", "med") if key == "heads" else exhaust_id(bc)
+		g[key] = arr
+	if str(g.get("intake", "")) == "": g.intake = intake_id(lay)
+	if str(g.get("fuel", "")) == "": g.fuel = "ef_carby"
+	var fs := str(g.fuel).trim_prefix("ef_")
+	if str(g.get("ign", "")) == "" and fs == "carby" and str(k.get("fuel", "")) != "": g.ign = "ign_dizzy"
+	if str(g.get("ecu", "")) == "" and fs in ["tb", "epump"]: g.ecu = ecu_id(fs == "epump", int(BLOCKS[lay].cyl))
+	g.alt = true
+	return g
+
+## Where the ECU sits beside the engine in the engine view
+static func ecu_spot(k: Dictionary) -> Vector3:
+	var pb := parse_block(str(k.get("block", "")))
+	var big: bool = pb[1] if not pb.is_empty() else false
+	return Vector3(0.5, (0.36 if big else 0.30) + 0.05, -0.05)
+
+## Each part of a build as its own mesh: {slot: ArrayMesh} (the ECU floats beside the engine)
+static func part_meshes(k: Dictionary) -> Dictionary:
+	var mk := Mk.new()
+	_build(mk, k)
+	if str(k.get("ecu", "")) != "":
+		mk.part = "ecu"
+		_ecu(mk, ecu_spot(k))
+	return mk.commit_parts()
+
+## Where a part would go on this build: [slot, reason]. slot is "" when it won't go on (reason says why); a slot
+## that's already taken comes back too (dropping onto it swaps the parts). `prefer` picks the bank on a V
+static func slot_for(k: Dictionary, id: String, prefer := "") -> Array:
+	var part := str(item_def(id).get("part", ""))
+	if part == "": return ["", "That's not an engine part"]
+	var pb := parse_block(str(k.get("block", "")))
+	if part == "block":
+		if pb.is_empty(): return ["block", ""]
+		return ["", "There's a block in already: strip it and lift it out first"]
+	if pb.is_empty(): return ["", "Start with a block"]
+	var lay: String = pb[0]
+	var banks := int(BLOCKS[lay].banks)
+	var bc := bank_cyl(lay)
+	match part:
+		"head":
+			var ph := parse_head(id)
+			if int(ph[0]) != bc: return ["", "A %d-cylinder head. This %s takes %s %d-cylinder head%s" % [int(ph[0]), BLOCKS[lay].name, "two" if banks == 2 else "a", bc, "s" if banks == 2 else ""]]
+			return [_pick(k, "head", banks, prefer), ""]
+		"exhaust":
+			var c := int(id.trim_prefix("ex_"))
+			if c != bc: return ["", "Made for a %d-cylinder head. This %s needs a %d-cylinder manifold%s" % [c, BLOCKS[lay].name, bc, " on each bank" if banks == 2 else ""]]
+			return [_pick(k, "exhaust", banks, prefer), ""]
+		"intake":
+			if id != intake_id(lay): return ["", "Made for a different block. This %s takes the %s" % [BLOCKS[lay].name, item_def(intake_id(lay)).name.to_lower()]]
+			return ["intake", ""]
+		"ecu":
+			var fs := str(k.get("fuel", "")).trim_prefix("ef_")
+			if FUELS.has(fs) and FUELS[fs].ecu and id != ecu_id(FUELS[fs].diesel, int(BLOCKS[lay].cyl)):
+				return ["", "Wrong ECU: this engine wants the %s" % str(item_def(ecu_id(FUELS[fs].diesel, int(BLOCKS[lay].cyl))).name)]
+			return ["ecu", ""]
+		"fuel", "ign", "alt":
+			return [part, ""]
+	return ["", "That's not an engine part"]
+
+static func _pick(k: Dictionary, kind: String, banks: int, prefer: String) -> String:
+	if prefer.begins_with(kind) and int(prefer.trim_prefix(kind)) < banks: return prefer
+	var arr: Array = k.get("heads" if kind == "head" else "exhaust", [])
+	for i in banks:
+		if i >= arr.size() or str(arr[i]) == "": return "%s%d" % [kind, i]
+	return kind + "0"
+
+## Fit a part into a slot. Returns the id of whatever came off to make room ("" if the spot was free)
+static func fit(k: Dictionary, slot: String, id: String) -> String:
+	var old := slot_id(k, slot)
+	if slot == "block":
+		var pb := parse_block(id)
+		var banks := int(BLOCKS[pb[0]].banks)
+		var heads := []; var ex := []
+		for i in banks: heads.append(""); ex.append("")
+		k.block = id; k.heads = heads; k.exhaust = ex
+		for key: String in ["intake", "fuel", "ign", "ecu"]:
+			if not k.has(key): k[key] = ""
+		if not k.has("alt"): k.alt = false
+		if not k.has("tune"): k.tune = {"fuel": 0.0, "timing": 0.0, "limit": 0.0}
+		k.rolled = true
+		return old
+	match slot:
+		"intake", "fuel", "ign", "ecu": k[slot] = id
+		"alt": k.alt = true
 		_:
-			var mi := MeshInstance3D.new()
-			var bm := BoxMesh.new(); bm.size = Vector3(0.3, 0.12, 0.2)
-			mi.mesh = bm; mi.material_override = mat("alloy" if str(d.get("part", "")) != "ecu" else "silver")
-			return mi
-	return build_node(k)
+			var kind := "head" if slot.begins_with("head") else "exhaust"
+			var arr: Array = k.get("heads" if kind == "head" else "exhaust", [])
+			var i := int(slot.trim_prefix(kind))
+			while arr.size() <= i: arr.append("")
+			arr[i] = id
+			k["heads" if kind == "head" else "exhaust"] = arr
+	return old
+
+## Why a slot's part can't come off ("" if it can)
+static func cant_take_off(k: Dictionary, slot: String) -> String:
+	if slot_id(k, slot) == "": return "Nothing there"
+	if slot == "block":
+		for s2: String in slots(k):
+			if s2 != "block" and slot_id(k, s2) != "": return "Strip it first: everything else comes off before the block"
+	return ""
+
+## Take a part off: returns its id
+static func take_off(k: Dictionary, slot: String) -> String:
+	var old := slot_id(k, slot)
+	match slot:
+		"block":
+			k.block = ""; k.heads = []; k.exhaust = []
+		"intake", "fuel", "ign", "ecu": k[slot] = ""
+		"alt": k.alt = false
+		_:
+			var kind := "head" if slot.begins_with("head") else "exhaust"
+			var arr: Array = k.get("heads" if kind == "head" else "exhaust", [])
+			var i := int(slot.trim_prefix(kind))
+			if i < arr.size(): arr[i] = ""
+	return old
+
+## A few lines on what a part is and what it does
+static func part_info(id: String) -> String:
+	var part := str(item_def(id).get("part", ""))
+	match part:
+		"block":
+			var pb := parse_block(id)
+			var b: Dictionary = BLOCKS[pb[0]]
+			var bc := bank_cyl(pb[0])
+			return "%.1f litres, %d cylinders, about %d kg bare. Takes %s %d-cylinder head%s, a %d-cylinder exhaust manifold on each, and the %s." % [
+				b.litres[1 if pb[1] else 0], int(b.cyl), int(b.kg[1 if pb[1] else 0]), "two" if int(b.banks) == 2 else "one", bc,
+				"s" if int(b.banks) == 2 else "", bc, str(item_def(intake_id(pb[0])).name).to_lower()] + (" The big block has a taller deck and more litres on the same bolt pattern." if pb[1] else "")
+		"head":
+			var ph := parse_head(id)
+			var vt: Dictionary = VALVETRAIN[ph[1]]
+			var t := "%s: %d%% of a DOHC's power, peak torque around %d rpm, revs to %d. " % [vt.name.capitalize(), int(vt.power * 100.0), int(vt.peak), int(vt.redline)]
+			match str(ph[2]):
+				"hi": t += "High compression: more power, and the only head that lights diesel. On petrol it pings under load unless an ECU tune pulls the timing back."
+				"lo": t += "Low compression: gentle, runs on anything, a bit down on power."
+				_: t += "Medium compression: the all-rounder."
+			return t
+		"exhaust":
+			return "Bolts to a %d-cylinder head. Without one on every bank the engine loses about a fifth of its torque." % int(id.trim_prefix("ex_"))
+		"intake":
+			return "Feeds every port on its block and carries the carby or throttle body on top. Only fits the block it was made for."
+		"fuel":
+			match id:
+				"ef_carby": return "Petrol. Simple and forgiving, but it needs a distributor and coil for the spark, and it can't be tuned."
+				"ef_tb": return "Petrol, fuel injected: about 6% more power. Needs a petrol ECU for the number of cylinders, which does the spark and tunes with a laptop."
+				"ef_mech": return "Diesel. Needs high-compression heads. Turn the fuel screw up with a shifter for more power, and more smoke."
+				"ef_epump": return "Diesel, electronic: about 8% more power. Needs high-compression heads and a diesel ECU for the number of cylinders."
+		"ign":
+			return "The spark for a carby engine. Fuel-injected engines get their spark from the ECU; diesels don't need one."
+		"ecu":
+			var p2 := id.split("_")
+			return "The engine computer for a %s %s-cylinder. Runs a throttle body or an electronic pump, and tunes with a laptop (fuel, timing, rev limit)." % ["diesel" if p2[1] == "d" else "petrol", p2[2]]
+		"alt":
+			return "Charges the battery off the belt. Without it the engine still runs, but the battery drains as it goes."
+	return ""
+
+## A part on its own as a mesh: the same code that builds it on an engine (for icons and loose parts)
+static var _pcache := {}
+static func part_mesh(id: String) -> ArrayMesh:
+	if _pcache.has(id): return _pcache[id]
+	var part := str(item_def(id).get("part", ""))
+	var k := {}
+	var slot := part
+	var lay_of := {3: "i3", 4: "i4", 6: "i6"}
+	match part:
+		"block":
+			k = {"block": id, "heads": [], "exhaust": [], "intake": "", "fuel": "", "ign": "", "ecu": "", "alt": false}
+		"head":
+			var ph := parse_head(id)
+			k = make(lay_of.get(int(ph[0]), "i4"), false, ph[1], ph[2], "carby"); k.heads = [id]; slot = "head0"
+		"exhaust":
+			k = make(lay_of.get(int(id.trim_prefix("ex_")), "i4"), false, "push", "med", "carby"); slot = "exhaust0"
+		"intake":
+			k = make(id.trim_prefix("ei_"), false, "push", "med", "carby")
+		"fuel":
+			var f := id.trim_prefix("ef_")
+			k = make("i4", false, "push", "hi" if FUELS[f].diesel else "med", f)
+		"ign", "alt":
+			k = make("i4", false, "push", "med", "carby")
+		"ecu":
+			k = make("i4", false, "push", "med", "tb"); k.ecu = id
+	if k.is_empty(): return null
+	var am: ArrayMesh = part_meshes(k).get(slot)
+	_pcache[id] = am
+	return am
+
+## A loose part on the ground or on a shelf, sat on its lowest point
+static func part_node(id: String) -> Node3D:
+	var am := part_mesh(id)
+	var mi := MeshInstance3D.new()
+	if am == null:
+		var bm := BoxMesh.new(); bm.size = Vector3(0.3, 0.12, 0.2)
+		mi.mesh = bm; mi.material_override = mat("alloy")
+		return mi
+	mi.mesh = am
+	var bb := am.get_aabb()
+	mi.position = -Vector3(bb.get_center().x, bb.position.y, bb.get_center().z)
+	var root := Node3D.new()
+	root.add_child(mi)
+	return root

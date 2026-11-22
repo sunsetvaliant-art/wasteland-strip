@@ -310,6 +310,11 @@ func _stand_menu(p) -> Array:
 	var k := _stand_kit()
 	var car := _near_car()
 	if _eng_node == null and not k.is_empty(): _stand_show()
+	# 0.2.57: the engine view, straight from the stand (an empty stand takes a block dragged onto its ghost)
+	out.append(["Engine view (3D): drag parts on and off", func():
+		if st().get("kit", {}).is_empty(): st()["kit"] = {"block": "", "heads": [], "exhaust": [], "intake": "", "fuel": "", "ign": "", "ecu": "", "alt": false, "rolled": true, "tune": {}}
+		var m = get_tree().current_scene
+		m.engine_view.open_for(st()["kit"], {"title": "On the engine stand", "block_ok": true, "changed": func(): _stand_show()}), true, ""])
 	if k.is_empty() or str(k.get("block", "")) == "":
 		if car and str(car.design.get("kit", {}).get("block", "")) != "":
 			var ok: bool = spanner and (car.bonnet_pivot == null or car.design.get("bonnet_off", false))
@@ -331,7 +336,7 @@ func _stand_menu(p) -> Array:
 						st()["kit"] = {"block": id, "heads": heads, "exhaust": ex, "intake": "", "fuel": "", "ign": "", "ecu": "", "alt": false, "rolled": true, "tune": {}}
 						_stand_show(), true, ""])
 					break
-		if out.is_empty(): out.append(["Empty engine stand", func(): pass, false, "Bring a car with its bonnet off, or carry a block here"])
+		if out.size() == 1: out.append(["Empty engine stand", func(): pass, false, "Bring a car with its bonnet off, or carry a block here"])
 		return out
 	out.append(["%s  ·  %s" % [EngineKit.describe(k), "ready to go in" if EngineKit.fault(k) == "" else EngineKit.fault(k)], func(): pass, false, ""])
 	if car and str(car.design.get("kit", {}).get("block", "")) == "":

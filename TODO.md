@@ -2,7 +2,7 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0056, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0057, 2026-11-22.
 
 ## Houses, fences, building types, F9 reports 2026-11-22 (0056)
 User: "why buildings have such massive footprints in the game, so large they sit on the road"; "fences really need to
@@ -30,9 +30,11 @@ strung across a hill".
 - [x] 0056 Bonnet line not taking all the mesh inside it (workhorse); right-click menu stuck over the garage / tools
 - [x] 0056 A tub off one model bolts onto another (the workhorse tub on the AA-160); the AA-160 scaled to size (6.5 m)
 - [x] 0056 Tray height slider
-- [ ] Engine menu (user's idea, 2026-11-22): a floating, rotating model of the engine with its parts on; hover a part
-      to highlight it, click to select (name and description), double-click for a grid of every engine part in
-      your pack on the right; missing parts show as ghosts; drag a part from the grid onto the engine to fit it
+- [x] 0057 Engine view (user's idea, 2026-11-22): the engine floats and turns; hover a part to light it up, click for
+      its name and what it does, double-click for your engine parts on the right (what fits first); empty spots are
+      see-through ghosts; drag a part onto the engine to fit it (onto a taken spot swaps them), drag a selected part
+      onto the list to take it off. From under the bonnet (ENGINE VIEW button) and the engine stand
+- [x] 0057 Engine parts have inventory pictures (drawn from the same code, on the fly) and look like themselves on the ground
 - [ ] North strip (old frame) road gaps: check Tweed Heads CBD against Overture once the frames agree
 - [ ] Shops in the main streets with no proof they're shops (399) stay shops for now: check against photos
 

@@ -182,6 +182,13 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   index entries carry the plant-mask offset; fences per block parcel). Backups of 0055 state: /tmp/buildings_0055.json,
   /tmp/lines_0055.bin (gone in a fresh sandbox; the repo history has them). Buildings._yard fences are off while
   Streets has data.
+- 0057 engine view: scripts/vehicle/engine_view.gd (EngineView, main.engine_view; open_for(kit, {title, changed,
+  on_close, block_ok})). EngineKit's Mk tags every primitive with a part, so part_meshes(k) gives one mesh per slot
+  (block, head0/1, exhaust0/1, intake, fuel, ign, ecu, alt) while commit() still merges by material for the car (same
+  draw calls). Slot API: slots / slot_id / slot_label / ghost_kit / slot_for / fit / take_off / cant_take_off /
+  part_info / part_mesh. Picking is TriangleMesh.intersect_ray per part in a SubViewport with its own world.
+  EngineView.icon(id) renders engine-part pictures on demand and hands them to ItemIcons.put (inventory); WorldItem
+  draws dropped engine parts with part_mesh. Test: PT="*res://tools/_engviewtest.gd" under xvfb (e_*.png shots).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

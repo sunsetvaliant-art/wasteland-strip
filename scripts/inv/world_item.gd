@@ -35,6 +35,16 @@ static func spawn(parent: Node, stacks: Array, pos: Vector3, vel := Vector3.ZERO
 		raw.scale = Vector3.ONE * k
 		raw.position = -bb.get_center() * k
 		box = bb.size * k
+	elif str(EngineKit.item_def(str(s.id)).get("part", "")) != "" and EngineKit.part_mesh(str(s.id)) != null:
+		# an engine part: the real thing at its real size, from the same code as the engine (0.2.57)
+		var am := EngineKit.part_mesh(str(s.id))
+		var mi := MeshInstance3D.new()
+		mi.mesh = am
+		var bb := am.get_aabb()
+		mi.position = -bb.get_center()
+		vis = Node3D.new()
+		vis.add_child(mi)
+		box = bb.size
 	else:
 		# folded clothes / a plain packet
 		var mi := MeshInstance3D.new()

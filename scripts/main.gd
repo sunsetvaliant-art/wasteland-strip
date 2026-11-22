@@ -43,6 +43,7 @@ var zombies: ZombieDirector
 var inv_ui: InventoryUI
 var craft_ui: CraftUI
 var car_care: CarCare
+var engine_view: EngineView
 var base: BaseBuild
 var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon can't stop the game starting
 
@@ -142,6 +143,10 @@ func _ready() -> void:
 	car_care.name = "CarCare"
 	add_child(car_care)
 	car_care.setup(self)
+	engine_view = EngineView.new()
+	engine_view.name = "EngineView"
+	add_child(engine_view)
+	engine_view.setup(self)
 	interact_menu = InteractMenu.new()
 	interact_menu.name = "InteractMenu"
 	add_child(interact_menu)
