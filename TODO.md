@@ -2,7 +2,26 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0064, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0065, 2026-11-23.
+
+## Real chassis, suspension, engines under bonnets, physical lifting 2026-11-22 (0065+)
+User: physically take vehicles apart: cabs, tubs, engines, gearboxes; lift a cab off with a block and tackle hung
+somewhere decent, or straps on hydraulic gear (loader, tractor, forklift); suspension parts are cartoonish and too
+big (the diff from the old artifact); a real ladder chassis (kicks up over the axles, widens); motors poke through
+bonnets (maybe too big for them); engine bay sheet metal in the body's colour; a forklift with a mast and forks on
+dialled-in controls to pluck a cab off an unbolted chassis (no teleport button); can a loader be rigged. Then: the
+new Ranger and B2500 paint looks unlit; their wheels can't be changed; hubs left floating / coming away with the
+body; do the forklift, block and tackle, unbolting and bolting tub/cab/chassis; finish 0.2.65.
+- [x] 0065 Ladder chassis: rails kick up over each axle (clear of the housing at full bump), stay up behind the back
+      axle, pinch in ahead of the cab; crossmembers at the front, engine, gearbox, ahead of the rear axle and the
+      back; one mesh. Springs, leaf hangers, shocks and wishbone mounts bolt to it where it is
+- [x] 0065 The live axle is the textured housing from the old game (diff centre, tubes, backing plates, perches),
+      pinion to the gearbox; leaf packs 5 leaves on one line; coils 13-15 cm, slim sway bars, dull paint
+- [x] 0065 Engines drop until they clear the bonnet (each body's skin measured, tools/bonnet_tops.py ->
+      body_info.json). The Meshy bodies needed 30-49 cm: their bonnets sit low over the wheels
+- [x] 0065 Engine bay walls in the body's own paint (sampled off its texture)
+- [x] 0065 New utes: normals were lost on import (the flat, unlit look); wheels now swap from the garage's Wheels;
+      hubs, brake discs and leftover tyre wall cut out of the bodies
 
 ## Modern utes in, body tools free cam 2026-11-22 (0064)
 User: put the modern utes into the game; every imported vehicle gets its wheels cut off and put in the game for

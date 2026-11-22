@@ -273,7 +273,11 @@ func _build_ui() -> void:
 	# --- wheels and tyres
 	_title("Wheels")
 	var wkeys: Array = VehicleRig.WHEEL_MODELS.keys()
-	_choice("Wheels", wkeys.map(func(k): return VehicleRig.WHEEL_MODELS[k].name), wkeys.find(str(design.get("wheel_model", "stock"))), func(i): design.wheel_model = wkeys[i]; _changed())
+	_choice("Wheels", wkeys.map(func(k): return VehicleRig.WHEEL_MODELS[k].name), wkeys.find(str(design.get("wheel_model", "stock"))), func(i):
+		# 0.2.65: the whole car's wheels: axles that came with their own (a catalog body's cut-off wheels) follow it
+		design.wheel_model = wkeys[i]
+		for ax in design.axles: ax.wheel_model = ""
+		_changed())
 	_slider("Tyre pressure (psi)", 12.0, 50.0, 1.0, float(design.get("tyre_psi", 32.0)), func(v): design.tyre_psi = v; _changed())
 	# --- axles
 	_title("Axles")

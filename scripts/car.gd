@@ -170,7 +170,7 @@ func _build_body() -> void:
 				mi.position = -hg[0]
 				bonnet_pivot.add_child(mi)
 			bonnet_pivot.visible = not design.get("bonnet_off", false)
-			var bay := BodyCut.bay_node(cut.bonnet, float(design.ride) + 0.2 - float(off[1]))
+			var bay := BodyCut.bay_node(cut.bonnet, float(design.ride) + 0.2 - float(off[1]), BodyCut.paint_of(str(def.glb)) * 0.82)
 			if bay: holder.add_child(bay)
 		if tub_off: tub_front = BodyCut.tub_front_z(cut.tub, float(design.ride) + 0.36 - float(off[1])) + float(off[2])
 		# 0.2.56: another model's tub bolted on behind this cab, its front at the back of the cab, on the rails

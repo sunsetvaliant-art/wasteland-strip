@@ -62,7 +62,13 @@ static func default_design(kind: String) -> Dictionary:
 		if d.has("wheels"): ax.wheel_model = str(d.wheels[ai])
 	if d.has("drive_f"): front.drive = bool(d.drive_f)
 	var fs := float(d.get("front_share", 0.56))
+	# 0.2.65: the same wheels front and back are the car's wheels (so the garage's Wheels choice changes them), not
+	# a per-axle setting
+	var car_wm := "stock"
+	if d.has("wheels") and str(d.wheels[0]) == str(d.wheels[1]):
+		car_wm = str(d.wheels[0]); front.wheel_model = ""; rear.wheel_model = ""
 	return {
+		"wheel_model": car_wm,
 		"kit": EngineKit.stock(d), "tub": "stock", "tray": {},
 		"cab": kind, "cab_offset": [0.0, 0.0, 0.0], "ride": ride, "mass": mass, "front_share": fs,
 		"cda": 1.75 if big else 0.95, "engine": eng, "gearbox": str(d.get("gearbox", "man4" if (big or heavy) else "auto3")), "final": float(d.get("final", 3.9 if big else 3.36)),

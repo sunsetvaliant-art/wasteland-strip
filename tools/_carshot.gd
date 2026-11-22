@@ -13,6 +13,9 @@ func _ready():
 	for key in OS.get_environment("SHOT_CARS").split(","):
 		var c := Car.new(); c.design = VehicleSpecs.default_design(key); c.position = Vector3(0, 1.2, 0); add_child(c)
 		for i in 150: await get_tree().physics_frame
+		if OS.get_environment("SHOT_NOBODY") != "":
+			for n in c.find_children("*", "MeshInstance3D", true, false):
+				if not c.parts.is_ancestor_of(n): (n as MeshInstance3D).visible = false
 		var t := c.global_transform
 		var views := [Vector3(3.6, 1.6, 4.4), Vector3(4.2, 1.1, 0.0), Vector3(-3.4, 2.0, -4.6)]
 		for vi in views.size():
@@ -20,12 +23,23 @@ func _ready():
 			for k in 4: await get_tree().process_frame
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png("/tmp/shots/car_%s_%d.png" % [key, vi])
+		# close on the back axle from behind and below the body line
+		var zr := INF
+		for a in c.design.axles: zr = minf(zr, float(a.z))
+		cam.global_position = t * Vector3(1.5, 0.35, zr - 1.9); cam.look_at(t * Vector3(0, 0.0, zr))
+		for k in 4: await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("/tmp/shots/car_%s_axle.png" % key)
 		# from the driver's seat (cab view)
 		cam.global_transform = c.cam_cab.global_transform; cam.fov = 70
 		for k in 4: await get_tree().process_frame
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png("/tmp/shots/car_%s_cab.png" % key)
 		cam.fov = 40
+		if c.parts.engine_node:
+			var ab: AABB = c.parts._aabb_of(c.parts.engine_node, Transform3D.IDENTITY)
+			var off: Array = c.design.cab_offset
+			print("CAR eng ", key, " top ", snappedf(ab.end.y, 0.01), " x ", snappedf(ab.position.x, 0.01), "..", snappedf(ab.end.x, 0.01), " z ", snappedf(ab.position.z, 0.01), "..", snappedf(ab.end.z, 0.01), " off ", off, " skin ", BodyCut.skin_low(str(c.def.glb), ab.position.x - float(off[0]), ab.end.x - float(off[0]), ab.position.z - float(off[2]), ab.end.z - float(off[2])), " more drop ", c.parts._engine_fit())
 		print("CAR ", key, " pos ", snapped(c.global_position, Vector3(0.01, 0.01, 0.01)), " up ", snapped(c.global_transform.basis.y, Vector3(0.01, 0.01, 0.01)))
 		c.queue_free()
 		await get_tree().process_frame

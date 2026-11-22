@@ -23,7 +23,7 @@ func _ready():
 		# long side along whichever of x/z is longer; sit it on the floor at the origin
 		var long_x := ab.size.x > ab.size.z
 		n.position -= Vector3(ab.get_center().x, ab.position.y, ab.get_center().z)
-		var L := maxf(ab.size.x, ab.size.z); var H := ab.size.y
+		var L := maxf(ab.size.x, ab.size.z); var H := maxf(ab.size.y, L * 0.3)
 		var fwd := Vector3(1, 0, 0) if long_x else Vector3(0, 0, 1)
 		var side := Vector3(0, 0, 1) if long_x else Vector3(1, 0, 0)
 		var nm := f.get_file().get_basename()

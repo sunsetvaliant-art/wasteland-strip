@@ -229,6 +229,12 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   under the bonnet) and seat y; WHEEL_MODELS entry in rig.gd; credits. Check with tools/_carshot.tscn
   (SHOT_CARS=a,b: three outside views and the cab view) and tools/_wheelface.tscn. Body tools free cam: freecam,
   set_freecam(), _freecam_move() (physical keys, so it works while the tree's paused).
+- 0065: rig.gd: prof (z, centre y, half width every 5 cm) from _build_profile: kick per axle from its travel and
+  lift; rail_y(z) / rail_hw(z) for anything bolted to the frame. Live axle model assets/vehicles/parts/live_axle.glb
+  (1 m across, pinion +Z; decoded from the old artifact's P_AXLE). Engine fit: _engine_fit() against
+  BodyCut.skin_low() (body_info.json from tools/bonnet_tops.py: re-run it after adding or changing a body);
+  catalog "eng_fit": false skips it (tractor). BodyCut.paint_of(glb) colours the engine bay. import_vehicle.py: load
+  with process=False and export include_normals=True (trimesh drops normals otherwise: unlit-looking bodies).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

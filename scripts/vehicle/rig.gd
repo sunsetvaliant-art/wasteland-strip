@@ -51,10 +51,12 @@ func setup(c) -> void:
 	car = c
 	var d: Dictionary = car.design
 	frame_y = float(d.ride) + 0.16
-	m_frame = _mat(Color(0.09, 0.085, 0.08), 0.35, 0.7)
-	m_steel = _mat(Color(0.25, 0.22, 0.2), 0.6, 0.55)
-	m_spring = _mat(Color(0.55, 0.12, 0.08), 0.4, 0.5)
-	m_shock = _mat(Color(0.75, 0.6, 0.1), 0.3, 0.45)
+	# 0.2.65: dull painted steel, not cartoon red and yellow
+	m_frame = _mat(Color(0.075, 0.072, 0.07), 0.3, 0.72)
+	m_frame.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m_steel = _mat(Color(0.2, 0.19, 0.18), 0.5, 0.6)
+	m_spring = _mat(Color(0.1, 0.1, 0.105), 0.35, 0.55)
+	m_shock = _mat(Color(0.06, 0.06, 0.065), 0.25, 0.5)
 	m_chrome = _mat(Color(0.8, 0.8, 0.82), 1.0, 0.15)
 	box_mesh = BoxMesh.new()
 	cyl_mesh = CylinderMesh.new()
@@ -62,7 +64,8 @@ func setup(c) -> void:
 	cyl_mesh.bottom_radius = 0.5
 	cyl_mesh.height = 1.0
 	cyl_mesh.radial_segments = 12
-	coil_mesh = _make_coil(7.0, 0.5, 0.11)
+	coil_mesh = _make_coil(7.0, 0.5, 0.085)
+	_build_profile()
 	_build_frame()
 	_build_engine()
 	_build_wheels()
@@ -129,21 +132,97 @@ func _make_coil(turns: float, radius: float, wire: float) -> ArrayMesh:
 	return st.commit()
 
 # ---------------------------------------------------------------- frame and engine
-func _build_frame() -> void:
+# 0.2.65: a ladder chassis like a real one: the rails kick up over each axle (the axle has to move up under them), the
+# rear section stays up behind the back axle, the front pinches in ahead of the cab for the engine and steering lock,
+# crossmembers at the front, the engine, the gearbox, ahead of the rear axle and the back. One mesh, one draw call.
+var prof: Array = []              # [z, centre y, half width] from the back of the frame to the front, every 5 cm
+const RAIL_W := 0.07
+const RAIL_H := 0.15
+
+func _axle_kick(a: Dictionary) -> float:
+	# rail bottom clear of the housing top at full bump (the wheel's up 0.6 x travel from where it sits)
+	var y_top := float(car.design.ride) - float(a.get("lift", 0.0)) + 0.6 * float(a.travel) + 0.05 + 0.03
+	return maxf(0.0, y_top + RAIL_H * 0.5 - frame_y)
+
+func _build_profile() -> void:
 	var fr: Dictionary = car.design.frame
-	var L: float = fr.len
-	var hw: float = float(fr.width) * 0.5
-	var z0: float = float(fr.z) - L * 0.5
+	var z_r := float(fr.z) - float(fr.len) * 0.5
+	var z_f := float(fr.z) + float(fr.len) * 0.5
+	var hw := float(fr.width) * 0.5
+	var axles: Array = car.design.axles
+	var zmin := INF; var zmax := -INF
+	for a in axles: zmin = minf(zmin, float(a.z)); zmax = maxf(zmax, float(a.z))
+	prof = []
+	var n := maxi(2, int((z_f - z_r) / 0.05))
+	for i in n + 1:
+		var z := lerpf(z_r, z_f, float(i) / n)
+		var y := frame_y
+		for a in axles:
+			var k := _axle_kick(a)
+			if k <= 0.0: continue
+			var dz := absf(z - float(a.z))
+			var t := 1.0 - smoothstep(0.36, 0.7, dz)
+			if float(a.z) <= zmin + 0.01 and z < float(a.z): t = 1.0       # behind the back axle it stays up
+			y = maxf(y, frame_y + k * t)
+		# pinched in ahead of the cab: full width behind the front axle - 0.9, 82 % from front axle - 0.3 forward
+		var w := hw
+		if axles.size() >= 2:
+			w = lerpf(hw, hw * 0.82, smoothstep(zmax - 0.9, zmax - 0.3, z))
+		prof.append([z, y, w])
+
+func _prof_at(z: float) -> Array:
+	if prof.is_empty(): return [z, frame_y, float(car.design.frame.width) * 0.5]
+	var z0: float = prof[0][0]; var z1: float = prof[-1][0]
+	var t := clampf((z - z0) / maxf(z1 - z0, 0.001), 0.0, 1.0) * (prof.size() - 1)
+	var i := mini(int(t), prof.size() - 2)
+	var f := t - i
+	var a: Array = prof[i]; var b: Array = prof[i + 1]
+	return [z, lerpf(a[1], b[1], f), lerpf(a[2], b[2], f)]
+
+## Rail centre height and half width at z (for hangers, towers and mounts that bolt to the frame)
+func rail_y(z: float) -> float: return float(_prof_at(z)[1])
+func rail_hw(z: float) -> float: return float(_prof_at(z)[2])
+
+func _box_quads(st: SurfaceTool, c0: Array, c1: Array) -> void:
+	# a tube from one rectangular section (4 corners) to the next
+	for k in 4:
+		var a: Vector3 = c0[k]; var b: Vector3 = c0[(k + 1) % 4]; var c: Vector3 = c1[(k + 1) % 4]; var d: Vector3 = c1[k]
+		var nrm := (b - a).cross(d - a).normalized()
+		for v in [a, b, c, a, c, d]:
+			st.set_normal(nrm); st.add_vertex(v)
+
+func _section(x: float, y: float, z: float, w: float, h: float) -> Array:
+	return [Vector3(x - w, y - h, z), Vector3(x + w, y - h, z), Vector3(x + w, y + h, z), Vector3(x - w, y + h, z)]
+
+func _build_frame() -> void:
+	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for s in [-1.0, 1.0]:
-		var rail := _part(box_mesh, m_frame)
-		rail.scale = Vector3(0.07, 0.16, L)
-		rail.position = Vector3(s * hw, frame_y, fr.z)
-	var zs: Array = [z0 + 0.1, float(fr.z) + L * 0.5 - 0.1]
-	for a in car.design.axles: zs.append(float(a.z) + 0.25)
+		for i in prof.size() - 1:
+			var p0: Array = prof[i]; var p1: Array = prof[i + 1]
+			_box_quads(st, _section(s * float(p0[2]), p0[1], p0[0], RAIL_W * 0.5, RAIL_H * 0.5), _section(s * float(p1[2]), p1[1], p1[0], RAIL_W * 0.5, RAIL_H * 0.5))
+	# crossmembers
+	var fr: Dictionary = car.design.frame
+	var z_r := float(fr.z) - float(fr.len) * 0.5
+	var z_f := float(fr.z) + float(fr.len) * 0.5
+	var zs: Array = [z_r + 0.06, z_f - 0.06]
+	var zmax := -INF; var zmin := INF
+	for a in car.design.axles: zmax = maxf(zmax, float(a.z)); zmin = minf(zmin, float(a.z))
+	zs.append(zmax - 0.32)                 # under the engine
+	zs.append(zmax - 1.25)                 # gearbox
+	zs.append(zmin + 0.78)                 # ahead of the rear axle's kick-up
+	for a in car.design.axles:
+		if float(a.z) > zmin + 0.01 and float(a.z) < zmax - 0.01: zs.append(float(a.z) + 0.6)
 	for z in zs:
-		var x := _part(box_mesh, m_frame)
-		x.scale = Vector3(hw * 2.0, 0.1, 0.08)
-		x.position = Vector3(0, frame_y - 0.02, z)
+		if z < z_r or z > z_f: continue
+		var y := rail_y(z); var w := rail_hw(z)
+		var c0 := [Vector3(-w, y - 0.05, z - 0.04), Vector3(-w, y - 0.05, z + 0.04), Vector3(-w, y + 0.04, z + 0.04), Vector3(-w, y + 0.04, z - 0.04)]
+		var c1 := [Vector3(w, y - 0.05, z - 0.04), Vector3(w, y - 0.05, z + 0.04), Vector3(w, y + 0.04, z + 0.04), Vector3(w, y + 0.04, z - 0.04)]
+		_box_quads(st, c0, c1)
+	var mi := MeshInstance3D.new()
+	mi.name = "Frame"
+	mi.mesh = st.commit()
+	mi.material_override = m_frame
+	add_child(mi)
 
 func _build_engine() -> void:
 	var e: Dictionary = car.eng
@@ -159,6 +238,7 @@ func _build_engine() -> void:
 	engine_node.rotation_degrees.y = -90
 	engine_node.position = Vector3(0, frame_y + 0.05, fz - float(e.len) * 0.5 + 0.15)
 	add_child(engine_node)
+	_fit_pending = 120
 
 ## (Re)build the kit engine, ECU and battery from car.design.kit: after a part goes on or comes off
 var ecu_node: Node3D
@@ -176,6 +256,7 @@ func rebuild_engine() -> void:
 		# a body with a low bonnet can drop the engine (catalog eng_y, 0.2.60: the F100's air cleaner came through it)
 		engine_node.position = Vector3(0, frame_y + 0.24 + float(car.def.get("eng_y", 0.0)), fz - L * 0.5 + 0.1)
 		add_child(engine_node)
+		_fit_pending = 120              # the kit's meshes are made a frame or two later: fit it then
 	var hw: float = float(car.design.frame.width) * 0.5
 	if str(k.get("ecu", "")) != "":
 		ecu_node = EngineKit.ecu_node()
@@ -185,6 +266,34 @@ func rebuild_engine() -> void:
 		batt_node = EngineKit.battery_node()
 		batt_node.position = Vector3(hw * 0.85, frame_y + 0.3, fz + 0.05)
 		add_child(batt_node)
+
+## 0.2.65: drop the engine until its top clears the bonnet skin (measured per body, tools/bonnet_tops.py) by 3 cm;
+## at most 70 cm (the Meshy bodies sit their bonnets low over the wheels: up to 0.46 m needed)
+var _fit_pending := 0
+func _engine_fit() -> float:
+	if engine_node == null or car.design.get("no_cab", false) or not bool(car.def.get("eng_fit", true)): return 0.0
+	var ab := _aabb_of(engine_node, Transform3D.IDENTITY)
+	if ab.size == Vector3.ZERO: return 0.0
+	var off: Array = car.design.cab_offset
+	var o := Vector3(float(off[0]), float(off[1]), float(off[2]))
+	var lo := BodyCut.skin_low(str(car.def.glb), ab.position.x - o.x + 0.03, ab.end.x - o.x - 0.03, ab.position.z - o.z + 0.03, ab.end.z - o.z - 0.03)
+	if lo == INF: return 0.0
+	var drop := (lo + o.y - 0.03) - ab.end.y
+	return clampf(drop, -0.7, 0.0)
+
+func _aabb_of(n: Node, parent: Transform3D) -> AABB:
+	var xf := parent
+	if n is Node3D: xf = parent * (n as Node3D).transform
+	var out := AABB()
+	var first := true
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		out = xf * (n as MeshInstance3D).get_aabb(); first = false
+	for c in n.get_children():
+		var b := _aabb_of(c, xf)
+		if b.size == Vector3.ZERO: continue
+		if first: out = b; first = false
+		else: out = out.merge(b)
+	return out
 
 func _build_tailshaft() -> void:
 	var rear := -1
@@ -199,7 +308,7 @@ func _build_tailshaft() -> void:
 	var ts_fn := func():
 		var fz: float = car.design.axles[0].z
 		var a := Vector3(0, frame_y - 0.05, fz - float(car.eng.len) - 0.5)
-		var b := _axle_centre(rear) + Vector3(0, 0.02, 0.12)
+		var b := _axle_centre(rear) + Vector3(0, -0.015, 0.2)       # the pinion flange (0.2.65 housing)
 		return [a, b]
 	tailshaft = _beam(cyl_mesh, m_steel, 0.075, 0.075, ts_fn, true)
 
@@ -248,47 +357,82 @@ func _wheels_of(ai: int) -> Array:
 	return car.wheels.filter(func(w): return w.axle == ai)
 
 # ---------------------------------------------------------------- live axle: housing, diff, leaf packs, shocks
+static var _axle_scene: PackedScene
+static var _axle_mat: Material
 func _build_live_axle(ai: int, a: Dictionary) -> void:
 	var ws := _wheels_of(ai)
 	var wl: Dictionary = ws[0]
 	var wr: Dictionary = ws[1]
-	_beam(cyl_mesh, m_steel, 0.09, 0.09, func(): return [_wheel_centre(wl) + Vector3(0.12, 0, 0), _wheel_centre(wr) - Vector3(0.12, 0, 0)], true)
-	var diff := _part(SphereMesh.new(), m_steel)
-	var diff_fn := func():
-		diff.position = _axle_centre(ai) + Vector3(0, 0, 0.04)
-		diff.rotation = Vector3(0, 0, (_wheel_centre(wl).y - _wheel_centre(wr).y) / (2.0 * float(a.track)))
-		diff.scale = Vector3(0.32, 0.3, 0.3)
+	# 0.2.65: the real housing (diff centre, tubes, backing plates, spring perches; from the old game) instead of a
+	# grey tube and a ball. Stretched across the track, pumpkin kept at its real size; the pinion points at the
+	# gearbox (forward on a rear axle, back on a front one)
+	if _axle_scene == null: _axle_scene = load("res://assets/vehicles/parts/live_axle.glb")
+	var hous: Node3D = _axle_scene.instantiate()
+	add_child(hous)
+	if _axle_mat == null:
+		for mi in hous.find_children("*", "MeshInstance3D", true, false):
+			var src: Material = (mi as MeshInstance3D).mesh.surface_get_material(0)
+			if src is StandardMaterial3D:
+				var m2: StandardMaterial3D = (src as StandardMaterial3D).duplicate()
+				m2.albedo_color = Color(0.42, 0.4, 0.38)       # painted housing, not bright bare metal
+				m2.metallic = 0.35
+				m2.roughness = 0.75
+				_axle_mat = m2
+	for mi in hous.find_children("*", "MeshInstance3D", true, false):
+		if _axle_mat: (mi as MeshInstance3D).material_override = _axle_mat
+	var zmax := -INF
+	for ax in car.design.axles: zmax = maxf(zmax, float(ax.z))
+	var front: bool = float(a.z) >= zmax - 0.01 and car.design.axles.size() > 1
+	var tr := float(a.track)
+	var syz := 1.45
+	var hous_fn := func():
+		var cl := _wheel_centre(wl); var cr := _wheel_centre(wr)
+		var c := (cl + cr) * 0.5
+		var across := (cr - cl)                     # right minus left: +x
+		var roll := atan2(across.y, across.x)
+		var b := Basis(Vector3(0, 0, 1), roll)
+		if front: b = b * Basis(Vector3.UP, PI)
+		hous.transform = Transform3D(b * Basis.from_scale(Vector3(2.0 * tr * 0.94, syz, syz)), c)
 		return null
-	beams.append({"mi": diff, "fn": diff_fn, "w": 0, "h": 0, "cyl": false})
-	var hw: float = float(car.design.frame.width) * 0.5
+	beams.append({"mi": hous, "fn": hous_fn, "w": 0, "h": 0, "cyl": false})
 	for w in ws:
 		var s: float = w.side
-		var x := s * hw
+		var sp := func() -> float: return rail_hw(float(a.z)) * s
 		if a.spring == "leaf":
-			# leaf pack: front hanger, centre clamped on the axle, rear shackle; drawn as two bent halves, 3 leaves deep
-			for leaf in 3:
-				var th := 0.016
+			# leaf pack: front hanger and rear shackle on the rails (kicked up over the axle), centre on the perch on top
+			# of the housing tube; 5 leaves, each shorter
+			for leaf in 5:
+				var th := 0.009
 				var lo := leaf * th
-				var shorten := leaf * 0.12
+				var shorten := leaf * 0.09
 				for half in [1.0, -1.0]:
-					_beam(box_mesh, m_spring, 0.065, th, func():
-						var c := Vector3(x, _wheel_centre(w).y + 0.1 + lo, float(a.z))
-						var end := Vector3(x, frame_y - 0.08 + lo * 0.5, float(a.z) + half * (0.62 - shorten))
-						var mid := c.lerp(end, 0.5) + Vector3(0, -0.035, 0)
-						return [c, end.lerp(mid, 0.0)])
-			# U-bolt plate
+					_beam(box_mesh, m_spring, 0.06, th, func():
+						# every leaf on the same line from the perch to the hanger, stacked under the main leaf, shorter
+						var zc := float(a.z)
+						var zh: float = zc + float(half) * 0.62
+						var x := rail_hw(zh) * s
+						var c0 := Vector3(x, _wheel_centre(w).y + 0.055 + 0.045, zc)
+						var e0 := Vector3(x, rail_y(zh) - RAIL_H * 0.5 - 0.06, zh)
+						var dn := Vector3(0, -lo, 0)
+						return [c0 + dn, c0.lerp(e0, (0.62 - shorten) / 0.62) + dn])
+			# U-bolt plate under the tube
 			var plate := _part(box_mesh, m_steel)
 			var plate_fn := func():
-				plate.position = Vector3(x, _wheel_centre(w).y + 0.05, float(a.z))
-				plate.scale = Vector3(0.1, 0.03, 0.16)
+				plate.position = Vector3(sp.call(), _wheel_centre(w).y - 0.06, float(a.z))
+				plate.scale = Vector3(0.08, 0.018, 0.12)
 				return null
 			beams.append({"mi": plate, "fn": plate_fn, "w": 0, "h": 0, "cyl": false})
 		else:
-			_beam(coil_mesh, m_spring, 0.24, 0.24, func():
-				return [Vector3(x, _wheel_centre(w).y + 0.08, float(a.z) - 0.05), Vector3(x, frame_y - 0.04, float(a.z) - 0.05)], true)
-		_shock(func(): return Vector3(x * 0.92, frame_y + 0.05, float(a.z) + 0.28), func(): return Vector3(s * (float(a.track) - 0.3), _wheel_centre(w).y - 0.02, float(a.z) - 0.12))
+			_beam(coil_mesh, m_spring, 0.15, 0.15, func():
+				var z := float(a.z) - 0.05
+				return [Vector3(rail_hw(z) * s, _wheel_centre(w).y + 0.07, z), Vector3(rail_hw(z) * s, rail_y(z) - RAIL_H * 0.5, z)], true)
+		var sh_top := func() -> Vector3:
+			var z := float(a.z) + 0.25
+			return Vector3(rail_hw(z) * s * 0.92, rail_y(z) - 0.02, z)
+		var sh_bot := func() -> Vector3: return Vector3(s * (float(a.track) - 0.3), _wheel_centre(w).y - 0.04, float(a.z) - 0.1)
+		_shock(sh_top, sh_bot)
 	if a.steer:
-		_beam(cyl_mesh, m_steel, 0.028, 0.028, func(): return [_wheel_centre(wl) + Vector3(-0.08, -0.05, -0.18), _wheel_centre(wr) + Vector3(0.08, -0.05, -0.18)], true)
+		_beam(cyl_mesh, m_steel, 0.024, 0.024, func(): return [_wheel_centre(wl) + Vector3(0.08, -0.05, -0.17), _wheel_centre(wr) + Vector3(-0.08, -0.05, -0.17)], true)
 
 # ---------------------------------------------------------------- independent front: wishbones, upright, coil-over, sway bar, tie rods
 func _build_ifs(ai: int, a: Dictionary) -> void:
@@ -297,8 +441,8 @@ func _build_ifs(ai: int, a: Dictionary) -> void:
 	for w in ws:
 		var s: float = w.side
 		var z: float = a.z
-		var inner_lo := func(): return Vector3(s * (hw - 0.05), frame_y - 0.16, z)
-		var inner_hi := func(): return Vector3(s * (hw - 0.02), frame_y + 0.12, z - 0.02)
+		var inner_lo := func(): return Vector3(s * (rail_hw(z) - 0.05), rail_y(z) - 0.16, z)
+		var inner_hi := func(): return Vector3(s * (rail_hw(z) - 0.02), rail_y(z) + 0.12, z - 0.02)
 		var bj_lo := func(): return _wheel_centre(w) + Vector3(-s * 0.13, -0.11, 0)
 		var bj_hi := func(): return _wheel_centre(w) + Vector3(-s * 0.16, 0.13, 0)
 		for leg in [-0.16, 0.16]:
@@ -306,8 +450,8 @@ func _build_ifs(ai: int, a: Dictionary) -> void:
 			_beam(box_mesh, m_steel, 0.035, 0.03, func(): return [inner_hi.call() + Vector3(0, 0, leg * 0.7), bj_hi.call()])
 		_beam(box_mesh, m_steel, 0.06, 0.06, func(): return [bj_lo.call(), bj_hi.call()])
 		var seat_lo := func(): return (inner_lo.call() as Vector3).lerp(bj_lo.call(), 0.62) + Vector3(0, 0.03, 0)
-		var tower := func(): return Vector3(s * (hw + 0.06), frame_y + 0.38, z + 0.02)
-		_beam(coil_mesh, m_spring, 0.22, 0.22, func(): return [seat_lo.call(), tower.call()], true)
+		var tower := func(): return Vector3(s * (rail_hw(z) + 0.06), rail_y(z) + 0.3, z + 0.02)
+		_beam(coil_mesh, m_spring, 0.13, 0.13, func(): return [seat_lo.call(), tower.call()], true)
 		_shock(tower, seat_lo)
 		# tie rod from the rack to the steering arm (the arm moves with the steering)
 		_beam(cyl_mesh, m_steel, 0.022, 0.022, func():
@@ -316,12 +460,12 @@ func _build_ifs(ai: int, a: Dictionary) -> void:
 			return [Vector3(s * 0.32, frame_y - 0.12, z - 0.17), arm], true)
 	# sway bar across the front and its end links
 	if float(a.arb) > 0.0:
-		_beam(cyl_mesh, m_frame, 0.03, 0.03, func(): return [Vector3(-hw + 0.02, frame_y - 0.2, float(a.z) + 0.3), Vector3(hw - 0.02, frame_y - 0.2, float(a.z) + 0.3)], true)
+		_beam(cyl_mesh, m_frame, 0.022, 0.022, func(): return [Vector3(-rail_hw(float(a.z)) + 0.02, rail_y(float(a.z)) - 0.2, float(a.z) + 0.3), Vector3(rail_hw(float(a.z)) - 0.02, rail_y(float(a.z)) - 0.2, float(a.z) + 0.3)], true)
 		for w in ws:
 			var s: float = w.side
 			_beam(cyl_mesh, m_frame, 0.02, 0.02, func():
-				var lo: Vector3 = Vector3(s * (hw - 0.05), frame_y - 0.16, float(a.z)).lerp(_wheel_centre(w) + Vector3(-s * 0.13, -0.11, 0), 0.7)
-				return [Vector3(s * (hw - 0.02), frame_y - 0.2, float(a.z) + 0.3), lo + Vector3(0, 0.02, 0.1)], true)
+				var lo: Vector3 = Vector3(s * (rail_hw(float(a.z)) - 0.05), rail_y(float(a.z)) - 0.16, float(a.z)).lerp(_wheel_centre(w) + Vector3(-s * 0.13, -0.11, 0), 0.7)
+				return [Vector3(s * (rail_hw(float(a.z)) - 0.02), rail_y(float(a.z)) - 0.2, float(a.z) + 0.3), lo + Vector3(0, 0.02, 0.1)], true)
 
 func _shock(top_fn: Callable, bot_fn: Callable) -> void:
 	# a fat body and a thin chrome shaft that slides out of it as the suspension extends
@@ -340,6 +484,13 @@ func _shock(top_fn: Callable, bot_fn: Callable) -> void:
 func _process(_dt: float) -> void:
 	if car == null:
 		return
+	if _fit_pending > 0 and engine_node != null:
+		_fit_pending -= 1
+		if _aabb_of(engine_node, Transform3D.IDENTITY).size != Vector3.ZERO:
+			var f := _engine_fit()
+			engine_node.position.y += f
+			if OS.get_environment("FIT_DEBUG") != "": print("FIT ", car.design.get("cab"), " ", f, " now y ", engine_node.position.y)
+			_fit_pending = 0
 	for i in car.wheels.size():
 		var w: Dictionary = car.wheels[i]
 		var n: Dictionary = wheel_nodes[i]

@@ -297,10 +297,38 @@ static func hinge(bon: Dictionary) -> Array:
 	if yy < -1e8: yy = 0.9
 	return [Vector3(0, yy, zz), Vector3.RIGHT]
 
+## 0.2.65: per body, from tools/bonnet_tops.py: a 5 cm grid of the skin's height over the front of the car (body
+## frame) and its paint colour
+static var _info: Dictionary = {}
+static func info(glb: String) -> Dictionary:
+	if _info.is_empty():
+		var t := FileAccess.get_file_as_string("res://assets/vehicles/body_info.json")
+		var d = JSON.parse_string(t) if t != "" else null
+		_info = d if d is Dictionary else {"_": {}}
+	return _info.get(glb, {})
+
+## The lowest the skin gets over a box of the car (body frame x0..x1, z0..z1): where the bonnet would hit an engine
+static func skin_low(glb: String, x0: float, x1: float, z0: float, z1: float) -> float:
+	var d := info(glb)
+	if d.is_empty(): return INF
+	var c := float(d.cell); var nx := int(d.nx); var nz := int(d.nz)
+	var h: Array = d.h
+	var lo := INF
+	for iz in range(maxi(0, int((z0 - float(d.z0)) / c)), mini(nz, int((z1 - float(d.z0)) / c) + 1)):
+		for ix in range(maxi(0, int((x0 - float(d.x0)) / c)), mini(nx, int((x1 - float(d.x0)) / c) + 1)):
+			var v := float(h[iz * nx + ix])
+			if v > -50.0: lo = minf(lo, v)
+	return lo
+
+static func paint_of(glb: String) -> Color:
+	var p = info(glb).get("paint")
+	if p is Array and p.size() >= 3: return Color(float(p[0]), float(p[1]), float(p[2]))
+	return Color(0.07, 0.07, 0.075)
+
 ## The engine bay under the bonnet: walls down from the shut line, leaning in a little as they go down, drawn
 ## with a shader that discards anything outside the bonnet's outline seen from above
 static var _bay_shader: Shader
-static func bay_node(bon: Dictionary, bottom_y: float) -> MeshInstance3D:
+static func bay_node(bon: Dictionary, bottom_y: float, col := Color(0.07, 0.07, 0.075)) -> MeshInstance3D:
 	var poly := bonnet_poly(bon)
 	if poly.size() < 3: return null
 	var top := bonnet_floor(bon) + 0.03
@@ -337,7 +365,7 @@ bool inside(vec2 p) {
 }
 void fragment() {
 	if (!inside(lp.xz)) discard;
-	ALBEDO = col.rgb; ROUGHNESS = 0.7; METALLIC = 0.3;
+	ALBEDO = col.rgb; ROUGHNESS = 0.55; METALLIC = 0.2;
 }"""
 	var sm := ShaderMaterial.new()
 	sm.shader = _bay_shader
@@ -345,5 +373,6 @@ void fragment() {
 	for i in mini(poly.size(), 24): arr.append(poly[i].lerp(c, -0.01))
 	sm.set_shader_parameter("poly", arr)
 	sm.set_shader_parameter("n", arr.size())
+	sm.set_shader_parameter("col", col)         # 0.2.65: the body's own paint (sheet metal), a shade darker
 	mi.material_override = sm
 	return mi

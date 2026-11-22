@@ -7,7 +7,7 @@ import sys, json, numpy as np, trimesh
 src, key, gname, title, L, kg, cls = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], float(sys.argv[5]), float(sys.argv[6]), sys.argv[7]
 flip = "--flip" in sys.argv
 G = "/home/claude/game/assets/vehicles"
-sc = trimesh.load(src, force="scene")
+sc = trimesh.load(src, force="scene", process=False)
 parts = []
 for node in sc.graph.nodes_geometry:
     T, g = sc.graph[node]
@@ -84,9 +84,10 @@ for j, (n, m) in enumerate(parts):
     keep = np.ones(len(m.faces), bool)
     fcen = m.triangles_center
     for k, (c0, rim_r, tyre_in, half_w, R, tj) in band.items():
-        if tyre_in - rim_r < 0.02 * R * 2: continue
         r = np.hypot(fcen[:, 1] - c0[1], fcen[:, 2] - c0[2])
-        hit = (r > rim_r * 0.98) & (r < R * 1.03) & (np.abs(fcen[:, 0] - c0[0]) < half_w + 0.03)
+        # 0.2.65: everything in the wheel's space goes: leftover tyre wall, hubs, brake discs and calipers (they came
+        # away with the body when it was lifted off)
+        hit = (r < R * 1.03) & (np.abs(fcen[:, 0] - c0[0]) < half_w + 0.07)
         keep &= ~hit
     if not keep.all():
         cut_faces += int((~keep).sum())
@@ -96,7 +97,7 @@ out = trimesh.Scene()
 for j, (n, m) in enumerate(parts):
     if j in wheel_of or len(m.faces) == 0: continue
     mm = m.copy(); mm.apply_transform(X); out.add_geometry(mm, node_name="body_%d" % j)
-out.export(G + "/%s.glb" % gname)
+out.export(G + "/%s.glb" % gname, include_normals=True)
 v = np.vstack([g.vertices for g in out.geometry.values()])
 mn, mx = v.min(0), v.max(0)
 # the front left wheel as the car's own wheel model: centred, 1 m across, axle along Z, face out (+Z)
@@ -132,7 +133,7 @@ if tyre_in - rim_r > 0.02 * R * 2 and tj is not None:
     except Exception: pass
     ws.add_geometry(sw, node_name="%s_sidewall" % key)
     print("made a sidewall:", round(a0, 3), "to", round(a1, 3))
-ws.export(G + "/wheels/%s.glb" % key)
+ws.export(G + "/wheels/%s.glb" % key, include_normals=True)
 r_f = corners[(True, True)][2] / 2; r_r = corners[(True, False)][2] / 2
 ent = {"name": title, "glb": gname, "cls": cls, "kg": kg, "ax_f": round(float(fc[2] - mid_z), 3), "ax_r": round(float(rc[2] - mid_z), 3),
        "min": [round(float(x), 4) for x in mn], "ext": [round(float(x), 4) for x in (mx - mn)],
