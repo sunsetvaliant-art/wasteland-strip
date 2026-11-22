@@ -2,7 +2,12 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0066, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0066 (+ notes), 2026-11-23.
+
+## Mud 2026-11-23
+User: MudRunner-style mud for 4x4 rigs at some stage.
+- [ ] Deformable mud: wheels sink and dig ruts that stay, drag and wheelspin by depth, mud on the tyres and body;
+      tyre tread (MT vs road) and pressure matter; diff locks and low range earn their keep; winching out
 
 ## Real chassis, suspension, engines under bonnets, physical lifting 2026-11-22 (0065+)
 User: physically take vehicles apart: cabs, tubs, engines, gearboxes; lift a cab off with a block and tackle hung
@@ -37,7 +42,14 @@ body; do the forklift, block and tackle, unbolting and bolting tub/cab/chassis; 
       any loose prop
 - [ ] Block and tackle from shed trusses and big branches (the gantry's chain, other anchors)
 - [ ] Straps on the loader / tractor; a forklift jib for engines
-- [ ] Engines and gearboxes as loose physical lumps to hoist out (still the engine stand's click-to-move)
+- [ ] Engines and gearboxes as loose physical lumps: unbolt them (bonnet off, or body off), then lift them out with the
+      gantry, a forklift or a block and tackle and drop them in another car. Today the engine is part of the car and
+      only the engine stand's "Pull the engine out" moves it (a click); the gearbox isn't a part on its own yet
+- [ ] Forks and the hoist in multiplayer: other players don't see the mast move or the chain yet
+- [ ] Hoist strops clip through the bodywork (they run from the hook to four points on top of the load); a spreader
+      bar, or strops to the body mounts
+- [ ] Forklift parts each carry their own copy of the textures (0066 patch about 12 MB): share one set
+- [ ] A loader rigged from a Sketchfab model (arms and bucket as separate parts, like the forklift's mast)
 
 ## Modern utes in, body tools free cam 2026-11-22 (0064)
 User: put the modern utes into the game; every imported vehicle gets its wheels cut off and put in the game for
