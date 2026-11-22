@@ -235,6 +235,15 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   BodyCut.skin_low() (body_info.json from tools/bonnet_tops.py: re-run it after adding or changing a body);
   catalog "eng_fit": false skips it (tractor). BodyCut.paint_of(glb) colours the engine bay. import_vehicle.py: load
   with process=False and export include_normals=True (trimesh drops normals otherwise: unlit-looking bodies).
+- 0066: Car.unbolt_body()/bolt_body()/unbolt_tub()/bolt_tub() (loose RigidBodies with metas body_of / tub_of,
+  _loose_shapes: pads 12 cm over the rails), start_job() for timed spanner work. ForkRig (scripts/vehicle/fork_rig.gd,
+  catalog "forks": pivot, tines, back in pivot space from tools/import_forklift.py): mast/inner/carriage nodes, fork
+  collision boxes on the car moved each physics step; cmd Vector3 drives it from scripts. Hoist
+  (scripts/vehicle/hoist.gd, Forge entry type "hoist"): one-way spring chain to a point over the load's centre of
+  mass; cmd Vector2 from scripts. specs.gd: steer_rear (rear steer, steer_k -1.75, eased off with speed in car.gd),
+  rigid (live axles at 2 Hz: a spring stiffer than the tyre chatters), tyre_psi from the catalog (forklift 120).
+  Tests: tools/_forktest.tscn (drive, unbolt, forks in, lift, back out, set down), tools/_hoisttest.tscn,
+  tools/_unbolttest.tscn, world check tools/_t66.gd via /tmp/runpt.sh.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

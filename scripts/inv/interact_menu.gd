@@ -128,12 +128,58 @@ func _pick(p) -> Array:
 			# 0.2.55: bonnet, tray sides, toolbox and canopy doors
 			if c.bonnet_pivot != null and c.bonnet_pivot.visible:
 				o.append(_o("Close the bonnet" if c.bonnet_want > 0.5 else "Open the bonnet", c.toggle_bonnet))
+			# 0.2.66: body and tub off and on with a spanner, in place: lift them with the forklift or a hoist
+			var spanner: bool = p.inv.count("wrench") > 0 or Settings.creative()
+			var each := 0.5 if Settings.creative() else 2.5
+			var cut := BodyCut.of(str(c.def.glb))
+			if not c.design.get("no_cab", false):
+				if cut.has("tub") and str(c.design.get("tub", "stock")) in ["stock", "swap"]:
+					o.append(_o("Unbolt the tub", func(): c.start_job("Undoing the tub bolts", 4, each, p, func():
+						c.unbolt_tub()
+						p._toast("Tub's loose: lift it off.")), spanner, "You need a shifter"))
+				elif cut.has("tub") and c.loose_tub_seated():
+					o.append(_o("Bolt the tub on", func(): c.start_job("Doing up the tub bolts", 4, each, p, func():
+						p._toast("Tub's on." if c.bolt_tub() else "It moved: sit it back on square.")), spanner, "You need a shifter"))
+				o.append(_o("Unbolt the body", func(): c.start_job("Undoing the body mounts", 6, each, p, func():
+					c.unbolt_body()
+					p._toast("Body's loose on its mounts: lift it off.")), spanner, "You need a shifter"))
+			elif c.loose_body_seated():
+				o.append(_o("Bolt the body on", func(): c.start_job("Doing up the body mounts", 6, each, p, func():
+					p._toast("Body's on." if c.bolt_body() else "It moved: sit it back on square.")), spanner, "You need a shifter"))
 			if not c.tray.is_empty():
 				if not (c.tray.sides as Array).is_empty():
 					o.append(_o("Raise the tray sides" if c.sides_down else "Drop the tray sides", func(): c.sides_down = not c.sides_down))
 				if not (c.tray.doors as Array).is_empty():
 					o.append(_o("Close the doors" if c.doors_open else "Open the doors", func(): c.doors_open = not c.doors_open))
 			return [c, o]
+		# 0.2.66: the gantry, or something loose under one: hook the chain on or off
+		if n is Hoist:
+			var oh := []
+			for m in (n as Hoist).menu(p): oh.append(_o(m[0], m[1], m[2], m[3]))
+			return [n, oh]
+		if n is RigidBody3D and not (n is Car):
+			for hh in get_tree().get_nodes_in_group("hoists"):
+				var ho := hh as Hoist
+				if ho.load_rb == n or (ho.load_rb == null and ho.candidate() == n):
+					var oh2 := []
+					for m in ho.menu(p): oh2.append(_o(m[0], m[1], m[2], m[3]))
+					# a body still sat on its mounts can be bolted down as well
+					if n.has_meta("body_of") or n.has_meta("tub_of"): oh2.append_array(_bolt_opts(p, n))
+					return [n, oh2]
+		# 0.2.66: a loose body or tub sat on a chassis's mounts: bolt it down from here too
+		if n is RigidBody3D and (n.has_meta("body_of") or n.has_meta("tub_of")):
+			var each2 := 0.5 if Settings.creative() else 2.5
+			var spanner2: bool = p.inv.count("wrench") > 0 or Settings.creative()
+			for cc in get_tree().get_nodes_in_group("vehicles"):
+				if not (cc is Car) or (cc as Car).global_position.distance_to(n.global_position) > 6.0: continue
+				var car2 := cc as Car
+				if n.has_meta("body_of") and car2.design.get("no_cab", false) and car2.seated(n, 0.25, 0.15):
+					return [n, [_o("Bolt the body on", func(): car2.start_job("Doing up the body mounts", 6, each2, p, func():
+						p._toast("Body's on." if car2.bolt_body() else "It moved: sit it back on square.")), spanner2, "You need a shifter")]]
+				if n.has_meta("tub_of") and car2.seated(n, 0.3, 0.12) and not car2.design.get("no_cab", false):
+					return [n, [_o("Bolt the tub on", func(): car2.start_job("Doing up the tub bolts", 4, each2, p, func():
+						p._toast("Tub's on." if car2.bolt_tub() else "It moved: sit it back on square.")), spanner2, "You need a shifter")]]
+			if n.has_meta("body_of"): return [null, []]
 		if n is RigidBody3D and (n.has_meta("tub_of") or n.has_meta("bonnet_of")):
 			var what := "tub" if n.has_meta("tub_of") else "bonnet"
 			return [n, [_o("Break the %s down for scrap" % what, func():
@@ -185,6 +231,21 @@ func _pick(p) -> Array:
 			return [n, [_o("Pick up " + WorldItem.label(n), _use.bind(p, n))]]
 		n = n.get_parent()
 	return [null, []]
+
+## Bolt-on options for a loose body or tub sat square on a chassis close by
+func _bolt_opts(p, n: Node3D) -> Array:
+	var each2 := 0.5 if Settings.creative() else 2.5
+	var spanner2: bool = p.inv.count("wrench") > 0 or Settings.creative()
+	for cc in get_tree().get_nodes_in_group("vehicles"):
+		if not (cc is Car) or (cc as Car).global_position.distance_to(n.global_position) > 6.0: continue
+		var car2 := cc as Car
+		if n.has_meta("body_of") and car2.design.get("no_cab", false) and car2.seated(n, 0.25, 0.15):
+			return [_o("Bolt the body on", func(): car2.start_job("Doing up the body mounts", 6, each2, p, func():
+				p._toast("Body's on." if car2.bolt_body() else "It moved: sit it back on square.")), spanner2, "You need a shifter")]
+		if n.has_meta("tub_of") and car2.seated(n, 0.3, 0.12) and not car2.design.get("no_cab", false):
+			return [_o("Bolt the tub on", func(): car2.start_job("Doing up the tub bolts", 4, each2, p, func():
+				p._toast("Tub's on." if car2.bolt_tub() else "It moved: sit it back on square.")), spanner2, "You need a shifter")]
+	return []
 
 var _ground := Node.new()        # stands in for "the ground" as a menu target
 var _foraged := {}               # Vector2i (8 m) -> when it was last picked over (ms)

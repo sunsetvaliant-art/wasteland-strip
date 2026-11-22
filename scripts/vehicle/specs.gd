@@ -61,6 +61,12 @@ static func default_design(kind: String) -> Dictionary:
 		if d.has("lift"): ax.lift = float(d.lift[ai])
 		if d.has("wheels"): ax.wheel_model = str(d.wheels[ai])
 	if d.has("drive_f"): front.drive = bool(d.drive_f)
+	# 0.2.66: the forklift: drives on the front wheels by the mast, steers the little ones at the back, no springs
+	if d.get("steer_rear", false):
+		front.steer = false; front.drive = true; rear.steer = true; rear.drive = false; rear["steer_k"] = -1.75
+	if d.get("rigid", false):
+		for ax in [front, rear]:
+			ax.type = "live"; ax.freq = 2.0; ax.travel = 0.07; ax.zeta_b = 0.5; ax.zeta_r = 0.7; ax.arb = 0.0     # stiff, but softer than the tyres (they chatter if the spring out-stiffs the rubber)
 	var fs := float(d.get("front_share", 0.56))
 	# 0.2.65: the same wheels front and back are the car's wheels (so the garage's Wheels choice changes them), not
 	# a per-axle setting
@@ -74,6 +80,7 @@ static func default_design(kind: String) -> Dictionary:
 		"cda": 1.75 if big else 0.95, "engine": eng, "gearbox": str(d.get("gearbox", "man4" if (big or heavy) else "auto3")), "final": float(d.get("final", 3.9 if big else 3.36)),
 		"axles": [front, rear],
 		"frame": {"len": float(ext[0]) * 0.92, "width": track * 1.2, "z": float(mn[0]) + float(ext[0]) * 0.5},
+		"tyre_psi": float(d.get("tyre_psi", 32.0)),      # 0.2.66: the forklift's solid tyres say 120
 	}
 
 static func torque(eng: Dictionary, rpm: float) -> float:

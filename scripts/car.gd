@@ -119,6 +119,11 @@ func _ready() -> void:
 	parts = VehicleRig.new()
 	add_child(parts)
 	parts.setup(self)
+	if def.has("forks"):
+		forks = ForkRig.new()
+		forks.name = "Forks"
+		add_child(forks)
+		forks.setup(self)
 	audio = EngineAudio.new()
 	add_child(audio)
 	audio.setup(self)
@@ -132,6 +137,7 @@ func _ready() -> void:
 	else: gear = 1
 
 # ---------------------------------------------------------------- build
+var forks: ForkRig                    # 0.2.66: the forklift's mast and forks
 var _body_nodes: Array = []
 func _build_body() -> void:
 	var off: Array = design.cab_offset
@@ -378,15 +384,12 @@ func unbolt_tub() -> RigidBody3D:
 		aabb = am.get_aabb() if first else aabb.merge(am.get_aabb())
 		first = false
 	if first: return null
-	var cs := CollisionShape3D.new()
-	var bx := BoxShape3D.new(); bx.size = aabb.size.max(Vector3.ONE * 0.2)
-	cs.shape = bx; cs.position = aabb.get_center()
-	rb.add_child(cs)
+	_loose_shapes(rb, aabb, float(design.cab_offset[1]))
+	rb.set_meta("forge_name", "Tub")
 	get_parent().add_child(rb)
 	var off: Array = design.cab_offset
+	# 0.2.66: it stays where it was, sitting loose on the rails: lift it off (forklift, hoist) or drag it away
 	rb.global_transform = global_transform * Transform3D(Basis.IDENTITY, Vector3(off[0], off[1], off[2]))
-	rb.global_position -= global_transform.basis.z * 2.5
-	rb.global_position += global_transform.basis.x * (float(def.ext[2]) + 0.6)
 	design["tub"] = "none"
 	rebuild_body()
 	return rb
@@ -395,11 +398,10 @@ func unbolt_tub() -> RigidBody3D:
 func bolt_tub() -> bool:
 	if not BodyCut.of(str(def.glb)).has("tub") or str(design.get("tub", "stock")) in ["stock", "swap"]: return false
 	var best: Node3D = null
-	var bd := 8.0
 	for n in get_tree().get_nodes_in_group("physgun"):
 		if str(n.get_meta("tub_of", "")) == "": continue
-		var d := (n as Node3D).global_position.distance_to(global_position)
-		if d < bd: bd = d; best = n                # the nearest loose tub (the one you dragged over)
+		# 0.2.66: only one sat down on the rails where it goes (lowered on with the forklift or the hoist)
+		if seated(n as Node3D, 0.3, 0.12): best = n
 	if best == null: return false
 	var src := str(best.get_meta("tub_of"))
 	best.queue_free()
@@ -410,6 +412,138 @@ func bolt_tub() -> bool:
 		design["tub_from"] = src
 	rebuild_body()
 	return true
+
+# ---------------------------------------------------------------- 0.2.66: unbolting the body, bolting it back on
+## Where the body sits on this chassis, in the world
+func body_xform() -> Transform3D:
+	var off: Array = design.cab_offset
+	return global_transform * Transform3D(Basis.IDENTITY, Vector3(off[0], off[1], off[2]))
+
+## Is this loose piece sat on the rails where it bolts (within tol m sideways and along, up to the height, ~8 degrees)
+func seated(n: Node3D, tol: float, htol: float) -> bool:
+	if n == null or not is_instance_valid(n): return false
+	var rel := body_xform().affine_inverse() * n.global_transform
+	var o := rel.origin
+	if Vector2(o.x, o.z).length() > tol or absf(o.y) > htol: return false
+	return rel.basis.y.dot(Vector3.UP) > 0.99 and rel.basis.z.dot(Vector3.BACK) > 0.99
+
+## Collision for a loose body or tub: a box from just above the rails (it sits on four mount pads, 7 cm up, so forks
+## can slide in between) to its waist, and four pads over the rails. aabb in body space; y0 = cab offset height
+func _loose_shapes(rb: RigidBody3D, aabb: AABB, y0: float) -> void:
+	var fr: Dictionary = design.frame
+	var rail_top := float(design.ride) + 0.18 - y0
+	var bot := maxf(aabb.position.y, rail_top + 0.12)
+	var top := maxf(bot + 0.2, aabb.position.y + aabb.size.y * 0.6)
+	var cs := CollisionShape3D.new()
+	var bx := BoxShape3D.new(); bx.size = Vector3(maxf(aabb.size.x * 0.95, 0.4), top - bot, maxf(aabb.size.z * 0.97, 0.4))
+	cs.shape = bx; cs.position = Vector3(aabb.get_center().x, (bot + top) * 0.5, aabb.get_center().z)
+	rb.add_child(cs)
+	if aabb.size.y > 0.9:                      # a cab: its roof too
+		var rs := CollisionShape3D.new()
+		var rbx := BoxShape3D.new(); rbx.size = Vector3(aabb.size.x * 0.8, aabb.end.y - top, aabb.size.z * 0.45)
+		rs.shape = rbx; rs.position = Vector3(aabb.get_center().x, (top + aabb.end.y) * 0.5, aabb.get_center().z)
+		rb.add_child(rs)
+	var hw := float(fr.width) * 0.5
+	for zf in [0.18, 0.82]:
+		for sx in [-1.0, 1.0]:
+			var ps := CollisionShape3D.new()
+			var pb := BoxShape3D.new(); pb.size = Vector3(0.08, bot - rail_top, 0.08)
+			ps.shape = pb
+			ps.position = Vector3(sx * hw, (rail_top + bot) * 0.5, aabb.position.z + aabb.size.z * zf)
+			rb.add_child(ps)
+
+## The whole body off the chassis: it stays sat where it was, a heavy loose thing on its mounts, and the car is a
+## rolling chassis. Lift it off with the forklift or a chain hoist.
+func unbolt_body() -> RigidBody3D:
+	if design.get("no_cab", false): return null
+	var holder := get_node_or_null("Cab") as Node3D
+	if holder == null: return null
+	var rb := RigidBody3D.new()
+	rb.mass = clampf(float(def.get("kg", 1200)) * 0.3, 140.0, 650.0)
+	rb.add_to_group("physgun")
+	rb.add_to_group("loose_bodies")
+	rb.set_meta("body_of", kind)
+	rb.set_meta("forge_name", str(def.name) + " body")
+	var keep := {}
+	for k in ["tub", "tub_from", "tub_h", "bonnet_off", "tray"]:
+		if design.has(k): keep[k] = design[k]
+	rb.set_meta("body_state", keep)
+	var aabb := AABB(); var first := true
+	for mi in holder.find_children("*", "MeshInstance3D", true, false):
+		var m2 := MeshInstance3D.new(); m2.mesh = (mi as MeshInstance3D).mesh
+		m2.material_override = (mi as MeshInstance3D).material_override
+		var xf: Transform3D = holder.global_transform.affine_inverse() * (mi as MeshInstance3D).global_transform
+		m2.transform = xf
+		rb.add_child(m2)
+		if mi.name == "EngineBay": continue
+		var a: AABB = xf * (mi as MeshInstance3D).get_aabb()
+		aabb = a if first else aabb.merge(a)
+		first = false
+	if first: return null
+	_loose_shapes(rb, aabb, float(design.cab_offset[1]))
+	get_parent().add_child(rb)
+	rb.global_transform = holder.global_transform
+	design["no_cab"] = true
+	rebuild_body()
+	return rb
+
+## A loose body sat on the mounts (lowered on square, within 25 cm): bolt it down. Another model's body goes on too:
+## the car is rebuilt with it.
+func bolt_body() -> bool:
+	if not design.get("no_cab", false): return false
+	for n in get_tree().get_nodes_in_group("loose_bodies"):
+		if not seated(n as Node3D, 0.25, 0.15): continue
+		var k := str(n.get_meta("body_of", kind))
+		var st: Dictionary = n.get_meta("body_state", {})
+		n.queue_free()
+		design["no_cab"] = false
+		for key in st: design[key] = st[key]
+		if k == kind:
+			rebuild_body()
+			if not has_meta("container"):
+				set_meta("container", storage_key(def))
+				set_meta("empty", true)
+		else:
+			var d2 := design.duplicate(true)
+			d2["cab"] = k
+			var c2: Car = get_parent().spawn_vehicle(k, global_position, rotation.y, d2) if get_parent().has_method("spawn_vehicle") else null
+			if c2:
+				c2.global_transform = global_transform
+				queue_free()
+		return true
+	return false
+
+func loose_body_seated() -> bool:
+	for n in get_tree().get_nodes_in_group("loose_bodies"):
+		if seated(n as Node3D, 0.25, 0.15): return true
+	return false
+
+func loose_tub_seated() -> bool:
+	for n in get_tree().get_nodes_in_group("physgun"):
+		if str(n.get_meta("tub_of", "")) != "" and seated(n as Node3D, 0.3, 0.12): return true
+	return false
+
+## A spanner job on the car (body mounts): it takes a while, and you have to stay by it
+var _job := {}
+func start_job(label: String, mounts: int, secs_each: float, who: Node3D, done: Callable) -> void:
+	_job = {"label": label, "n": mounts, "each": secs_each, "t": 0.0, "who": who, "done": done, "last": -1}
+	if who and who.has_method("_toast"): who._toast("%s... 0/%d" % [label, mounts])
+
+func _job_tick(dt: float) -> void:
+	var who: Node3D = _job.who
+	if who == null or not is_instance_valid(who) or who.global_position.distance_to(global_position) > 4.5 or linear_velocity.length() > 0.5:
+		if who and is_instance_valid(who) and who.has_method("_toast"): who._toast("Left it half done.")
+		_job = {}
+		return
+	_job.t += dt
+	var k := int(_job.t / float(_job.each))
+	if k != int(_job.last):
+		_job.last = k
+		if k < int(_job.n) and who.has_method("_toast"): who._toast("%s... %d/%d" % [_job.label, k, _job.n])
+	if k >= int(_job.n):
+		var cb: Callable = _job.done
+		_job = {}
+		cb.call()
 
 func build_tray(cfg := {}) -> void:
 	if not BodyCut.of(str(def.glb)).has("tub"): return
@@ -676,7 +810,11 @@ func _physics_process_inner(dt: float) -> void:
 		if w.a.steer:
 			# Ackermann: the inside wheel turns tighter
 			var ack: float = 1.0 + 0.12 * signf(steer_l) * (-float(w.side))
-			w.steer = steer_l * ack
+			# 0.2.66: rear steer (the forklift) turns the other way and further
+			var sk := float(w.a.get("steer_k", 1.0))
+			if sk < 0.0:        # it'd tip over on full lock at a run, like a real one: the lock comes off above walking pace
+				sk *= clampf(1.15 - absf(linear_velocity.dot(global_transform.basis.z)) / 7.0, 0.3, 1.0)
+			w.steer = steer_l * ack * sk
 		if not w.contact:
 			continue
 		var n: Vector3 = w.normal
@@ -1066,6 +1204,7 @@ func _driveline(dt: float) -> void:
 
 # ---------------------------------------------------------------- cameras
 func _process(dt: float) -> void:
+	if not _job.is_empty(): _job_tick(dt)
 	for w in wheels:
 		w.spin = fmod(w.spin + w.omega * dt, TAU)
 	_body_anim(dt)

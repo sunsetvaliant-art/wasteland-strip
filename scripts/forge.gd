@@ -353,6 +353,10 @@ func spawn(entry: Dictionary, xf: Transform3D, frozen := false) -> Node3D:
 			n = _make_marker(entry.key)
 			main.add_child(n)
 			n.global_transform = xf
+		"hoist":
+			n = Hoist.new()
+			main.add_child(n)
+			n.global_transform = xf
 		"kitpart":
 			# an engine part on the ground, to pick up and bolt on (0.2.59)
 			n = WorldItem.spawn(main, [Items.fresh(str(entry.key), 1)], xf.origin + Vector3(0, 0.3, 0))
@@ -387,6 +391,8 @@ func _make_visual(entry: Dictionary) -> Node3D:
 			return mi
 		"marker":
 			return _make_marker(entry.key)
+		"hoist":
+			return Hoist.make_visual()
 		"kitpart":
 			return EngineKit.part_node(str(entry.key))
 	return Node3D.new()
@@ -864,6 +870,7 @@ func _build_ui() -> void:
 		if not DirAccess.dir_exists_absolute(base): continue
 		for id in DirAccess.get_directories_at(base):
 			groups[ph_tab[d]].append({"type": "prop", "key": id, "name": _pretty(id), "path": "%s/%s/%s.gltf" % [base, id, id]})
+	groups["Tools"].append({"type": "hoist", "key": "gantry", "name": "Gantry and chain hoist (lifts bodies, engines)"})   # 0.2.66
 	for g in groups:
 		groups[g].sort_custom(func(a, b): return a.name < b.name)
 	for g in ["Weapons", "Car parts", "Tools", "Survival", "World", "Nature"]:

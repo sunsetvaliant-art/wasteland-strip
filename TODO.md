@@ -2,7 +2,7 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0065, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0066, 2026-11-23.
 
 ## Real chassis, suspension, engines under bonnets, physical lifting 2026-11-22 (0065+)
 User: physically take vehicles apart: cabs, tubs, engines, gearboxes; lift a cab off with a block and tackle hung
@@ -22,6 +22,22 @@ body; do the forklift, block and tackle, unbolting and bolting tub/cab/chassis; 
 - [x] 0065 Engine bay walls in the body's own paint (sampled off its texture)
 - [x] 0065 New utes: normals were lost on import (the flat, unlit look); wheels now swap from the garage's Wheels;
       hubs, brake discs and leftover tyre wall cut out of the bodies
+- [x] 0066 Forklift (Mathieu Godard's ForkLift GameReady, CC BY): drives on the front wheels, steers the back ones
+      (the lock comes off above walking pace so it doesn't tip), solid tyres, about 20 km/h. Mast tilts, inner channel
+      and carriage run up 1.75 m, forks side-shift. Up/down arrows lift (needs the engine on), left/right tilt,
+      comma/full stop side-shift, Alt for a quarter speed; taps move it millimetres, holding speeds it up. The tines
+      and backrest really collide: slide them in between the rails and the body and lift. In the Forge's Vehicles,
+      and sometimes in warehouses and workshops (never in a driveway)
+- [x] 0066 Unbolt / bolt the body and the tub with a shifter (F menu on the car, 2.5 s a mount, 0.5 in creative): the
+      body stays sat on four mount pads with a 12 cm gap over the rails for forks or strops; no teleporting. Sit it
+      back square on the rails and Bolt on (from the car or the body). Another chassis's body bolted on makes that car
+- [x] 0066 Gantry and chain hoist (Forge > Tools): straddle the car, push the load under the beam, F > Hook the chain
+      on; on foot near it up/down arrows work the chain (10 cm/s), left/right run the trolley, Alt slow. The chain
+      only pulls, the load hangs from over its middle so it comes up level; 2 t limit. Lifts bodies, tubs, engines,
+      any loose prop
+- [ ] Block and tackle from shed trusses and big branches (the gantry's chain, other anchors)
+- [ ] Straps on the loader / tractor; a forklift jib for engines
+- [ ] Engines and gearboxes as loose physical lumps to hoist out (still the engine stand's click-to-move)
 
 ## Modern utes in, body tools free cam 2026-11-22 (0064)
 User: put the modern utes into the game; every imported vehicle gets its wheels cut off and put in the game for
@@ -114,7 +130,7 @@ categories; find more wheels; forklift and tractor with separate wheels (with th
       tractor lugs (tools/import_wheel.py; credits in assets/credits.json)
 - [x] 0059 Tractor: Lamborghini R6 (Sketchfab, CC BY) with its own front and rear wheels, 4WD farm diesel
       (tools/import_tractor.py)
-- [ ] Forklift: the free ones on Sketchfab have the wheels baked into the body; split them out (connected parts)
+- [x] 0066 Forklift: the free ones on Sketchfab have the wheels baked into the body; split them out (connected parts)
       or find one with separate wheels; rear steer and a working mast
 - [x] 0059 Zombies can't grab you through a wall or up through a floor (they need a clear line and the same level)
 - [x] 0059 Lots standing inside each other (the shed with a house in it): 26 dropped (tools/fix_overlaps.py)
@@ -142,7 +158,7 @@ until wheel speed matches road speed; an open diff spins one wheel and the car g
       button under the bonnet
 - [ ] Kingscliff (F9 "Kingscliff mainland ????"): in a fresh test the town loads; ask the user what's wrong there
       (the grass headland at the creek mouth? buildings not loaded after a long Forge flight?)
-- [ ] Forklift and tractor models with separate wheels: the user grabs them (Sketchfab needs a login) and drops
+- [x] 0066 Forklift and tractor models with separate wheels: the user grabs them (Sketchfab needs a login) and drops
       them in the Drive folder; then add them as vehicles (forklift mast and forks to work)
 
 ## Houses, fences, building types, F9 reports 2026-11-22 (0056)
@@ -300,7 +316,7 @@ and diffs, with a single cab tub and canopy.
 - [ ] Modules: chassis, body (cab + front clip), tub / tray / canopy, engine, gearbox, transfer, diffs/axles,
       suspension. Bolted on they're one body (mass and centre of gravity recomputed); unbolted each is its own
 - [ ] Block and tackle: anchor points on gantries, shed trusses, strong branches; hook lift points; chain it up and down;
-      load limits; it swings
+      load limits; it swings (0066: the gantry and chain hoist do this; trusses and branches still to come)
 - [ ] Pull a chassis out from under a hoisted cab with a tow rope / snatch strap from any vehicle; forklift and tractor
 - [ ] Wireframe ghost of the body while lowering, red where the engine or gearbox would foul it
 - [ ] Compatibility: bellhousing patterns and adapter plates, wheelbase vs tub length (cut / stretch the chassis at the

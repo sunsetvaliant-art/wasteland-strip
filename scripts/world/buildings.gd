@@ -1208,7 +1208,7 @@ func _project_car(i: int, p: Dictionary, b: Node3D) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(lots[i][6]) + 991
 	var cat: Dictionary = Car.catalog()
-	var keys: Array = cat.keys()
+	var keys: Array = cat.keys().filter(func(k): return not (cat[k] as Dictionary).has("forks"))   # no forklifts in the drive
 	if rng.randf() > float(PROJECT_CHANCE.get(p.kind, 0.0)):
 		# no project in the shed: perhaps the family car's still in the drive, in whatever state it was left
 		if rng.randf() < float(DRIVE_CHANCE.get(p.kind, 0.0)):
@@ -1227,7 +1227,9 @@ func _project_car(i: int, p: Dictionary, b: Node3D) -> void:
 	var yaw: float = b.rotation.y + (PI * 0.5 if p.kind == "machine_shed" else 0.0) + rng.randf_range(-0.3, 0.3)
 	var gy: float = main.height_at(wp.x, wp.z) if not shedlike else b.global_position.y
 	var node: Node3D
-	if rng.randf() < 0.55:
+	if p.kind in ["warehouse", "workshop"] and cat.has("forklift") and rng.randf() < 0.35:
+		node = main.spawn_vehicle("forklift", Vector3(wp.x, gy + 1.0, wp.z), yaw, VehicleSpecs.default_design("forklift"))   # 0.2.66
+	elif rng.randf() < 0.55:
 		var design := VehicleSpecs.default_design(kind)
 		design["no_cab"] = true
 		node = main.spawn_vehicle(kind, Vector3(wp.x, gy + 1.0, wp.z), yaw, design)

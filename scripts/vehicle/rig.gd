@@ -42,6 +42,8 @@ const WHEEL_MODELS := {
 	"bseries_dc": {"name": "Mazda B-Series alloys", "path": "res://assets/vehicles/wheels/bseries_dc.glb"},
 	"ranger_dc": {"name": "Ranger alloys (2003)", "path": "res://assets/vehicles/wheels/ranger_dc.glb"},
 	"vz_ute": {"name": "VZ ute steelies", "path": "res://assets/vehicles/wheels/vz_ute.glb"},
+	"fl_front": {"name": "Forklift solids (drive)", "path": "res://assets/vehicles/wheels/fl_front.glb"},
+	"fl_rear": {"name": "Forklift solids (steer)", "path": "res://assets/vehicles/wheels/fl_rear.glb"},
 }
 var beams: Array = []             # [{mi, fn: Callable}] updated every frame
 var tailshaft: MeshInstance3D
@@ -66,14 +68,18 @@ func setup(c) -> void:
 	cyl_mesh.radial_segments = 12
 	coil_mesh = _make_coil(7.0, 0.5, 0.085)
 	_build_profile()
-	_build_frame()
+	# 0.2.66: a machine with its own frame under the body (the forklift) has none of the car's chassis parts drawn
+	var own_frame: bool = car.def.has("forks")
+	if not own_frame: _build_frame()
 	_build_engine()
+	if own_frame and engine_node: engine_node.visible = false
 	_build_wheels()
-	for ai in d.axles.size():
-		var a: Dictionary = d.axles[ai]
-		if a.type == "live": _build_live_axle(ai, a)
-		else: _build_ifs(ai, a)
-	_build_tailshaft()
+	if not own_frame:
+		for ai in d.axles.size():
+			var a: Dictionary = d.axles[ai]
+			if a.type == "live": _build_live_axle(ai, a)
+			else: _build_ifs(ai, a)
+		_build_tailshaft()
 
 func _mat(c: Color, metal: float, rough: float) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -484,6 +490,7 @@ func _shock(top_fn: Callable, bot_fn: Callable) -> void:
 func _process(_dt: float) -> void:
 	if car == null:
 		return
+	if car.def.has("forks") and engine_node: engine_node.visible = false
 	if _fit_pending > 0 and engine_node != null:
 		_fit_pending -= 1
 		if _aabb_of(engine_node, Transform3D.IDENTITY).size != Vector3.ZERO:
