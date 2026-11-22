@@ -221,6 +221,14 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   assets/TODOwnload (.gdignore'd, README.md): staged Sketchfab vehicles. Pipeline: gltfpack (local npm install in
   /home/claude/npmtools: `npm i gltfpack`) -si ratio -noq -kn -km, tools/glb_upright.py, tools/glb_slim_post.py;
   tools/_todlshot.tscn renders a .glb straight from disk (GLTFDocument) for checking windows and interiors.
+- 0064: importing a TODOwnload vehicle: `python3 tools/import_vehicle.py assets/TODOwnload/X.glb key glbname "Name"
+  length kg car [--flip]` (--flip when the nose is -Z: view 0 of _todlshot shows the +Z end), then the WHEEL again
+  from the full-detail download (gltfpack -noq -kn -km, glb_upright.py, import_vehicle.py with a tmp key, then
+  gltfpack -si to ~3-6k triangles into wheels/<key>.glb) because the slimmed tyres fall apart; then gltfpack -noq
+  -km on the body (merges by material: ~15 draw calls); catalog entry from /tmp/<key>_entry.json plus eng_y (engine
+  under the bonnet) and seat y; WHEEL_MODELS entry in rig.gd; credits. Check with tools/_carshot.tscn
+  (SHOT_CARS=a,b: three outside views and the cab view) and tools/_wheelface.tscn. Body tools free cam: freecam,
+  set_freecam(), _freecam_move() (physical keys, so it works while the tree's paused).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

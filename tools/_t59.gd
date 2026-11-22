@@ -162,6 +162,20 @@ func _paint_only(main) -> void:
 	bt.orbit = Vector2(0.7, 0.45); bt.dist = 6.0
 	for _i in 4: await get_tree().process_frame
 	await _shot("t59_lift")
+	# free cam: F, then W held for a second
+	var fk := InputEventKey.new(); fk.physical_keycode = KEY_F; fk.keycode = KEY_F; fk.pressed = true
+	Input.parse_input_event(fk)
+	await get_tree().process_frame
+	var fk2 := fk.duplicate(); fk2.pressed = false; Input.parse_input_event(fk2)
+	var p0c: Vector3 = bt.cam.global_position
+	var wk := InputEventKey.new(); wk.physical_keycode = KEY_W; wk.keycode = KEY_W; wk.pressed = true
+	Input.parse_input_event(wk)
+	var t0w := Time.get_ticks_msec()
+	for _i in 20: await get_tree().process_frame
+	print("T59 W held: ", Input.is_physical_key_pressed(KEY_W), " for ", Time.get_ticks_msec() - t0w, " ms")
+	var wk2 := wk.duplicate(); wk2.pressed = false; Input.parse_input_event(wk2)
+	print("T59 freecam ", bt.freecam, " moved ", snappedf(bt.cam.global_position.distance_to(p0c), 0.01), " m")
+	await _shot("t59_freecam")
 	get_tree().quit()
 
 func _shot(nm: String) -> void:

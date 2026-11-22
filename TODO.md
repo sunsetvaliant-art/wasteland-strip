@@ -2,7 +2,20 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0063, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0064, 2026-11-22.
+
+## Modern utes in, body tools free cam 2026-11-22 (0064)
+User: put the modern utes into the game; every imported vehicle gets its wheels cut off and put in the game for
+every car; the body panels menu needs a very slow free cam to fly in and out of each vehicle's mesh.
+- [x] 0064 New bodies: Toyota Hilux dual cab (2001), Mazda B-Series dual cab (2004), Ford Ranger dual cab (2003),
+      Holden VZ Commodore ute (2004). 37-47k triangles, 14-15 draw calls each, clear glass and their interiors;
+      they turn up in driveways like the rest and are in the garage's Body list and the Forge
+- [x] 0064 Their wheels cut off as wheel models (Hilux alloys, B-Series alloys, Ranger alloys, VZ steelies), from the
+      full-detail downloads so the tyres stay whole; fit any car, spawn in the Forge. Import fixes: a mesh holding
+      two tyres is split; a tyre with no sidewall gets one made, and the body's leftover ring round the wheel is cut
+- [x] 0064 Body tools FREE CAM (F): WASD, Q/E down/up, right-drag looks, wheel sets speed (starts at 0.35 m/s),
+      Shift x4; the near clip is 1 cm so you can fly inside the mesh
+- [ ] Mazdas and the 1988 Hilux from TODOwnload (sedans, wagons, MX-5s, RX-7s) when wanted
 
 ## Lift bonnet, TODOwnload utes 2026-11-22 (0063)
 User: a LIFT BONNET button in body tools so the Meshy junk under the bonnet skin can be painted (the paint tool
@@ -14,8 +27,8 @@ wheels, LIAZ fire truck, a low-poly pickup) in a TODOwnload asset folder.
 - [x] 0063 assets/TODOwnload: 31 models cut from 0.5-3.5 million triangles to ~45-55k, stood upright in metres,
       glass see-through, textures capped at 1024; every one looked at (README.md has the table and verdicts).
       Fails the window rule: the LIAZ (a photo scan) and the low-poly pickup (black windows)
-- [ ] Bring TODOwnload utes into the game: Hilux Mk6 dual cab, Mazda B-Series dual cab, Ranger Mk1 dual cab,
-      VZ ute first (cut wheels, catalog entries, merge by material)
+- [x] 0064 Bring TODOwnload utes into the game: Hilux Mk6 dual cab, Mazda B-Series dual cab, Ranger Mk1 dual cab,
+      VZ ute
 
 ## Body tools clicks, textures, wheels on the axle 2026-11-22 (0062)
 User: can't left click in the F9 window; in body tools left click does nothing and the tub paint is stuck on; turn

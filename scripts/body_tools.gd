@@ -13,6 +13,12 @@ var panel: VBoxContainer
 var cam: Camera3D
 var open := false
 var orbit := Vector2(0.9, 0.35)
+# 0.2.64: free cam to fly in and out of the mesh: WASD, Q/E (or Ctrl/Space) down/up, right-drag looks, wheel sets the
+# speed (starts slow), Shift x4. F toggles it.
+var freecam := false
+var fc_yaw := 0.0
+var fc_pitch := 0.0
+var fc_speed := 0.35
 var dist := 7.0
 var spot := Vector3.ZERO
 var _drag := false
@@ -87,8 +93,11 @@ func _process(dt: float) -> void:
 		_preview_t -= dt
 		if _preview_t < 0.0: _rebuild_model()
 	var target := spot + Vector3(0, 0.7, 0)
-	cam.global_position = target + Vector3(sin(orbit.x) * cos(orbit.y), sin(orbit.y), cos(orbit.x) * cos(orbit.y)) * dist
-	cam.look_at(target)
+	if freecam:
+		_freecam_move(dt)
+	else:
+		cam.global_position = target + Vector3(sin(orbit.x) * cos(orbit.y), sin(orbit.y), cos(orbit.x) * cos(orbit.y)) * dist
+		cam.look_at(target)
 	if plane_mi:
 		plane_mi.visible = mode == "tub" and str(tub.get("mode", "plane")) == "plane"
 		plane_mi.position = spot + Vector3(0, float(tub.get("y", 0.7)), float(tub.z))
@@ -96,8 +105,37 @@ func _process(dt: float) -> void:
 
 ## The mouse comes here after the GUI has had it (0.2.62: 0.2.61 read it ahead of the GUI, which swallowed the
 ## release of every click on the side panel, so no button worked, and every click on the F9 form)
+func set_freecam(on: bool) -> void:
+	freecam = on
+	cam.near = 0.01 if on else 0.05
+	if on:
+		# start where the orbit camera is, looking the same way
+		var f := -cam.global_transform.basis.z
+		fc_yaw = atan2(-f.x, -f.z)
+		fc_pitch = asin(clampf(f.y, -1.0, 1.0))
+	if panel: _build_ui()
+
+func _freecam_move(dt: float) -> void:
+	var b := Basis(Vector3.UP, fc_yaw) * Basis(Vector3.RIGHT, fc_pitch)
+	var mv := Vector3.ZERO
+	if not (get_viewport().gui_get_focus_owner() is LineEdit):
+		if Input.is_physical_key_pressed(KEY_W): mv.z -= 1.0
+		if Input.is_physical_key_pressed(KEY_S): mv.z += 1.0
+		if Input.is_physical_key_pressed(KEY_A): mv.x -= 1.0
+		if Input.is_physical_key_pressed(KEY_D): mv.x += 1.0
+		if Input.is_physical_key_pressed(KEY_E) or Input.is_physical_key_pressed(KEY_SPACE): mv.y += 1.0
+		if Input.is_physical_key_pressed(KEY_Q) or Input.is_physical_key_pressed(KEY_CTRL): mv.y -= 1.0
+	var sp := fc_speed * (4.0 if Input.is_physical_key_pressed(KEY_SHIFT) else 1.0)
+	var d := b * Vector3(mv.x, 0.0, mv.z) + Vector3(0.0, mv.y, 0.0)
+	if d.length_squared() > 0.0: cam.global_position += d.normalized() * sp * dt
+	cam.global_basis = b
+
 func _unhandled_input(e: InputEvent) -> void:
 	if not open: return
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_F and not (get_viewport().gui_get_focus_owner() is LineEdit):
+		set_freecam(not freecam)
+		get_viewport().set_input_as_handled()
+		return
 	if e.is_action_pressed("menu") or e.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
@@ -105,8 +143,12 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton:
 		if e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
 			_drag = e.pressed
-		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed: dist = maxf(dist * 0.9, 2.0)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed: dist = minf(dist * 1.1, 20.0)
+		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed:
+			if freecam: fc_speed = minf(fc_speed * 1.25, 8.0)
+			else: dist = maxf(dist * 0.9, 2.0)
+		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed:
+			if freecam: fc_speed = maxf(fc_speed / 1.25, 0.05)
+			else: dist = minf(dist * 1.1, 20.0)
 		elif e.button_index == MOUSE_BUTTON_LEFT and mode == "paint":
 			painting = e.pressed
 			if e.pressed: _paint_at(e.position, true)
@@ -117,6 +159,9 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseMotion:
 		if painting:
 			_paint_at(e.position)
+		elif _drag and freecam:
+			fc_yaw -= e.relative.x * 0.004
+			fc_pitch = clampf(fc_pitch - e.relative.y * 0.004, -1.5, 1.5)
 		elif _drag:
 			orbit.x -= e.relative.x * 0.006
 			orbit.y = clampf(orbit.y + e.relative.y * 0.004, -0.6, 1.45)
@@ -253,6 +298,11 @@ func _build_ui() -> void:
 	panel.add_theme_constant_override("separation", 6)
 	sc.add_child(panel)
 	var t := Label.new(); t.text = "BODY TOOLS"; panel.add_child(t)
+	var fcb := Button.new(); fcb.toggle_mode = true; fcb.button_pressed = freecam
+	fcb.text = ("FREE CAM on: WASD fly, Q/E down/up, right-drag look, wheel speed %.2f m/s, Shift x4 · F" % fc_speed) if freecam else "FREE CAM (F): fly in and out of the mesh"
+	fcb.autowrap_mode = TextServer.AUTOWRAP_WORD
+	fcb.pressed.connect(func(): set_freecam(not freecam))
+	panel.add_child(fcb)
 	var n := Label.new(); n.text = "Right-drag to look round · wheel to zoom · left-click on the body to place points · Esc to leave"
 	n.autowrap_mode = TextServer.AUTOWRAP_WORD; n.custom_minimum_size = Vector2(400, 0); n.modulate.a = 0.7
 	panel.add_child(n)

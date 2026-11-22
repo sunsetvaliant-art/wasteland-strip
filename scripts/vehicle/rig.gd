@@ -38,6 +38,10 @@ const WHEEL_MODELS := {
 	"jdm_3": {"name": "JDM rims: split spoke", "path": "res://assets/vehicles/wheels/jdm_3.glb"},
 	"jdm_4": {"name": "JDM rims: five hole", "path": "res://assets/vehicles/wheels/jdm_4.glb"},
 	"f100": {"name": "F100 steelies", "path": "res://assets/vehicles/wheels/f100.glb"},
+	"hilux_dc": {"name": "Hilux alloys (2001)", "path": "res://assets/vehicles/wheels/hilux_dc.glb"},
+	"bseries_dc": {"name": "Mazda B-Series alloys", "path": "res://assets/vehicles/wheels/bseries_dc.glb"},
+	"ranger_dc": {"name": "Ranger alloys (2003)", "path": "res://assets/vehicles/wheels/ranger_dc.glb"},
+	"vz_ute": {"name": "VZ ute steelies", "path": "res://assets/vehicles/wheels/vz_ute.glb"},
 }
 var beams: Array = []             # [{mi, fn: Callable}] updated every frame
 var tailshaft: MeshInstance3D

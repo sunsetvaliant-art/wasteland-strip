@@ -262,5 +262,29 @@
   "author": "Juangamer",
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/zombie-scream-052d81624ba24d8b9dc9b8e87909cef0"
+ },
+ "hilux_dc": {
+  "title": "Toyota Hilux (Mk6) Double Cab 2001",
+  "author": "niev",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/toyota-hilux-mk6-double-cab-2001-160692a5e0514d14aa2bd6498873345e"
+ },
+ "bseries_dc": {
+  "title": "2004 Mazda B-Series UN 2500 Double Cab",
+  "author": "Res1n",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/2004-mazda-b-series-un-2500-double-cab-e25bd7759aa5478b9ea3d0b1622bdcfc"
+ },
+ "ranger_dc": {
+  "title": "Ford Ranger Mk1 Double Cab 2003",
+  "author": "niev",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/ford-ranger-mk1-double-cab-2003-a0c1230493a54275b47b9c40038fb614"
+ },
+ "vz_ute": {
+  "title": "Holden Ute (VZ) 2004",
+  "author": "niev",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/holden-ute-vz-2004-c367417953f0406bbc0342df2ab883b7"
  }
 }
