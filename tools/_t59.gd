@@ -80,7 +80,19 @@ func _paint_only(main) -> void:
 	print("T59 centre ", spc, " origin ", bt.cam.project_ray_origin(spc), " dir ", bt.cam.project_ray_normal(spc), " to spot ", (sp0 - bt.cam.global_position).normalized())
 	print("T59 centre ray ", bt.pt_tm.intersect_ray(bt.cam.project_ray_origin(spc) - sp0, bt.cam.project_ray_normal(spc)))
 	# real mouse events, small brush, across the top of one end of the body (found by rays straight down)
-	bt.pt_part = 3; bt.pt_rad = 0.12
+	# pick Bonnet with a real click on its button (0.2.61 swallowed the release: no panel button worked)
+	bt.pt_part = 2; bt._build_ui()
+	await get_tree().process_frame
+	var bbtn: Button = null
+	for n in bt.panel.find_children("*", "Button", true, false):
+		if (n as Button).text == "Bonnet": bbtn = n
+	var bp: Vector2 = bbtn.get_global_rect().get_center()
+	for pr in [true, false]:
+		var ce := InputEventMouseButton.new(); ce.button_index = MOUSE_BUTTON_LEFT; ce.pressed = pr; ce.position = bp; ce.global_position = bp
+		Input.parse_input_event(ce)
+		await get_tree().process_frame
+	print("T59 clicked Bonnet button: pt_part now ", bt.pt_part)
+	bt.pt_rad = 0.12
 	var lo := Vector3(INF, INF, INF); var hi := -lo
 	for v in bt.pt_tris: lo = lo.min(v); hi = hi.max(v)
 	print("T59 body box ", lo, " .. ", hi)
@@ -130,6 +142,10 @@ func _paint_only(main) -> void:
 	for _i in 10: await get_tree().process_frame
 	print("T59 painter: status %s" % [bt.status.text])
 	await _shot("t59_paint")
+	for ox in [0.7, 2.4]:
+		bt.orbit = Vector2(ox, 0.45); bt.dist = 6.0
+		for _i in 4: await get_tree().process_frame
+		await _shot("t59_paint_%d" % int(ox * 10))
 	get_tree().quit()
 
 func _shot(nm: String) -> void:

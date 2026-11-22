@@ -78,6 +78,9 @@ func _load_cut() -> void:
 
 func _process(dt: float) -> void:
 	if not open: return
+	# a button let go over the side panel goes to the panel, not here: don't stay painting / turning
+	if painting and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT): painting = false
+	if _drag and not (Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)): _drag = false
 	if _preview_t >= 0.0:
 		_preview_t -= dt
 		if _preview_t < 0.0: _rebuild_model()
@@ -89,15 +92,15 @@ func _process(dt: float) -> void:
 		plane_mi.position = spot + Vector3(0, float(tub.get("y", 0.7)), float(tub.z))
 		plane_mi.rotation = Vector3(-deg_to_rad(float(tub.get("tilt", 0.0))), 0, 0)
 
-## 0.2.61: the mouse is read here, ahead of the GUI, not in _unhandled_input: a full-screen control on another layer
-## was taking the clicks first, so a left-drag on the model never reached the painter. Clicks on the side panel still go
-## to the panel.
-func _input(e: InputEvent) -> void:
+## The mouse comes here after the GUI has had it (0.2.62: 0.2.61 read it ahead of the GUI, which swallowed the
+## release of every click on the side panel, so no button worked, and every click on the F9 form)
+func _unhandled_input(e: InputEvent) -> void:
 	if not open: return
-	if not (e is InputEventMouseButton or e is InputEventMouseMotion): return
-	var over_panel: bool = bg_panel != null and is_instance_valid(bg_panel) and bg_panel.get_global_rect().has_point(e.position)
+	if e.is_action_pressed("menu") or e.is_action_pressed("ui_cancel"):
+		close()
+		get_viewport().set_input_as_handled()
+		return
 	if e is InputEventMouseButton:
-		if over_panel and e.pressed: return
 		if e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
 			_drag = e.pressed
 		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed: dist = maxf(dist * 0.9, 2.0)
@@ -116,12 +119,6 @@ func _input(e: InputEvent) -> void:
 			orbit.y = clampf(orbit.y + e.relative.y * 0.004, -0.6, 1.45)
 		else:
 			return
-		get_viewport().set_input_as_handled()
-
-func _unhandled_input(e: InputEvent) -> void:
-	if not open: return
-	if e.is_action_pressed("menu") or e.is_action_pressed("ui_cancel"):
-		close()
 		get_viewport().set_input_as_handled()
 
 ## Click on the model: a point on the tub seam or the bonnet's shut line
@@ -404,18 +401,24 @@ func _paint_from_lines() -> void:
 		elif use_tub and not tub.is_empty() and BodyCut.behind_tub(tub, c): pt_lab[i] = 2
 	_rebuild_model()
 
+## 0.2.62: the painted faces are a see-through coat over the textured model (the plain grey hid the shut lines):
+## each chunk holds only its painted triangles, lifted 4 mm off the panel
 func _paint_mesh(ci: int) -> ArrayMesh:
 	var a := ci * PT_CH
 	var b := mini(a + PT_CH, pt_ctr.size())
 	if b <= a: return null
-	var V := pt_tris.slice(a * 3, b * 3)
-	var N := PackedVector3Array(); N.resize(V.size())
-	var C := PackedColorArray(); C.resize(V.size())
+	var V := PackedVector3Array(); var N := PackedVector3Array(); var C := PackedColorArray()
 	for t in b - a:
-		var col: Color = PT_COL[pt_lab[a + t]]
+		var lv: int = pt_lab[a + t]
+		if lv == 0: continue
+		var col: Color = PT_COL[lv]
+		col.a = 0.55
 		var n := pt_nrm[a + t]
-		for k in 3:
-			N[t * 3 + k] = n; C[t * 3 + k] = col
+		# lifted both ways: a model's winding can point its normals inward, and the copy inside the panel just hides
+		for sgn in [1.0, -1.0]:
+			for k in 3:
+				V.append(pt_tris[(a + t) * 3 + k] + n * (0.004 * sgn)); N.append(n * sgn); C.append(col)
+	if V.is_empty(): return null
 	var arr := []; arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = V; arr[Mesh.ARRAY_NORMAL] = N; arr[Mesh.ARRAY_COLOR] = C
 	var am := ArrayMesh.new()
@@ -425,16 +428,25 @@ func _paint_mesh(ci: int) -> ArrayMesh:
 var _pt_mat: StandardMaterial3D
 func _paint_build() -> void:
 	_paint_load()
+	# the model itself, textures and all
+	for m in BodyCut.meshes_of(glb):
+		var mi := MeshInstance3D.new()
+		mi.mesh = m.mesh
+		mi.transform = m.xf
+		model.add_child(mi)
 	if _pt_mat == null:
 		_pt_mat = StandardMaterial3D.new()
 		_pt_mat.vertex_color_use_as_albedo = true
+		_pt_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_pt_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_pt_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		_pt_mat.roughness = 0.8
+		_pt_mat.render_priority = 1
 	pt_chunks.clear()
 	for ci in ceili(float(pt_ctr.size()) / PT_CH):
 		var mi := MeshInstance3D.new()
 		mi.mesh = _paint_mesh(ci)
 		mi.material_override = _pt_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		model.add_child(mi)
 		pt_chunks.append(mi)
 	_paint_status()
@@ -552,7 +564,7 @@ func _paint_fill(f0: int, dirty: Dictionary) -> void:
 
 func _paint_ui() -> void:
 	var hb := HBoxContainer.new(); panel.add_child(hb)
-	for pp in [[2, "Tub"], [3, "Bonnet"], [1, "Cab (rub out)"]]:
+	for pp in [[2, "Tub"], [3, "Bonnet"], [1, "Cab"], [0, "Erase"]]:
 		var b := Button.new(); b.text = pp[1]; b.toggle_mode = true; b.button_pressed = pt_part == pp[0]
 		b.pressed.connect(func():
 			pt_part = pp[0]; _build_ui())
@@ -584,5 +596,5 @@ func _paint_ui() -> void:
 		for i in pt_lab.size(): if pt_lab[i] == 3: pt_lab[i] = 0
 		_rebuild_model())
 	var l := Label.new()
-	l.text = "Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in another colour, Cab (rub out) say, and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = painted back to cab, grey = left to the lines."
+	l.text = "Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in Cab and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = kept as cab, no tint = left to the lines. Erase takes the paint off."
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)

@@ -2,7 +2,18 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0061, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0062, 2026-11-22.
+
+## Body tools clicks, textures, wheels on the axle 2026-11-22 (0062)
+User: can't left click in the F9 window; in body tools left click does nothing and the tub paint is stuck on; turn
+the model textures back on for the cars; make sure wheels are fixed to their axle so they stay flat to the diff
+flange. He's looking for 2000s and 2010s dual cab utes.
+- [x] 0062 Body tools took every click before the rest of the screen (0061): no side-panel button worked (stuck on
+      Tub) and the F9 form couldn't be clicked. Back to clicks after the screen's own buttons
+- [x] 0062 Painting shows over the textured model (see-through tint) instead of plain grey; an Erase button
+- [x] 0062 Wheels: the hub no longer drops off the axle end by half the tyre squash; live-axle wheels stay square
+      to the housing (checked with one wheel up a block, tools/_flexshot.tscn)
+- [ ] 2000s/2010s dual cab utes (Hilux, Navara, Triton, Ranger, D-Max, BT-50, Colorado): user is finding models
 
 ## Bonnet painter, wheels, zombies, stutter, F9 reports 2026-11-22 (0061)
 User: the bonnet painter doesn't paint when you click and drag (the points method worked well; keep it); find more

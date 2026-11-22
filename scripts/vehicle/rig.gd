@@ -350,8 +350,8 @@ func _process(_dt: float) -> void:
 					roll = atan2(dy * float(w.side), 2.0 * float(w.a.track))
 		n.spin.rotation = Vector3(w.spin, 0, 0)
 		# sidewall deflection: the tyre sits down under load (more on soft pressures); a squash on the visual
+		# 0.2.62: the hub stays on the axle end (it used to drop by half the squash, off the housing's flange)
 		var defl: float = w.get("defl", 0.0)
-		n.pivot.position.y -= defl * 0.5
 		n.pivot.basis = Basis(Vector3(0, 0, 1), roll) * Basis(Vector3.UP, w.steer) * Basis.from_scale(Vector3(1.0, 1.0 - defl / (float(w.r) * 2.0), 1.0))
 	for b in beams:
 		var r = b.fn.call()
