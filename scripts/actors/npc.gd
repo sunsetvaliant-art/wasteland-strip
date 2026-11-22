@@ -8,7 +8,18 @@ extends CharacterBody3D
 ##           and they fight: keep their distance, shoot in bursts, close in with shotguns, hunt where you were last seen.
 ## Both ragdoll when they die, lose limbs to big hits, and turn to paste under a car.
 
-const ZOMBIE_MODELS := ["zombie_hollow"]      # the Meshy walker only (the Sketchfab ones brought hidden collision with them)
+## 0.2.61: every zombie body back in (their stray collision is stripped on load and from the gore copy since 0021), plus
+## three new ones; the hollow walker turns up most. Weighted by repeats.
+const ZOMBIE_MODELS := ["zombie_hollow", "zombie_hollow", "zombie_walker2", "zombie_ww", "zombie_soldier", "zombie_mx",
+	"zombie_hazmat", "zombie_fuse", "zombie_female", "zombie_runner"]
+## Load every body on a worker thread at the start, so the first of each kind doesn't hitch the game when it walks in
+static func preload_models() -> void:
+	var seen := {}
+	for k in ZOMBIE_MODELS + SCAV_MODELS:
+		if seen.has(k): continue
+		seen[k] = true
+		var p := Rig.path_of(k)
+		if ResourceLoader.exists(p): ResourceLoader.load_threaded_request(p)
 const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
 const SCAV_MODELS := ["scav_hooded", "scav_2"]
 const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff", "hunter", "magnum45"]

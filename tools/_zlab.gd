@@ -10,11 +10,11 @@ func _init() -> void:
 	var gp := MeshInstance3D.new(); var pm := PlaneMesh.new(); pm.size = Vector2(20, 20); gp.mesh = pm; root.add_child(gp)
 	var cam := Camera3D.new(); root.add_child(cam); cam.current = true
 	cam.look_at_from_position(Vector3(1.0, 1.2, 3.2), Vector3(1.0, 0.85, -0.3), Vector3.UP)
-	var bodies := ["zombie_hollow", "zombie_mx", "zombie_female", "zombie_hazmat"]
+	var bodies: Array = Array(OS.get_environment("BODIES").split(",")) if OS.get_environment("BODIES") != "" else ["zombie_hollow", "zombie_mx", "zombie_female", "zombie_hazmat"]
 	var rigs := []
 	for i in bodies.size():
 		var r := Rig.new(); root.add_child(r); r.load_model(bodies[i])
-		r.position = Vector3(i * 1.1 - 0.4, 0, -i * 0.3); r.rotation.y = -0.9
+		r.position = Vector3(i * 0.9 - 0.4, 0, -i * 0.25); r.rotation.y = -0.9
 		rigs.append(r)
 	var clips := OS.get_environment("CLIPS").split(",")
 	for c in clips:

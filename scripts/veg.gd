@@ -68,6 +68,7 @@ func set_ranges(tree_r: float, grass_r: float, dens: float) -> void:
 	if abs(dens - density) > 0.01:
 		density = dens
 		for n in ["small", "grass", "scan"]:
+			if not layers.has(n): continue          # no scanned plants loaded: no scan layer
 			for k in layers[n].cells:
 				if layers[n].cells[k]: layers[n].cells[k].queue_free()
 			layers[n].cells.clear()
@@ -325,9 +326,10 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 			if kind == "":
 				continue
 			var clear := road_clearance(x, z)
-			if clear < 6.0 and Roads.inst:
+			if clear < 8.0 and Roads.inst:
 				clear = Roads.inst.edge_dist(x, z)        # near a road: the exact distance from its seal
-			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2, "scan": 0.3, "cane": 2.5}[layer]:
+			# 0.2.61: cane stands back off the road (headland and a drain): it was a wall right at the edge of the seal
+			if clear < {"tree": 3.5, "small": 1.2, "grass": 0.2, "scan": 0.3, "cane": 6.5}[layer]:
 				continue
 			if Buildings.blocked(x, z, {"tree": 3.0, "small": 0.8, "grass": 0.0, "scan": 0.0, "cane": 1.5}[layer]):
 				continue
@@ -522,7 +524,8 @@ func _make_cane() -> void:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 	m.alpha_scissor_threshold = 0.4
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.roughness = 0.8
+	m.roughness = 1.0
+	m.metallic_specular = 0.0          # 0.2.61: the cards' normals all point up, so the sun glinted off whole paddocks
 	m.backlight_enabled = true
 	m.backlight = Color(0.25, 0.35, 0.1)
 	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC

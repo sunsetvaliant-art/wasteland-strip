@@ -201,6 +201,20 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   downloaded body (round parts at the corners and everything inside them), writes the body, a wheel model and the
   catalog entry (/tmp/<key>_entry.json). tools/import_wheel.py turns the rim face to +Z; import_jdm_rims.py lines
   the pack's tyres up. Catalog eng_y drops the engine under a low bonnet. Forge props can carry "scale".
+- 0061: GDScript gotcha that broke the painter: `(dict[k] as PackedInt32Array).append(x)` appends to a COPY (packed
+  arrays are values). Use plain Arrays for lists kept in a Dictionary/Array. BodyTools reads the mouse in _input
+  (ahead of the GUI), skipping clicks on its side panel (bg_panel). Painter: AABB grid (PT_CELL 0.25), closest-point
+  distance per triangle, hit face always painted, "Fill panel" floods across edges (welded at 1 mm) stopping at
+  creases, at 2x the angle from the seed, and at faces painted another part. WHEEL_MODELS "dir": +1/-1 = the side
+  that wears the model mirrored (directional lugs). Wheel checks: tools/_wheelface.tscn (WF_ONLY, WF_YAW, WF_TOP)
+  and tools/_treadshot.tscn (SHOT_WM); smoke: tools/_smokeshot.tscn. Buildings.fast: over 16 m/s (off under 8.5) no
+  full builds, LOD fade switched off (BuildGen.lod_fade, uniforms only), full builds hidden, box colliders per lot
+  (_boxes); full builds spaced by _cool_ms. NO_FAST_BUILD=1 env turns that off (for comparing). Stutter test:
+  tools/_speedperf.gd via /tmp/runpt.sh-style autoload injection. Engine.max_physics_steps_per_frame = 6 (main).
+  Zombies: NPC.ZOMBIE_MODELS has nine bodies (weighted); new Sketchfab Mixamo exports go through
+  tools/mixamo_rename.py (bones to mixamorig_X, their clip dropped) then tools/setup_retarget.gd and
+  an --editor import; check poses with tools/_zlab.gd (BODIES=..., CLIPS=...). glb material fixes:
+  tools/glb_mats.py.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

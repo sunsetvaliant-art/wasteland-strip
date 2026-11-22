@@ -1069,6 +1069,7 @@ func _process(dt: float) -> void:
 	for w in wheels:
 		w.spin = fmod(w.spin + w.omega * dt, TAU)
 	_body_anim(dt)
+	_smoke(dt)
 	if driver == null or cab_view:
 		return
 	chase_yaw = lerp(chase_yaw, 0.0, 1.2 * dt) if Input.get_last_mouse_velocity().length() < 5 else chase_yaw
@@ -1081,3 +1082,58 @@ func _process(dt: float) -> void:
 	var want := target + dir * cos(chase_pitch) * dist + Vector3(0, sin(chase_pitch) * dist, 0)
 	cam_chase.global_position = cam_chase.global_position.lerp(want, clamp(9.0 * dt, 0, 1))
 	cam_chase.look_at(target, Vector3.UP)
+
+
+# ------------------------------------------------------------------ diesel smoke (0.2.61)
+## A turned-up pump (or too much fuel in the tune) blows black smoke out the back on the throttle, a haze at idle
+var _smoke_p: CPUParticles3D
+var _smoke_lvl := -1.0
+var _smoke_t := 0.0
+func _smoke(dt: float) -> void:
+	_smoke_t -= dt
+	if _smoke_t <= 0.0:
+		_smoke_t = 0.5
+		_smoke_lvl = EngineKit.smokes(design.get("kit", {})) if design.has("kit") else 0.0
+	if _smoke_lvl <= 0.05 or not running:
+		if _smoke_p: _smoke_p.emitting = false
+		return
+	if _smoke_p == null: _smoke_make()
+	var ld := clampf(throttle, 0.0, 1.0) * clampf(rpm / maxf(float(eng.get("redline", 4500)), 1000.0) * 1.6, 0.3, 1.0)
+	var k := _smoke_lvl * (0.18 + 0.82 * ld)
+	_smoke_p.emitting = k > 0.06
+	_smoke_p.color = Color(0.07, 0.07, 0.07, clampf(k * 1.3, 0.1, 0.92))
+	_smoke_p.initial_velocity_min = 1.0 + 3.0 * ld
+	_smoke_p.initial_velocity_max = 2.0 + 5.0 * ld
+	_smoke_p.scale_amount_max = 1.0 + 1.6 * k
+
+func _smoke_make() -> void:
+	var p := CPUParticles3D.new()
+	p.name = "Smoke"
+	p.amount = 72
+	p.lifetime = 2.4
+	p.local_coords = false
+	p.direction = Vector3(0, 0.25, -1)
+	p.spread = 14.0
+	p.gravity = Vector3(0, 0.6, 0)
+	p.damping_min = 1.2; p.damping_max = 2.2
+	p.scale_amount_min = 0.7
+	var sc := Curve.new(); sc.add_point(Vector2(0, 0.35)); sc.add_point(Vector2(1, 2.6)); p.scale_amount_curve = sc
+	var gr := Gradient.new(); gr.set_color(0, Color(1, 1, 1, 0.9)); gr.set_color(1, Color(1, 1, 1, 0.0)); p.color_ramp = gr
+	var qm := QuadMesh.new(); qm.size = Vector2(0.7, 0.7)
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.vertex_color_use_as_albedo = true
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var gt := GradientTexture2D.new(); gt.fill = GradientTexture2D.FILL_RADIAL; gt.fill_from = Vector2(0.5, 0.5); gt.fill_to = Vector2(1.0, 0.5)
+	var g2 := Gradient.new(); g2.set_color(0, Color(1, 1, 1, 1)); g2.set_color(1, Color(1, 1, 1, 0)); gt.gradient = g2
+	m.albedo_texture = gt
+	qm.material = m
+	p.mesh = qm
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var zr := INF
+	for a in design.axles: zr = minf(zr, float(a.z))
+	p.position = Vector3(0.45, float(design.get("ride", 0.4)) + 0.05, zr - 1.0)
+	add_child(p)
+	_smoke_p = p

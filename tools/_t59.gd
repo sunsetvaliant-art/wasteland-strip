@@ -64,47 +64,7 @@ func _ready():
 	await _shot("t59_dropped")
 	ev.close()
 	# ---- the body painter
-	var bt = main.body_tools
-	bt.glb = str(Car.catalog()["vhute"].glb)
-	bt.mode = "paint"
-	bt.show_tools()
-	for _i in 30: await get_tree().process_frame
-	bt.pt_part = 2; bt.pt_rad = 0.4
-	var sp0: Vector3 = bt.spot
-	print("T59 paint cam ", bt.cam.global_position, " current ", bt.cam.current, " spot ", sp0, " vis ", get_viewport().get_visible_rect().size)
-	print("T59 straight down ", bt.pt_tm.intersect_ray(Vector3(0, 5, 0), Vector3(0, -1, 0)), " tris ", bt.pt_tris.size(), " model ", bt.model.global_position if bt.model else null)
-	var spc: Vector2 = bt.cam.unproject_position(sp0)
-	print("T59 centre ", spc, " origin ", bt.cam.project_ray_origin(spc), " dir ", bt.cam.project_ray_normal(spc), " to spot ", (sp0 - bt.cam.global_position).normalized())
-	print("T59 centre ray ", bt.pt_tm.intersect_ray(bt.cam.project_ray_origin(spc) - sp0, bt.cam.project_ray_normal(spc)))
-	for i in 12:
-		var sp: Vector2 = bt.cam.unproject_position(sp0 + Vector3(0, 0.25, -2.4 + i * 0.1))
-		if i == 0: print("T59 paint at ", sp, " ray ", bt.pt_tm.intersect_ray(bt.cam.project_ray_origin(sp) - sp0, bt.cam.project_ray_normal(sp)))
-		bt._paint_at(sp)
-	bt.pt_part = 3
-	for i in 8:
-		bt._paint_at(bt.cam.unproject_position(sp0 + Vector3(0, 0.4, 1.6 + i * 0.08)))
-	for _i in 10: await get_tree().process_frame
-	print("T59 painter: %d triangles, status %s" % [bt.pt_ctr.size(), bt.status.text if bt.status else ""])
-	await _shot("t59_paint")
-	bt.close()
-	# ---- the Forge palette, engines tab
-	var f = main.forge
-	if not f.active: f.toggle()
-	f._set_palette(true)
-	var tabs: TabContainer = null
-	for ch in f.palette.get_children():
-		if ch is TabContainer: tabs = ch
-	if tabs:
-		for i in tabs.get_tab_count():
-			if tabs.get_tab_title(i) == "Engines & parts": tabs.current_tab = i
-		var page: ScrollContainer = tabs.get_node("Engines & parts")
-		var vb: VBoxContainer = page.get_child(0)
-		(vb.get_child(0) as Button).button_pressed = true
-		(vb.get_child(2) as Button).button_pressed = true
-	for _i in 90: await get_tree().process_frame
-	await _shot("t59_palette")
-	print("T59 done")
-	get_tree().quit()
+	await _paint_only(main)
 
 func _paint_only(main) -> void:
 	var bt = main.body_tools
@@ -119,13 +79,54 @@ func _paint_only(main) -> void:
 	var spc: Vector2 = bt.cam.unproject_position(sp0)
 	print("T59 centre ", spc, " origin ", bt.cam.project_ray_origin(spc), " dir ", bt.cam.project_ray_normal(spc), " to spot ", (sp0 - bt.cam.global_position).normalized())
 	print("T59 centre ray ", bt.pt_tm.intersect_ray(bt.cam.project_ray_origin(spc) - sp0, bt.cam.project_ray_normal(spc)))
-	for i in 12:
-		var sp: Vector2 = bt.cam.unproject_position(sp0 + Vector3(0, 0.25, -2.4 + i * 0.1))
-		if i == 0: print("T59 paint at ", sp, " ray ", bt.pt_tm.intersect_ray(bt.cam.project_ray_origin(sp) - sp0, bt.cam.project_ray_normal(sp)))
-		bt._paint_at(sp)
+	# real mouse events, small brush, across the top of one end of the body (found by rays straight down)
+	bt.pt_part = 3; bt.pt_rad = 0.12
+	var lo := Vector3(INF, INF, INF); var hi := -lo
+	for v in bt.pt_tris: lo = lo.min(v); hi = hi.max(v)
+	print("T59 body box ", lo, " .. ", hi)
+	var zf: float = lerpf(lo.z, hi.z, 0.86)
+	var ha: Dictionary = bt.pt_tm.intersect_ray(Vector3(-0.35, hi.y + 1.0, zf), Vector3.DOWN)
+	var hb: Dictionary = bt.pt_tm.intersect_ray(Vector3(0.35, hi.y + 1.0, zf), Vector3.DOWN)
+	print("T59 top hits ", ha.get("position"), " ", hb.get("position"))
+	var p0: Vector2 = bt.cam.unproject_position(sp0 + (ha.get("position", Vector3.ZERO) as Vector3))
+	var p1: Vector2 = bt.cam.unproject_position(sp0 + (hb.get("position", Vector3.ZERO) as Vector3))
+	p0 = spc; p1 = spc + Vector2(90, -15)      # across the middle of the screen, clear of the side panel
+	print("T59 drag ", p0, " -> ", p1)
+	var evp := InputEventMouseButton.new(); evp.button_index = MOUSE_BUTTON_LEFT; evp.pressed = true; evp.position = p0; evp.global_position = p0
+	Input.parse_input_event(evp)
+	await get_tree().process_frame
+	var hov = get_viewport().gui_get_hovered_control()
+	print("T59 hovered control at press: ", hov.get_path() if hov else null, " filter ", hov.mouse_filter if hov else -1)
+	for i in 21:
+		var mm := InputEventMouseMotion.new(); mm.position = p0.lerp(p1, i / 20.0); mm.global_position = mm.position; mm.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(mm)
+		await get_tree().process_frame
+	var ev2 := InputEventMouseButton.new(); ev2.button_index = MOUSE_BUTTON_LEFT; ev2.pressed = false; ev2.position = p1; ev2.global_position = p1
+	Input.parse_input_event(ev2)
+	await get_tree().process_frame
+	print("T59 after drag: ", bt.status.text)
+	# fill a tub panel with a click
+	bt.pt_fill = true; bt.pt_part = 2
+	var t0 := Time.get_ticks_msec()
+	var hc: Dictionary = bt.pt_tm.intersect_ray(Vector3(0.0, hi.y + 1.0, lerpf(lo.z, hi.z, 0.12)), Vector3.DOWN)
+	print("T59 fill at ", hc.get("position"))
+	bt._paint_at(bt.cam.unproject_position(sp0 + (hc.get("position", Vector3.ZERO) as Vector3)), true)
+	print("T59 after fill (%d ms): %s" % [Time.get_ticks_msec() - t0, bt.status.text])
+	var rr: Dictionary = bt.pt_tm.intersect_ray(Vector3(0.0, hi.y + 1.0, lerpf(lo.z, hi.z, 0.12)), Vector3.DOWN)
+	var fi := int(rr.get("face_index", -1))
+	if fi >= 0 and bt._pt_adj.size() > fi:
+		var nb: Array = bt._pt_adj[fi]
+		var dots := []
+		for o in nb: dots.append(snappedf(bt.pt_nrm[o].dot(bt.pt_nrm[fi]), 0.01))
+		print("T59 fill face ", fi, " n ", bt.pt_nrm[fi], " tri ", bt.pt_tris[fi * 3], bt.pt_tris[fi * 3 + 1], bt.pt_tris[fi * 3 + 2], " neighbours ", nb, " dots ", dots)
+	var tot := 0
+	for a in bt._pt_adj: tot += (a as PackedInt32Array).size()
+	print("T59 adjacency mean ", float(tot) / maxf(bt._pt_adj.size(), 1))
+	# bonnet by fill from its top, on a cleared model
+	for i in bt.pt_lab.size(): bt.pt_lab[i] = 0
 	bt.pt_part = 3
-	for i in 8:
-		bt._paint_at(bt.cam.unproject_position(sp0 + Vector3(0, 0.4, 1.6 + i * 0.08)))
+	bt._paint_at(bt.cam.unproject_position(sp0 + (ha.get("position", Vector3.ZERO) as Vector3)), true)
+	bt._rebuild_model()
 	for _i in 10: await get_tree().process_frame
 	print("T59 painter: status %s" % [bt.status.text])
 	await _shot("t59_paint")

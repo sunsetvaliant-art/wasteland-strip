@@ -627,26 +627,98 @@ func _process_inner(dt: float) -> void:
 	if lots.is_empty() or main == null or main.player == null:
 		return
 	var me := _focus()
+	_track_speed(me, dt)
 	_t -= dt
 	if _t <= 0.0:
 		_t = 0.5
 		_update_sets(me)
+		_update_boxes(me)
 	# one piece of work a frame: the nearest full build that's wanted, else a cell's LOD
+	# 0.2.61: not while driving fast (a full build is 40-90 ms: one a frame was 4 fps down a main street at 120 km/h),
+	# and spaced out by what the last one cost, unless it's right next to you
+	_cool_ms -= dt * 1000.0
 	var best := -1
 	var bd := INF
-	for i in _want_full:
-		if full.has(i): continue
-		var d := _lot_dist(i, me)
-		if d < bd:
-			bd = d
-			best = i
-	if best >= 0:
+	if not fast:
+		for i in _want_full:
+			if full.has(i): continue
+			var d := _lot_dist(i, me)
+			if d < bd:
+				bd = d
+				best = i
+	if best >= 0 and (_cool_ms <= 0.0 or bd < 25.0):
+		var t0 := Time.get_ticks_usec()
 		_build_full(best)
 		_want_full.erase(best)
+		_cool_ms = minf((Time.get_ticks_usec() - t0) / 1000.0 * 1.3, 400.0)
 	BuildProps.work(3500)
 	_lod_jobs()
 
 var _want_full := {}
+
+# ------------------------------------------------------------------ driving fast (0.2.61)
+## Over ~58 km/h nothing new is built inside: the merged outsides (LOD) show right up close instead and any full
+## builds about are hidden (they still collide), lots without a full build get a plain box to hit. Under ~30 km/h
+## it all comes back, nearest first.
+var fast := false
+var _spd := 0.0
+var _last_me := Vector3.INF
+var _cool_ms := 0.0
+var _boxes := {}             # lot -> StaticBody3D
+const FAST_ON := 16.0
+const FAST_OFF := 8.5
+
+func _track_speed(me: Vector3, dt: float) -> void:
+	if dt <= 0.0: return
+	if _last_me != Vector3.INF:
+		var v := minf(Vector2(me.x - _last_me.x, me.z - _last_me.z).length() / dt, 90.0)
+		_spd = lerpf(_spd, v, clampf(dt * 2.5, 0.0, 1.0))
+	_last_me = me
+	if OS.get_environment("NO_FAST_BUILD") != "": return
+	if not fast and _spd > FAST_ON: _set_fast(true)
+	elif fast and _spd < FAST_OFF: _set_fast(false)
+
+func _set_fast(on: bool) -> void:
+	fast = on
+	BuildGen.lod_fade(not on)
+	for i in full:
+		var b = full[i]
+		if is_instance_valid(b): (b as Node3D).visible = not on
+	if not on: _update_boxes(_focus())
+
+func _update_boxes(me: Vector3) -> void:
+	for i in _boxes.keys():
+		if full.has(i) or _lot_dist(i, me) > 110.0 or not fast:
+			if not fast and not full.has(i) and _lot_dist(i, me) < FULL_R: continue     # keep it till the real one's up
+			var bx = _boxes[i]
+			if is_instance_valid(bx): (bx as Node).queue_free()
+			_boxes.erase(i)
+	if not fast: return
+	var mc := Vector2i(floori(me.x / CELL), floori(me.z / CELL))
+	for gx in range(mc.x - 1, mc.x + 2):
+		for gz in range(mc.y - 1, mc.y + 2):
+			for i in cells.get(Vector2i(gx, gz), []):
+				if full.has(i) or _boxes.has(i) or _lot_dist(i, me) > 80.0: continue
+				_boxes[i] = _lot_box(i)
+
+func _lot_box(i: int) -> StaticBody3D:
+	var l: Array = lots[i]
+	var kind := str(l[0])
+	var h := 4.0
+	if kind in ["two_storey", "flats", "hotel", "pub"]: h = 7.0
+	elif kind in ["mall", "warehouse", "workshop", "shed"]: h = 6.5
+	var w := float(l[4]); var d := float(l[5])
+	var x := float(l[1]); var z := float(l[2])
+	var g: float = main.height_at(x, z)
+	var sb := StaticBody3D.new()
+	sb.name = "Box%d" % i
+	var cs := CollisionShape3D.new()
+	var bs := BoxShape3D.new(); bs.size = Vector3(maxf(w - 0.4, 1.0), h + 2.0, maxf(d - 0.4, 1.0))
+	cs.shape = bs
+	sb.add_child(cs)
+	add_child(sb)
+	sb.global_transform = Transform3D(Basis(Vector3.UP, float(l[3])), Vector3(x, g - 1.0 + (h + 2.0) * 0.5, z))
+	return sb
 
 func _update_sets(me: Vector3) -> void:
 	# full builds in and out
@@ -798,6 +870,10 @@ func _build_full(i: int) -> void:
 		box.set_meta("loot_gen", gen)
 	full[i] = b
 	b.set_meta("plan", p)
+	if _boxes.has(i):
+		if is_instance_valid(_boxes[i]): (_boxes[i] as Node).queue_free()
+		_boxes.erase(i)
+	if fast: b.visible = false
 	if str(lots[i][0]) in ["qlder", "cottage", "brick", "two_storey"]:
 		_yard(i, p, b, xf)
 	_project_car(i, p, b)

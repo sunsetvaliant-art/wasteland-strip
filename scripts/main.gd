@@ -48,6 +48,10 @@ var base: BaseBuild
 var road_pilot: Node3D        # RoadPilot, loaded by path so a broken road addon can't stop the game starting
 
 func _ready() -> void:
+	# 0.2.61: at a low frame rate don't run up to 8 physics steps a frame (each one more car physics: a spiral down to
+	# 4 fps); under 20 fps the game slows a little instead
+	Engine.max_physics_steps_per_frame = 6
+	NPC.preload_models()
 	InputSetup.ensure()
 	# keys added in updates: InputSetup may be the copy Boot loaded from the original install (scripts already in memory
 	# aren't replaced when an update's pack is mounted), so register them here too
@@ -581,7 +585,7 @@ func _process(_dt: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam:
 		_pt = Prof.t()
-		veg.update(cam.global_position)
+		veg.update(cam.global_position, 1 if (buildings and buildings.fast) else 3)     # 0.2.61: one cell a frame when driving fast
 		Prof.add("plants", _pt)
 		var tgt: Node3D = forge.cam if forge.active else (player.vehicle if is_instance_valid(player.vehicle) else player)
 		collision_centre = tgt.global_position

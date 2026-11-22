@@ -26,9 +26,9 @@ const WHEEL_MODELS := {
 	"stance_r13": {"name": "Wide 13 inch steelies", "path": "res://assets/vehicles/wheels/stance_r13.glb"},
 	"saab": {"name": "Turbine alloys", "path": "res://assets/vehicles/wheels/saab.glb"},
 	"r33": {"name": "Five-spoke alloys", "path": "res://assets/vehicles/wheels/r33.glb"},
-	"tractor_lug": {"name": "Tractor lugs", "path": "res://assets/vehicles/wheels/tractor_lug.glb"},
-	"r6_front": {"name": "Tractor front (R6)", "path": "res://assets/vehicles/wheels/r6_front.glb"},
-	"r6_rear": {"name": "Tractor rear (R6)", "path": "res://assets/vehicles/wheels/r6_rear.glb"},
+	"tractor_lug": {"dir": -1, "name": "Tractor lugs", "path": "res://assets/vehicles/wheels/tractor_lug.glb"},
+	"r6_front": {"dir": 1, "name": "Tractor front (R6)", "path": "res://assets/vehicles/wheels/r6_front.glb"},
+	"r6_rear": {"dir": 1, "name": "Tractor rear (R6)", "path": "res://assets/vehicles/wheels/r6_rear.glb"},
 	# 0.2.60: the user's picks (credits in assets/credits.json)
 	"wire": {"name": "Wire spokes", "path": "res://assets/vehicles/wheels/wheel_a.glb"},
 	"nissan_oem": {"name": "Nissan factory alloys", "path": "res://assets/vehicles/wheels/nissan_oem.glb"},
@@ -210,14 +210,20 @@ func _build_wheels() -> void:
 		# 0.2.59: an axle can wear its own wheels (a tractor's big lugs at the back)
 		var awm := str(w.a.get("wheel_model", ""))
 		var wps: PackedScene = ps
+		var key := wm
 		if awm != "" and WHEEL_MODELS.has(awm) and str(WHEEL_MODELS[awm].path) != "":
 			wps = load(str(WHEEL_MODELS[awm].path))
+			key = awm
 		var pivot := Node3D.new()
 		add_child(pivot)
 		var spin := Node3D.new()
 		pivot.add_child(spin)
 		var m: Node3D = wps.instantiate()
 		m.scale = Vector3.ONE * float(w.r) * 2.0
+		# 0.2.61: directional tread (lugs, chevrons) has a left and a right tyre: one model turned to face out on both
+		# sides ran the lugs backwards on one of them, so that side wears it mirrored (fore and aft)
+		var dside := int(WHEEL_MODELS.get(key, {}).get("dir", 0))
+		if dside != 0 and signf(w.side) == signf(dside): m.scale.x = -m.scale.x
 		m.rotation_degrees.y = 90 if w.side > 0 else -90
 		spin.add_child(m)
 		wheel_nodes.append({"pivot": pivot, "spin": spin, "model": m})

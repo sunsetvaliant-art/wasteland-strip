@@ -89,23 +89,38 @@ func _process(dt: float) -> void:
 		plane_mi.position = spot + Vector3(0, float(tub.get("y", 0.7)), float(tub.z))
 		plane_mi.rotation = Vector3(-deg_to_rad(float(tub.get("tilt", 0.0))), 0, 0)
 
-func _unhandled_input(e: InputEvent) -> void:
+## 0.2.61: the mouse is read here, ahead of the GUI, not in _unhandled_input: a full-screen control on another layer
+## was taking the clicks first, so a left-drag on the model never reached the painter. Clicks on the side panel still go
+## to the panel.
+func _input(e: InputEvent) -> void:
 	if not open: return
+	if not (e is InputEventMouseButton or e is InputEventMouseMotion): return
+	var over_panel: bool = bg_panel != null and is_instance_valid(bg_panel) and bg_panel.get_global_rect().has_point(e.position)
 	if e is InputEventMouseButton:
+		if over_panel and e.pressed: return
 		if e.button_index == MOUSE_BUTTON_RIGHT or e.button_index == MOUSE_BUTTON_MIDDLE:
 			_drag = e.pressed
 		elif e.button_index == MOUSE_BUTTON_WHEEL_UP and e.pressed: dist = maxf(dist * 0.9, 2.0)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed: dist = minf(dist * 1.1, 20.0)
 		elif e.button_index == MOUSE_BUTTON_LEFT and mode == "paint":
 			painting = e.pressed
-			if e.pressed: _paint_at(e.position)
+			if e.pressed: _paint_at(e.position, true)
 		elif e.button_index == MOUSE_BUTTON_LEFT and e.pressed: _click(e.position)
-	elif e is InputEventMouseMotion and painting:
-		_paint_at(e.position)
-	elif e is InputEventMouseMotion and _drag:
-		orbit.x -= e.relative.x * 0.006
-		orbit.y = clampf(orbit.y + e.relative.y * 0.004, -0.6, 1.45)
-	elif e.is_action_pressed("menu") or e.is_action_pressed("ui_cancel"):
+		else: return
+		get_viewport().set_input_as_handled()
+	elif e is InputEventMouseMotion:
+		if painting:
+			_paint_at(e.position)
+		elif _drag:
+			orbit.x -= e.relative.x * 0.006
+			orbit.y = clampf(orbit.y + e.relative.y * 0.004, -0.6, 1.45)
+		else:
+			return
+		get_viewport().set_input_as_handled()
+
+func _unhandled_input(e: InputEvent) -> void:
+	if not open: return
+	if e.is_action_pressed("menu") or e.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
 
@@ -219,17 +234,24 @@ func _save() -> void:
 	if status: status.text = "Saved to %s  (put that file in the Drive folder to ship it)" % BodyCut.user_file_path()
 
 var use_tub := true
+var bg_panel: Control
 
 # ------------------------------------------------------------------------------------------------ UI
 func _build_ui() -> void:
 	for c in root.get_children(): c.queue_free()
 	var bg := PanelContainer.new()
+	bg_panel = bg
 	bg.position = Vector2(16, 16)
 	bg.custom_minimum_size = Vector2(420, 0)
 	root.add_child(bg)
+	# 0.2.61: it scrolls (the painter's help pushed Save and Close off the bottom of a 720 p screen)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = Vector2(430, maxf(get_viewport().get_visible_rect().size.y - 40.0, 300.0))
+	bg.add_child(sc)
 	panel = VBoxContainer.new()
 	panel.add_theme_constant_override("separation", 6)
-	bg.add_child(panel)
+	sc.add_child(panel)
 	var t := Label.new(); t.text = "BODY TOOLS"; panel.add_child(t)
 	var n := Label.new(); n.text = "Right-drag to look round · wheel to zoom · left-click on the body to place points · Esc to leave"
 	n.autowrap_mode = TextServer.AUTOWRAP_WORD; n.custom_minimum_size = Vector2(400, 0); n.modulate.a = 0.7
@@ -318,7 +340,10 @@ var pt_lab := PackedByteArray()          # per triangle: 0 unpainted, 1 cab, 2 t
 var pt_tris := PackedVector3Array()      # body frame, 3 a triangle, in BodyCut's triangle order
 var pt_ctr := PackedVector3Array()
 var pt_nrm := PackedVector3Array()
-var pt_grid := {}                        # Vector3i (10 cm cells) -> PackedInt32Array of triangles
+var pt_grid := {}                        # Vector3i (25 cm cells) -> Array of triangles: every one whose box touches the cell
+## (0.2.61: these were PackedInt32Arrays appended through a cast, which appends to a copy: the grid stayed empty and
+## the brush found nothing to paint. Plain Arrays are shared, so append sticks)
+const PT_CELL := 0.25
 var pt_tm: TriangleMesh
 var pt_glb := ""
 var pt_part := 2
@@ -350,9 +375,17 @@ func _paint_load() -> void:
 				pt_ctr.append(ctr)
 				var n := (b - a).cross(c - a)
 				pt_nrm.append(n.normalized() if n.length_squared() > 1e-14 else Vector3.UP)
-				var k := Vector3i((ctr * 10.0).floor())
-				if not pt_grid.has(k): pt_grid[k] = PackedInt32Array()
-				(pt_grid[k] as PackedInt32Array).append(pt_ctr.size() - 1)
+				var ti := pt_ctr.size() - 1
+				var lo := Vector3i((a.min(b).min(c) / PT_CELL).floor())
+				var hi := Vector3i((a.max(b).max(c) / PT_CELL).floor())
+				if (hi.x - lo.x + 1) * (hi.y - lo.y + 1) * (hi.z - lo.z + 1) > 400: hi = lo     # a stray giant face: one cell (the hit face still paints)
+				for gx in range(lo.x, hi.x + 1):
+					for gy in range(lo.y, hi.y + 1):
+						for gz in range(lo.z, hi.z + 1):
+							var k := Vector3i(gx, gy, gz)
+							if not pt_grid.has(k): pt_grid[k] = []
+							(pt_grid[k] as Array).append(ti)
+	_pt_adj = []
 	pt_tm = TriangleMesh.new()
 	pt_tm.create_from_faces(pt_tris)
 	var raw: Dictionary = BodyCut.all().get(glb, {})
@@ -412,30 +445,110 @@ func _paint_status() -> void:
 	for v in pt_lab: n[v] += 1
 	status.text = "%s · %d triangles · tub %d · bonnet %d · cab (painted) %d" % [glb, pt_ctr.size(), n[2], n[3], n[1]]
 
-func _paint_at(sp: Vector2) -> void:
+## Closest point on triangle abc to p (Ericson, Real-Time Collision Detection 5.1.5)
+static func _tri_closest(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
+	var ab := b - a; var ac := c - a; var ap := p - a
+	var d1 := ab.dot(ap); var d2 := ac.dot(ap)
+	if d1 <= 0.0 and d2 <= 0.0: return a
+	var bp := p - b; var d3 := ab.dot(bp); var d4 := ac.dot(bp)
+	if d3 >= 0.0 and d4 <= d3: return b
+	var vc := d1 * d4 - d3 * d2
+	if vc <= 0.0 and d1 >= 0.0 and d3 <= 0.0: return a + ab * (d1 / (d1 - d3))
+	var cp := p - c; var d5 := ab.dot(cp); var d6 := ac.dot(cp)
+	if d6 >= 0.0 and d5 <= d6: return c
+	var vb := d5 * d2 - d1 * d6
+	if vb <= 0.0 and d2 >= 0.0 and d6 <= 0.0: return a + ac * (d2 / (d2 - d6))
+	var va := d3 * d6 - d5 * d4
+	if va <= 0.0 and d4 - d3 >= 0.0 and d5 - d6 >= 0.0: return b + (c - b) * ((d4 - d3) / ((d4 - d3) + (d5 - d6)))
+	var den := 1.0 / (va + vb + vc)
+	return a + ab * (vb * den) + ac * (vc * den)
+
+var pt_fill := false                       # 0.2.61: a click fills the whole smooth panel instead of brushing
+var pt_fill_deg := 20.0
+var _pt_adj: Array = []                    # per triangle: Array of edge neighbours (built on first fill)
+
+func _paint_set(i: int, dirty: Dictionary) -> void:
+	if pt_lab[i] != pt_part:
+		pt_lab[i] = pt_part
+		dirty[i / PT_CH] = true
+
+func _paint_at(sp: Vector2, click := false) -> void:
 	if pt_tm == null: return
 	var from := cam.project_ray_origin(sp) - spot
 	var dir := cam.project_ray_normal(sp)
 	var r := pt_tm.intersect_ray(from, dir)
 	if r.is_empty(): return
 	var hit: Vector3 = r.position
-	var cr := ceili(pt_rad * 10.0)
-	var hk := Vector3i((hit * 10.0).floor())
 	var dirty := {}
-	for dx in range(-cr, cr + 1):
-		for dy in range(-cr, cr + 1):
-			for dz in range(-cr, cr + 1):
-				var ids = pt_grid.get(hk + Vector3i(dx, dy, dz))
-				if ids == null: continue
-				for i in ids:
-					if pt_ctr[i].distance_to(hit) > pt_rad: continue
-					if not pt_through and pt_nrm[i].dot(-dir) < 0.05: continue
-					if pt_lab[i] != pt_part:
-						pt_lab[i] = pt_part
-						dirty[i / PT_CH] = true
+	var fi := int(r.get("face_index", -1))
+	if pt_fill:
+		if click and fi >= 0 and fi < pt_lab.size(): _paint_fill(fi, dirty)
+	else:
+		if fi >= 0 and fi < pt_lab.size(): _paint_set(fi, dirty)     # the face under the cursor always takes it, however big
+		var lo := Vector3i(((hit - Vector3.ONE * pt_rad) / PT_CELL).floor())
+		var hi := Vector3i(((hit + Vector3.ONE * pt_rad) / PT_CELL).floor())
+		var seen := {}
+		var r2 := pt_rad * pt_rad
+		for gx in range(lo.x, hi.x + 1):
+			for gy in range(lo.y, hi.y + 1):
+				for gz in range(lo.z, hi.z + 1):
+					var ids = pt_grid.get(Vector3i(gx, gy, gz))
+					if ids == null: continue
+					for i in (ids as Array):
+						if seen.has(i) or pt_lab[i] == pt_part: continue
+						seen[i] = true
+						if not pt_through and pt_nrm[i].dot(-dir) < 0.05: continue
+						var q := _tri_closest(hit, pt_tris[i * 3], pt_tris[i * 3 + 1], pt_tris[i * 3 + 2])
+						if q.distance_squared_to(hit) <= r2: _paint_set(i, dirty)
 	for ci in dirty:
 		if ci < pt_chunks.size(): (pt_chunks[ci] as MeshInstance3D).mesh = _paint_mesh(ci)
 	if not dirty.is_empty(): _paint_status()
+
+## Neighbours across shared edges, welding vertices to the millimetre (models come split at UV seams)
+func _paint_adj() -> void:
+	var nt := pt_ctr.size()
+	_pt_adj = []; _pt_adj.resize(nt)
+	var edges := {}
+	for t in nt: _pt_adj[t] = []
+	for t in nt:
+		var k: Array[Vector3i] = []
+		for j in 3: k.append(Vector3i((pt_tris[t * 3 + j] * 1000.0).round()))
+		for j in 3:
+			var e0: Vector3i = k[j]; var e1: Vector3i = k[(j + 1) % 3]
+			if e1 < e0:
+				var tmp := e0
+				e0 = e1
+				e1 = tmp
+			var key := Vector2i(hash(e0), hash(e1))
+			if edges.has(key):
+				var lst: Array = edges[key]
+				for o in lst:
+					(_pt_adj[t] as Array).append(o)
+					(_pt_adj[o] as Array).append(t)
+				lst.append(t)
+			else:
+				edges[key] = [t]
+
+## Flood from the clicked face across edges that bend less than pt_fill_deg, never further than twice that from the
+## face you clicked, and never into faces painted as another part: one click takes a panel up to its shut line (the
+## groove bends sharply) or up to a line you've brushed round it first (a smooth one-piece body has no groove)
+func _paint_fill(f0: int, dirty: Dictionary) -> void:
+	if _pt_adj.size() != pt_ctr.size(): _paint_adj()
+	var cosl := cos(deg_to_rad(pt_fill_deg))
+	var cos_seed := cos(deg_to_rad(minf(pt_fill_deg * 2.0, 89.0)))
+	var n0 := pt_nrm[f0]
+	var seen := {f0: true}
+	var q: Array[int] = [f0]
+	while not q.is_empty():
+		var t: int = q.pop_back()
+		_paint_set(t, dirty)
+		for o in (_pt_adj[t] as Array):
+			if seen.has(o): continue
+			seen[o] = true
+			if pt_lab[o] != 0 and pt_lab[o] != pt_part: continue          # a brushed boundary
+			if absf(pt_nrm[o].dot(pt_nrm[t])) < cosl: continue           # a crease (either winding)
+			if absf(pt_nrm[o].dot(n0)) < cos_seed: continue              # curled too far round from where you clicked
+			q.append(o)
 
 func _paint_ui() -> void:
 	var hb := HBoxContainer.new(); panel.add_child(hb)
@@ -444,7 +557,16 @@ func _paint_ui() -> void:
 		b.pressed.connect(func():
 			pt_part = pp[0]; _build_ui())
 		hb.add_child(b)
-	_slider("Brush size (m)", 0.02, 0.6, 0.01, pt_rad, func(v): pt_rad = v)
+	var hf := HBoxContainer.new(); panel.add_child(hf)
+	for fm in [[false, "Brush (drag)"], [true, "Fill panel (click)"]]:
+		var b := Button.new(); b.text = fm[1]; b.toggle_mode = true; b.button_pressed = pt_fill == fm[0]
+		b.pressed.connect(func():
+			pt_fill = fm[0]; _build_ui())
+		hf.add_child(b)
+	if pt_fill:
+		_slider("Fill stops at bends over (deg)", 5.0, 80.0, 1.0, pt_fill_deg, func(v): pt_fill_deg = v)
+	else:
+		_slider("Brush size (m)", 0.02, 0.6, 0.01, pt_rad, func(v): pt_rad = v)
 	var th := CheckBox.new(); th.text = "Paint through (both skins of a panel)"; th.button_pressed = pt_through
 	th.toggled.connect(func(v): pt_through = v)
 	panel.add_child(th)
@@ -462,5 +584,5 @@ func _paint_ui() -> void:
 		for i in pt_lab.size(): if pt_lab[i] == 3: pt_lab[i] = 0
 		_rebuild_model())
 	var l := Label.new()
-	l.text = "Left-drag to paint the model's own faces. Orange = tub, green = bonnet, blue = painted back to cab, grey = left to the lines."
+	l.text = "Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in another colour, Cab (rub out) say, and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = painted back to cab, grey = left to the lines."
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)

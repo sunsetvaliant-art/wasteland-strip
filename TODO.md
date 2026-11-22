@@ -2,7 +2,30 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0060, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0061, 2026-11-22.
+
+## Bonnet painter, wheels, zombies, stutter, F9 reports 2026-11-22 (0061)
+User: the bonnet painter doesn't paint when you click and drag (the points method worked well; keep it); find more
+zombie models; most of the wheels are backwards; make sure the Sketchfab tyre links are in; still stuttering badly
+(4 fps at 123 km/h down Mount Ruin's main street); go through the TODO and do some.
+- [x] 0061 Painter: the brush never painted (its lookup grid was filled through a copy and stayed empty). Fixed, and
+      the face under the cursor always takes the paint, big low-poly faces included; "Fill panel" paints a whole
+      panel in one click up to its shut line (stops at bends sharper than the slider). Bonnet line / tub line
+      point tools are still there. The mouse is read ahead of the rest of the screen now
+- [x] 0061 Wheels: lugged tractor tyres (tractor lugs, R6 front and rear) ran their chevrons backwards on one side:
+      each side now wears its own hand, lugs pointing forward from above. Every wheel checked from both faces
+      (tools/_wheelface.tscn, tools/_treadshot.tscn); the F100 steelies were drawing black (no material) and are fixed
+- [x] 0061 The user's Sketchfab wheel links (wire, Nissan alloys, mud terrains, the JDM pack) went in with 0060
+- [x] 0061 Zombies: nine bodies now (was one): the five Sketchfab ones are back (their stray collision has been
+      stripped since 0021) plus three new (Zombie Walk Test, a Fuse female, a WWI-style screamer); loaded on a
+      worker thread at the start so the first of each doesn't hitch
+- [x] 0061 Stutter: over ~58 km/h no new building interiors are built (each was 40-90 ms, one a frame was the 4 fps):
+      the far-off outsides show right up close and lots get a plain box to hit; under ~30 km/h the full builds
+      come back, spaced out by what each one cost. Plants build one cell a frame when fast. At a low frame rate
+      the physics no longer runs up to 8 steps a frame (the spiral down to 4 fps)
+- [x] 0061 Garage: "set_current_tab out of bounds" error when an axle tab changed with matched settings
+- [x] 0061 Cane: no more sun glint off whole paddocks; it stands 6.5 m back from the seal instead of right on it
+- [x] 0061 Diesel smoke: a turned-up pump (or rich tune) blows black smoke out the back on the throttle, a haze at idle
 
 ## Wheel packs and the F100 (0060)
 User: download these wheels (some packs have several in one file) as wheels to fit and spawnable models; add the
@@ -110,7 +133,8 @@ strung across a hill".
 - [x] 0055 FPS drop near the main street (38 NPCs 16 ms, 10 parked cars 8 ms): far idle NPCs think every third frame,
       still cars nobody's near are parked out of the physics
 - [x] 0056 Tall buildings on steep blocks: piers and battens instead of the high concrete base wall
-- [ ] Diesel smoke from a turned-up pump isn't drawn yet; turbos next (low-comp heads pay off then)
+- [x] 0061 Diesel smoke from a turned-up pump
+- [ ] Turbos next (low-comp heads pay off then)
 
 ## Streets by the block (asked 2026-11-21: "gutters, road islands, road markings, parking lot logic, footpath infrastructure")
 User: bracket each block with hard-edge gutters instead of reading the street off the photos; estates flush-ish.
@@ -273,8 +297,10 @@ owSpawnPatrol) still has the code; its strip game is still in it behind ?strip.
 - [ ] The garage in survival (a garage work station, parts found and traded), not just creative
 
 ## Bug reports 2026-11-16 morning (9 reports)
-- [ ] STUTTER FOUND: every slow frame in the F9 logs is the building streamer (Buildings._process: 26-60 ms in one
-      frame when a building is built near you). Spread each build over several frames / build off the main thread
+- [x] 0061 STUTTER FOUND: every slow frame in the F9 logs is the building streamer (Buildings._process: 26-60 ms in one
+      frame when a building is built near you). 0061: none built while driving fast, spaced out when slow
+- [ ] Build interiors off the main thread (or over several frames): still a 40-90 ms hitch walking up to a new one,
+      and a big mall is ~2 s
 - [ ] Prospero St, Murwillumbah: put in each business; J&J Tyres was there, and a Toyota dealership on the same block
 - [ ] Servo bowsers right on top of the entry: cars can't drive through between them
 - [ ] Murwillumbah bridge (the town bridge, about -283, 18) needs straightening, both sides
@@ -299,7 +325,7 @@ owSpawnPatrol) still has the code; its strip game is still in it behind ?strip.
 - [ ] Sexton Hill: the highway should run through the cutting under the connecting bridge (the mound has the road
       painted over it); terrain coming onto the highway further south
 - [ ] Water over Tweed Valley Way
-- [ ] Cane billboards go shiny; cane beside the road too distracting
+- [x] 0061 Cane billboards go shiny; cane beside the road too distracting
 
 ## Bug reports 2026-11-15 (afternoon, 20 reports) and "paint the satellite onto the lidar"
 - [x] 0050 Houses, sheds and shops on the roads and in the water round Tweed Heads, Kingscliff and the coast: the cause

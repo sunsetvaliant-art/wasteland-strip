@@ -47,13 +47,23 @@ static var _lod_mats := {}
 const LOD_FADE := Vector2(98.0, 112.0)     # far-off versions vanish (dithered) nearer than this: the real one's there
 
 ## The same finish for the merged far-off buildings, dithered out near the camera
+## Driving fast the far-off versions show right up close (nothing new gets built inside then): 0.2.61
+static var _lod_fade_on := true
+static func lod_fade(on: bool) -> void:
+	_lod_fade_on = on
+	for k in _lod_mats:
+		var m: StandardMaterial3D = _lod_mats[k]
+		# the same shader either way (no recompile hitch), just where the fade sits
+		m.distance_fade_min_distance = LOD_FADE.x if on else 0.0
+		m.distance_fade_max_distance = LOD_FADE.y if on else 0.05
+
 static func mat_lod(key: String) -> Material:
 	if _lod_mats.has(key):
 		return _lod_mats[key]
 	var m: StandardMaterial3D = (mat(key) as StandardMaterial3D).duplicate()
 	m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER
-	m.distance_fade_min_distance = LOD_FADE.x
-	m.distance_fade_max_distance = LOD_FADE.y
+	m.distance_fade_min_distance = LOD_FADE.x if _lod_fade_on else 0.0
+	m.distance_fade_max_distance = LOD_FADE.y if _lod_fade_on else 0.05
 	_lod_mats[key] = m
 	return m
 

@@ -316,12 +316,13 @@ func _build_ui() -> void:
 	axle_tabs = TabContainer.new()
 	axle_tabs.custom_minimum_size = Vector2(0, 680)
 	panel.add_child(axle_tabs)
-	axle_tabs.tab_changed.connect(func(_t):
-		if _match_dirty:
-			_match_dirty = false
-			var cur := axle_tabs.current_tab
-			_build_ui()
-			if axle_tabs: axle_tabs.current_tab = cur)
+	var tc := axle_tabs
+	axle_tabs.tab_changed.connect(func(t: int):
+		# 0.2.61: only the live tab strip (the old one fires as it's freed), and never past the last tab
+		if tc != axle_tabs or not _match_dirty: return
+		_match_dirty = false
+		_build_ui()
+		if is_instance_valid(axle_tabs) and t >= 0 and t < axle_tabs.get_tab_count(): axle_tabs.current_tab = t)
 	for ai in design.axles.size():
 		_axle_page(ai)
 	# --- save / load / go
