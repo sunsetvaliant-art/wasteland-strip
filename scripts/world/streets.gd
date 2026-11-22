@@ -14,7 +14,7 @@ const BUILD_R := 480.0
 const DROP_R := 620.0
 const COLLIDE_R := 170.0
 const UNCOLLIDE_R := 240.0
-const DRAW_KERB := 420.0
+const DRAW_KERB := 260.0
 
 ## kerb cross-section: stations (m from the kerb line, + into the block) and the height at each, per profile
 ## (profile ids as in make_streets.py: MAIN 0, TOWN 1, EST 2, IND 3, ISL 4, RBT 5, LAY 6, RAMP 7)
@@ -53,13 +53,13 @@ func setup(m) -> void:
 	var path := "res://assets/world/streets.bin"
 	if not FileAccess.file_exists(path) or OS.get_environment("STREETS_OFF") != "": return
 	_bytes = FileAccess.get_file_as_bytes(path)
-	if _bytes.size() < 16 or _bytes.slice(0, 4).get_string_from_ascii() != "STR2":
+	if _bytes.size() < 16 or _bytes.slice(0, 4).get_string_from_ascii() != "STR3":
 		push_warning("streets: bad file"); _bytes = PackedByteArray(); return
 	_ox = _bytes.decode_float(4); _oz = _bytes.decode_float(8)
 	var n := _bytes.decode_u32(12)
 	for i in n:
-		var o := 16 + i * 16
-		_index[Vector2i(_bytes.decode_s32(o), _bytes.decode_s32(o + 4))] = [_bytes.decode_u32(o + 8), _bytes.decode_u32(o + 12)]
+		var o := 16 + i * 20
+		_index[Vector2i(_bytes.decode_s32(o), _bytes.decode_s32(o + 4))] = [_bytes.decode_u32(o + 8), _bytes.decode_u32(o + 12), _bytes.decode_u32(o + 16)]
 	_kmat = StandardMaterial3D.new()
 	_kmat.albedo_texture = load("res://assets/ground/concrete_alb_h.png")
 	_kmat.normal_enabled = true
@@ -103,6 +103,11 @@ func _tile_data(k: Vector2i) -> Dictionary:
 			var nr := sp.get_u32()
 			rings.append((sp.get_data(nr * 16)[1] as PackedByteArray).to_float32_array())
 		d.slab.append([tri, rings])
+	d["fence"] = []
+	for _i in sp.get_u32():
+		var fm := sp.get_u32(); var col := sp.get_u32(); var np2 := sp.get_u32()
+		var fp := (sp.get_data(np2 * 8)[1] as PackedByteArray).to_float32_array()
+		d.fence.append([fm, col, fp])
 	var ml := sp.get_u32()
 	d["mask"] = sp.get_data(ml)[1] if ml > 0 else PackedByteArray()
 	return d
@@ -115,9 +120,11 @@ static func hard(x: float, z: float) -> bool:
 	if m == null:
 		m = PackedByteArray()
 		if inst._index.has(k):
-			var d := inst._tile_data(k)
-			var c: PackedByteArray = d.get("mask", PackedByteArray())
-			if c.size() > 0: m = c.decompress(2048, FileAccess.COMPRESSION_DEFLATE)
+			# 0.2.56: straight to the mask (the index says where it is), not the whole tile
+			var e: Array = inst._index[k]
+			var mo := int(e[0]) + int(e[2])
+			var ml := inst._bytes.decode_u32(mo)
+			if ml > 0: m = inst._bytes.slice(mo + 4, mo + 4 + ml).decompress(2048, FileAccess.COMPRESSION_DEFLATE)
 		inst._masks[k] = m
 	var mb: PackedByteArray = m
 	if mb.size() < 2048: return false
@@ -267,8 +274,20 @@ func _build(k: Vector2i) -> Dictionary:
 		for i in mm.instance_count: mm.set_instance_transform(i, by_kind[kind][i])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
-		mmi.visibility_range_end = 700.0 if kind in [6, 7, 70, 1] else 300.0
+		mmi.visibility_range_end = 380.0 if kind in [6, 7, 70, 1] else 160.0
 		root.add_child(mmi)
+	# back yard fences (shared with the neighbours, corner posts and all)
+	var fg: BuildGen.Geo = null
+	if not d.fence.is_empty():
+		fg = BuildGen.Geo.new()
+		for fr in d.fence:
+			_fence(fg, fr, org)
+			await _slice("fences")
+		await _slice("fences")
+		var fmi := MeshInstance3D.new()
+		fmi.mesh = fg.commit()
+		fmi.visibility_range_end = 120.0
+		root.add_child(fmi)
 	await _slice("after furniture")
 	# paint: drawn with the roads into the ground
 	var paint := []
@@ -312,7 +331,35 @@ func _build(k: Vector2i) -> Dictionary:
 			Roads.inst._cascades[0].vp.add_child(pmi)
 			paint.append(pmi)
 		for cc in Roads.inst._cascades: cc.dirty = true
-	return {"node": root, "paint": paint, "body": null, "faces": faces, "shapes": shapes}
+	return {"node": root, "paint": paint, "body": null, "faces": faces, "shapes": shapes, "fshapes": fg.shapes if fg != null else []}
+
+const FENCE_H := [1.5, 1.8, 1.0]
+func _fence(g: BuildGen.Geo, fr: Array, org: Vector3) -> void:
+	var fm := int(fr[0])
+	var mk: String = ["timber", Buildings.COLORBOND[int(fr[1]) % Buildings.COLORBOND.size()], "brick"][clampi(fm, 0, 2)]
+	var hgt: float = FENCE_H[clampi(fm, 0, 2)]
+	var pts: PackedFloat32Array = fr[2]
+	for v in pts.size() / 2 - 1:
+		var a := Vector2(pts[v * 2] - org.x, pts[v * 2 + 1] - org.z)
+		var c := Vector2(pts[v * 2 + 2] - org.x, pts[v * 2 + 3] - org.z)
+		var L := a.distance_to(c)
+		if L < 0.05: continue
+		var n := maxi(1, ceili(L / 2.4))
+		var dir := (c - a) / L
+		var yaw := atan2(dir.x, dir.y)
+		for k in n:
+			var p0 := a.lerp(c, float(k) / n); var p1 := a.lerp(c, float(k + 1) / n)
+			var m := (p0 + p1) * 0.5
+			var gy := _h(m.x + org.x, m.y + org.z)
+			g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x, gy - 0.1 + hgt * 0.5, m.y)), Vector3(0.05 if fm != 2 else 0.2, hgt + 0.2, p0.distance_to(p1)))
+			if fm != 2:
+				var py := _h(p0.x + org.x, p0.y + org.z)
+				g.box("steel" if fm == 1 else "timber", Transform3D(Basis(Vector3.UP, yaw), Vector3(p0.x, py - 0.1 + hgt * 0.5 + 0.05, p0.y)), Vector3(0.09, hgt + 0.3, 0.09), false)
+	# the post at the run's last corner (the one a neighbour's run meets)
+	if fm != 2 and pts.size() >= 4:
+		var e := Vector2(pts[pts.size() - 2] - org.x, pts[pts.size() - 1] - org.z)
+		var ey := _h(e.x + org.x, e.y + org.z)
+		g.box("steel" if fm == 1 else "timber", Transform3D(Basis.IDENTITY, Vector3(e.x, ey - 0.1 + hgt * 0.5 + 0.05, e.y)), Vector3(0.09, hgt + 0.3, 0.09), false)
 
 func _paint_mats() -> void:
 	if _paint_mat != null: return
@@ -424,6 +471,11 @@ func _make_body(t: Dictionary) -> void:
 		var cs2 := CollisionShape3D.new(); cs2.shape = shp
 		cs2.transform = Transform3D(xf.basis, xf.origin + xf.basis * off)
 		b.add_child(cs2)
+	for sh in t.get("fshapes", []):
+		var fcs := CollisionShape3D.new()
+		var bs := BoxShape3D.new(); bs.size = sh[1]
+		fcs.shape = bs; fcs.transform = sh[0]
+		b.add_child(fcs)
 	if b.get_child_count() == 0:
 		b.free(); return
 	(t.node as Node3D).add_child(b)

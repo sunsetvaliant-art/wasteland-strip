@@ -46,6 +46,7 @@ func setup(m) -> void:
 
 func show_tools() -> void:
 	open = true
+	main.interact_menu.clear()           # 0.2.56: the look-at menu stayed up over this screen
 	get_tree().paused = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var p = main.player

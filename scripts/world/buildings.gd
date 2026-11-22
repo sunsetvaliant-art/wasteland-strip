@@ -819,6 +819,8 @@ func _build_full(i: int) -> void:
 ## on the old weatherboard and fibro houses, a low brick wall round 70s units. Only in town (houses close by).
 const COLORBOND := ["tin:woodland", "tin:monument", "tin:surfmist", "tin:grey", "tin:basalt"]
 func _yard(i: int, p: Dictionary, b: Node3D, xf: Transform3D) -> void:
+	# 0.2.56: back yard fences are built by the block now (Streets, tools/make_streets.py), shared between neighbours
+	if Streets.inst != null and not Streets.inst._index.is_empty(): return
 	var l: Array = lots[i]
 	var x := float(l[1]); var z := float(l[2])
 	var near_houses := 0

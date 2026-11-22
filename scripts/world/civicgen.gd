@@ -45,6 +45,33 @@ static func plan_into(p: Dictionary, kind: String, w: float, d: float, rng: Rand
 		"school":
 			_corridor(rooms, w, d, ["classroom", "classroom", "reception", "classroom", "classroom"], ["classroom", "classroom", "lunch", "toilet", "toilet", "store"], 7.0)
 			p.clad = "brick" if rng.randf() < 0.5 else "weatherboard:" + tint
+			# 0.2.56: a campus of buildings from different decades (tools/fix_types.py: sub "era/<era>[/NAME]")
+			if sub.begins_with("era/"):
+				var era := sub.get_slice("/", 1)
+				if sub.get_slice_count("/") > 2: p["sign"] = sub.get_slice("/", 2)
+				else: p.erase("sign")
+				match era:
+					"1920":
+						p.clad = "weatherboard:" + ["cream", "white", "pale_blue"][rng.randi() % 3]
+						p.raised = 1.6; p.stumps = true; p.under = true
+						p.roof = {"type": "gable", "pitch": deg_to_rad(rng.randf_range(28, 34)), "mat": "tin" if rng.randf() < 0.6 else "tin_rust"}
+						p.verandah = {"depth": 2.4, "sides": false}
+					"1960":
+						p.clad = ["brick:brick_tan", "brick", "brick:brick_dark"][rng.randi() % 3]
+						p.roof = {"type": "hip", "pitch": deg_to_rad(rng.randf_range(12, 16)), "mat": "tin"}
+						p.verandah = {"depth": 2.2, "sides": false}
+						if w * d > 220.0:
+							var up := []
+							_corridor(up, w, d, ["classroom", "classroom", "classroom", "classroom"], ["classroom", "classroom", "store", "toilet"], 7.0)
+							p.floors.append({"y": 0.0, "h": p.h, "rooms": rooms})
+							p.floors.append({"y": p.h + 0.3, "h": p.h, "rooms": up})
+							rooms = []
+					"1970":
+						p.clad = ["plaster:grey", "plaster:cream", "plaster:sand"][rng.randi() % 3]
+						p.roof = {"type": "skillion", "pitch": deg_to_rad(rng.randf_range(6, 10)), "mat": "tin"}
+					_:
+						p.clad = ["plaster:white", "plaster:grey"][rng.randi() % 2]
+						p.roof = {"type": "skillion", "pitch": deg_to_rad(rng.randf_range(8, 14)), "mat": ["tin:monument", "tin:surfmist", "tin:woodland"][rng.randi() % 3]}
 		"hospital":
 			_corridor(rooms, w, d, ["ward", "reception", "dispensary", "ward"], ["ward", "ward", "office", "store", "toilet", "bath"], 6.0)
 			p.clad = "plaster:white" if rng.randf() < 0.5 else "brick"
@@ -83,7 +110,7 @@ static func plan_into(p: Dictionary, kind: String, w: float, d: float, rng: Rand
 				var b := snappedf(-w / 2 + w * (k + 1) / n, 0.01)
 				rooms.append({"x0": a, "z0": zb, "x1": b, "z1": d / 2, "type": "reception" if k == 0 else "bed", "entry": true, "hub": k == 0})
 				rooms.append({"x0": a, "z0": -d / 2, "x1": b, "z1": zb, "type": "store" if k == 0 else "bath"})
-	p.floors.append({"y": 0.0, "h": p.h, "rooms": rooms})
+	if not rooms.is_empty() or p.floors.is_empty(): p.floors.append({"y": 0.0, "h": p.h, "rooms": rooms})
 	if hero != "":
 		p["hero"] = hero
 		if hero == "riverview": HeroGen.riverview_plan(p, w, d)

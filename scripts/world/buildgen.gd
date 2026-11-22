@@ -255,6 +255,7 @@ static func plan(kind: String, w: float, d: float, seed: int, sub := "") -> Dict
 			p.clad = "weatherboard:" + tint
 			p.roof = {"type": "hip" if rng.randf() < 0.65 else "gable", "pitch": deg_to_rad(rng.randf_range(24, 32)), "mat": "tin" if rng.randf() < 0.7 else "tin_rust"}
 			p.verandah = {"depth": rng.randf_range(2.2, 2.8), "sides": rng.randf() < 0.35}
+			if p.verandah.sides: p.verandah.depth = minf(p.verandah.depth, 1.6)     # 0.2.56: it all fits inside the roof outline
 			p.floors.append({"y": 0.0, "h": 3.0, "rooms": _hall_layout(w, d, 1.2, rng, false, false)})
 		"cottage" when sub == "shack":
 			# a 1960s timber beach shack: small, on low stumps, painted boards or fibro, a skillion or low gable tin roof,
@@ -1159,8 +1160,35 @@ static func _base(p: Dictionary, g: Geo, ground: Callable, lowest: float) -> voi
 			# a slab under the back half where the laundry and the junk live
 			var gy: float = ground.call(0, -d / 4)
 			p["under_y"] = gy
-	else:
+	elif -lowest <= 0.9:
 		g.aabb("brick" if p.clad == "brick" else "concrete", Vector3(-w / 2 - T_OUT, lowest - 0.4, -d / 2 - T_OUT), Vector3(w / 2 + T_OUT, -0.12, d / 2 + T_OUT))
+	else:
+		# 0.2.56: on a sloping block it doesn't sit on a giant concrete plinth any more: a brick course under the walls,
+		# brick piers down to the ground, and the space under the downhill side closed in with battens, the way houses
+		# on the hills here are built
+		var pier := "brick" if p.clad == "brick" or str(p.clad).begins_with("brick") else "brick:brick_dark"
+		g.aabb(pier, Vector3(-w / 2 - T_OUT, -0.5, -d / 2 - T_OUT), Vector3(w / 2 + T_OUT, -0.12, d / 2 + T_OUT))
+		var nx := maxi(2, int(ceil(w / 3.0)))
+		var nz := maxi(2, int(ceil(d / 3.0)))
+		for i in nx + 1:
+			for k in nz + 1:
+				var x := -w / 2 + 0.2 + (w - 0.4) * i / nx
+				var z := -d / 2 + 0.2 + (d - 0.4) * k / nz
+				var gy: float = ground.call(x, z)
+				if gy < -0.5: g.aabb(pier, Vector3(x - 0.18, gy - 0.3, z - 0.18), Vector3(x + 0.18, -0.5, z + 0.18))
+		# battens round the outside where the ground falls away under it
+		for e in [[Vector2(-w / 2, -d / 2), Vector2(w / 2, -d / 2)], [Vector2(w / 2, -d / 2), Vector2(w / 2, d / 2)], [Vector2(w / 2, d / 2), Vector2(-w / 2, d / 2)], [Vector2(-w / 2, d / 2), Vector2(-w / 2, -d / 2)]]:
+			var a: Vector2 = e[0]; var b: Vector2 = e[1]
+			var n := maxi(1, int(a.distance_to(b) / 1.2))
+			for k in n:
+				var m := a.lerp(b, (k + 0.5) / n)
+				var gy: float = ground.call(m.x, m.y)
+				if gy > -0.55: continue
+				var half := a.distance_to(b) / n * 0.5
+				var along := (b - a).normalized()
+				var lo := Vector3(m.x - absf(along.x) * half - absf(along.y) * 0.03, gy - 0.2, m.y - absf(along.y) * half - absf(along.x) * 0.03)
+				var hi := Vector3(m.x + absf(along.x) * half + absf(along.y) * 0.03, -0.5, m.y + absf(along.y) * half + absf(along.x) * 0.03)
+				g.aabb("timber:dark", lo, hi)
 
 ## Stairs inside a stair cell, rising from its front (+z) to its back to the storey above
 static func _stair(g: Geo, r: Dictionary, fy: float, rise_to: float) -> void:

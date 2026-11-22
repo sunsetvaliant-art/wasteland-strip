@@ -163,6 +163,23 @@ func _build_body() -> void:
 			var bay := BodyCut.bay_node(cut.bonnet, float(design.ride) + 0.2 - float(off[1]))
 			if bay: holder.add_child(bay)
 		if tub_off: tub_front = BodyCut.tub_front_z(cut.tub, float(design.ride) + 0.36 - float(off[1])) + float(off[2])
+		# 0.2.56: another model's tub bolted on behind this cab, its front at the back of the cab, on the rails
+		if tub_off and str(design.get("tub", "")) == "swap" and str(design.get("tub_from", "")) != "":
+			var src := str(design.tub_from)
+			var scut := BodyCut.of(src)
+			var skind := ""
+			for k in Car.catalog():
+				if str(Car.catalog()[k].glb) == src: skind = k
+			if scut.has("tub") and skind != "":
+				var sd := VehicleSpecs.default_design(skind)
+				var soff: Array = sd.cab_offset
+				var dy := (float(design.ride) - float(off[1])) - (float(sd.ride) - float(soff[1]))
+				var y_t := float(design.ride) + 0.36 - float(off[1])
+				var dz := BodyCut.tub_front_z(cut.tub, y_t) - BodyCut.tub_front_z(scut.tub, y_t - dy) - 0.05
+				for am in BodyCut.pieces(src, true, false).tub:
+					var mi := MeshInstance3D.new(); mi.mesh = am
+					mi.position = Vector3(0, dy, dz)
+					holder.add_child(mi)
 	elif not bare:
 		var body: Node3D = load("res://assets/vehicles/%s.glb" % def.glb).instantiate()
 		body.rotation_degrees.y = -90      # the model's nose is +X; this car drives towards +Z
@@ -189,8 +206,9 @@ func _build_body() -> void:
 	# a custom tray where the tub was (0.2.55)
 	if not bare and tub_front > -1e8 and str(design.get("tub", "")) == "tray":
 		var fr0: Dictionary = design.frame
-		var y_deck := float(design.ride) + 0.36
-		var tr := TrayGen.build(TrayGen.cfg_of(design), tub_front - 0.04, y_deck, float(fr0.z) - float(fr0.len) * 0.5,
+		var tcfg := TrayGen.cfg_of(design)
+		var y_deck := float(design.ride) + 0.36 + float(tcfg.get("height", 0.0))      # 0.2.56: raise or drop the tray
+		var tr := TrayGen.build(tcfg, tub_front - 0.04, y_deck, float(fr0.z) - float(fr0.len) * 0.5,
 			float(ext[2]) * 0.96, float(mn[1]) + float(ext[1]) + float(off[1]))
 		tray = tr
 		add_child(tr.node)
@@ -332,12 +350,15 @@ func refit_bonnet() -> bool:
 ## The factory tub off: it's a part now (keep it, swap it onto another ute, scrap it)
 func unbolt_tub() -> RigidBody3D:
 	var cut := BodyCut.of(str(def.glb))
-	if not cut.has("tub") or str(design.get("tub", "stock")) != "stock": return null
-	var pcs := BodyCut.pieces(str(def.glb), true, false)
+	var tub := str(design.get("tub", "stock"))
+	if not cut.has("tub") or not (tub in ["stock", "swap"]): return null
+	var src := str(def.glb) if tub == "stock" else str(design.get("tub_from", ""))
+	if src == "": return null
+	var pcs := BodyCut.pieces(src, true, false)
 	var rb := RigidBody3D.new()
 	rb.mass = 110.0
 	rb.add_to_group("physgun")
-	rb.set_meta("tub_of", str(def.glb))
+	rb.set_meta("tub_of", src)
 	var aabb := AABB(); var first := true
 	for am in pcs.tub:
 		var mi := MeshInstance3D.new(); mi.mesh = am
@@ -358,14 +379,25 @@ func unbolt_tub() -> RigidBody3D:
 	rebuild_body()
 	return rb
 
+## Bolt a loose tub on: this model's own goes back on as factory; another model's (0.2.56) sits behind the cab
 func bolt_tub() -> bool:
+	if not BodyCut.of(str(def.glb)).has("tub") or str(design.get("tub", "stock")) in ["stock", "swap"]: return false
+	var best: Node3D = null
+	var bd := 8.0
 	for n in get_tree().get_nodes_in_group("physgun"):
-		if n.get_meta("tub_of", "") == str(def.glb) and (n as Node3D).global_position.distance_to(global_position) < 8.0:
-			n.queue_free()
-			design["tub"] = "stock"
-			rebuild_body()
-			return true
-	return false
+		if str(n.get_meta("tub_of", "")) == "": continue
+		var d := (n as Node3D).global_position.distance_to(global_position)
+		if d < bd: bd = d; best = n                # the nearest loose tub (the one you dragged over)
+	if best == null: return false
+	var src := str(best.get_meta("tub_of"))
+	best.queue_free()
+	if src == str(def.glb):
+		design["tub"] = "stock"
+	else:
+		design["tub"] = "swap"
+		design["tub_from"] = src
+	rebuild_body()
+	return true
 
 func build_tray(cfg := {}) -> void:
 	if not BodyCut.of(str(def.glb)).has("tub"): return
@@ -507,33 +539,41 @@ func _lod_rest(dt: float) -> void:
 		_rest_t = 0.0
 		return
 	_rest_t += dt
-	if _rest_t > 2.5 and not _active_near(55.0):
-		_rest_t = 0.0
-		set_meta("lod_parked", true)
-		freeze = true
+	# 0.2.56: look round for company twice a second, not every physics frame (with a town full of still cars near
+	# you that was every car checking every other car, 60 times a second)
+	if _rest_t > 2.5:
+		_lod_t -= dt
+		if _lod_t > 0.0: return
+		_lod_t = 0.5 + randf() * 0.2
+		if not _active_near(20.0, 0.9):
+			_rest_t = 0.0
+			set_meta("lod_parked", true)
+			freeze = true
 
 func _lod_check(dt: float) -> void:
 	_lod_t -= dt
 	if _lod_t > 0.0 and driver == null: return
-	_lod_t = 0.4
-	if driver != null or not freeze or _active_near(40.0):
+	_lod_t = 0.2
+	if driver != null or not freeze or _active_near(10.0, 0.9):
 		set_meta("lod_parked", false)
 		freeze = false
 		_rest_t = 0.0
 
-func _active_near(r: float) -> bool:
-	var r2 := r * r
+## Anyone (on foot, driving, flying the Forge) within r metres, counting how far they'll come in `ahead` seconds
+func _active_near(r: float, ahead := 0.0) -> bool:
 	var m = get_tree().current_scene
 	var who: Array = []
 	if m and m.get("net") and m.net and m.net.online(): who = m.net.all_players()
 	elif m and m.get("player") and m.player: who = [m.player]
 	for pl in who:
-		if is_instance_valid(pl) and (pl as Node3D).global_position.distance_squared_to(global_position) < r2: return true
-	if m and m.get("forge") and m.forge and m.forge.active and m.forge.cam.global_position.distance_squared_to(global_position) < r2:
+		if not is_instance_valid(pl): continue
+		var v: Vector3 = (pl.vehicle as RigidBody3D).linear_velocity if pl.get("vehicle") != null else Vector3.ZERO
+		if (pl as Node3D).global_position.distance_to(global_position) - v.length() * ahead < r: return true
+	if m and m.get("forge") and m.forge and m.forge.active and m.forge.cam.global_position.distance_to(global_position) < maxf(r, 25.0):
 		return true
 	for c in get_tree().get_nodes_in_group("vehicles"):
-		if c != self and c.get("driver") != null and (c as Node3D).global_position.distance_squared_to(global_position) < r2:
-			return true
+		if c == self or c.get("driver") == null: continue
+		if (c as Node3D).global_position.distance_to(global_position) - (c as RigidBody3D).linear_velocity.length() * ahead < r: return true
 	return false
 
 func _physics_process_inner(dt: float) -> void:

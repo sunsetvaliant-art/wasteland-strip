@@ -248,7 +248,7 @@ def classify(face, part):
     return "TOWN"
 
 # ------------------------------------------------------------------ output collectors, per 128 m tile
-tiles = collections.defaultdict(lambda: {"kerb": [], "paint": [], "furn": [], "slab": []})
+tiles = collections.defaultdict(lambda: {"kerb": [], "paint": [], "furn": [], "slab": [], "fence": []})
 def tkey(x, z): return (int(math.floor((x - X0) / TILE)), int(math.floor((z - Z0) / TILE)))
 
 def add_paint(geom, surf, style=0.0):
@@ -477,6 +477,7 @@ log("block units", len(unit_list))
 
 main_polys = []
 shop_zone = Polygon()
+fence_blocks = []
 for ui, (part, rounded, big) in enumerate(unit_list):
     c = part.representative_point()
     if not in_area(c.x, c.y): continue
@@ -512,6 +513,7 @@ for ui, (part, rounded, big) in enumerate(unit_list):
         if p.geom_type != "Polygon": continue
         kerb_for(p, prof, keep, face_lots)
         stats["blocks " + prof] += 1
+        if prof in ("TOWN", "EST", "MAIN"): fence_blocks.append((p, prof))
         if prof == "MAIN":
             # 0.2.55: the wide paving only runs in front of the shops; houses in a shopping block get a town path
             fp = p.buffer(-0.8).difference(p.buffer(-8.0)).intersection(shop_zone)
@@ -811,6 +813,104 @@ for g in infra[("transit", "parking")]:
     ncp += 1
 log("car parks %d, bays %d" % (ncp, nbay))
 
+# ------------------------------------------------------------------ back yard fences (0.2.56)
+# Each town block is cut into property parcels (each house gets the ground nearer to it than to its neighbours, inside
+# the property line a verge back from the kerb). A fence runs along every boundary two parcels share, built once, so
+# neighbours share it and its corner posts; and along the property line where a yard backs or sides onto a street or
+# open ground, but not across the front. It runs from the house fronts back, and not through any building.
+FENCE_MAT = {"timber": 0, "colorbond": 1, "brick": 2}
+nf = 0
+HOUSEY = HOUSE | {"units"}
+for p, prof in fence_blocks:
+    verge = 3.6 if prof != "EST" else 3.2
+    prop = p.buffer(-verge)
+    if prop.is_empty or prop.area < 200: continue
+    ids = [i for i in lot_tree.query(prop, predicate="contains") if lot_kind[i] not in ("shed", "machine_shed")]
+    hs_ = [i for i in ids if lot_kind[i] in HOUSE]
+    if len(hs_) < 2: continue
+    seeds = shapely.MultiPoint([lot_pts[i] for i in ids])
+    cells = shapely.voronoi_polygons(seeds, extend_to=prop.envelope.buffer(50))
+    parcels = {}
+    for cell in cells.geoms:
+        for i in ids:
+            if cell.contains(lot_pts[i]):
+                pc = cell.intersection(prop)
+                if not pc.is_empty: parcels[i] = pc
+                break
+    keys = list(parcels.keys())
+    # in the lot's frame: the front of the house (its walls; a Queenslander's verandah) and the way it faces
+    blds = unary_union([lot_rect[i].buffer(0.45) for i in lot_tree.query(prop.buffer(5))])
+    def behind(i):
+        # the half of the world behind the house's front wall (its own frame, +z the front)
+        x, z = lot_pts[i].x, lot_pts[i].y
+        r = lot_rect[i]
+        cs = np.array(r.exterior.coords)[:4]
+        # lot_rect corners were built (-w/2,-d/2),(w/2,-d/2),(w/2,d/2),(-w/2,d/2): the front edge is corners 2-3
+        fm = (cs[2] + cs[3]) / 2; ctr = cs.mean(0)
+        fdir = fm - ctr; L_ = np.linalg.norm(fdir)
+        if L_ < 1e-6: return Polygon(), np.array([0.0, 1.0])
+        fdir /= L_
+        sdir = np.array([fdir[1], -fdir[0]])
+        vf = 2.6 if lot_kind[i] == "qlder" else 0.0
+        a = fm + fdir * vf
+        big = 200.0
+        poly = Polygon([a + sdir * big, a - sdir * big, a - sdir * big - fdir * big, a + sdir * big - fdir * big])
+        return poly, fdir
+    beh = {i: behind(i) for i in keys}
+    def mat_for(i, j):
+        ki, kj = lot_kind[i], (lot_kind[j] if j is not None else lot_kind[i])
+        if "qlder" in (ki, kj) or "cottage" in (ki, kj): return "timber"
+        return "colorbond"
+    def emit(g, i, j):
+        global nf
+        if g.is_empty: return
+        g = g.difference(blds)
+        for ln in getattr(g, "geoms", [g]):
+            if ln.geom_type != "LineString" or ln.length < 0.8: continue
+            cs = [tuple(np.round(c, 3)) for c in ln.coords]
+            m = mat_for(i, j)
+            col = abs(hash((min(i, j if j is not None else i), max(i, j if j is not None else i)))) % 5
+            mid = ln.interpolate(0.5, normalized=True)
+            if not in_area(mid.x, mid.y): continue
+            tiles[tkey(mid.x, mid.y)]["fence"].append((FENCE_MAT[m], col, cs))
+            nf += 1
+    ptree = STRtree([parcels[i] for i in keys])
+    for a_, i in enumerate(keys):
+        if lot_kind[i] not in HOUSE: continue
+        pi = parcels[i]
+        # shared with each neighbour (built by the lower index of a pair where both are houses)
+        for b_ in ptree.query(pi):
+            j = keys[b_]
+            if j == i: continue
+            if lot_kind[j] in HOUSE and j < i: continue
+            sh = pi.boundary.intersection(parcels[j].boundary)
+            if sh.is_empty or sh.length < 0.8: continue
+            sh = shapely.line_merge(sh) if sh.geom_type == "MultiLineString" else sh
+            zone = unary_union([beh[i][0].intersection(pi), beh[j][0].intersection(parcels[j])]) if j in beh else beh[i][0]
+            emit(sh.intersection(zone.buffer(0.05)), i, j)
+        # the property line, except across the front (and within 45 m of the house)
+        pl = pi.boundary.intersection(prop.boundary.buffer(0.05))
+        pl = pl.intersection(lot_pts[i].buffer(45.0))
+        fdir = beh[i][1]
+        for ln in getattr(pl, "geoms", [pl]):
+            if ln.geom_type != "LineString": continue
+            cs = np.array(ln.coords)
+            keep = []
+            for q0, q1 in zip(cs[:-1], cs[1:]):
+                t = q1 - q0; L_ = np.linalg.norm(t)
+                if L_ < 1e-6: continue
+                n = np.array([t[1], -t[0]]) / L_
+                m = (q0 + q1) / 2
+                if pi.contains(Point(m + n * 0.3)): n = -n          # outward
+                if np.dot(n, fdir) > 0.45:
+                    if len(keep) >= 2: emit(LineString(keep), i, None)
+                    keep = []
+                    continue
+                if not keep: keep = [tuple(q0)]
+                keep.append(tuple(q1))
+            if len(keep) >= 2: emit(LineString(keep).intersection(beh[i][0].buffer(0.05)), i, None)
+log("fences: %d runs" % nf)
+
 # ------------------------------------------------------------------ the hard ground mask (no plants): 1 m bits per tile
 def raster_mask(td, k):
     if not td["paint"] and not td["kerb"]: return b""
@@ -871,18 +971,24 @@ def wtile(k, td):
         b += struct.pack("<I", len(tri)) + tri.tobytes()          # 4 floats a vertex: x, z, anchor x, anchor z
         b += struct.pack("<I", len(rings))
         for r in rings: b += struct.pack("<I", len(r)) + r.tobytes()
+    b += struct.pack("<I", len(td["fence"]))
+    for m, col, cs in td["fence"]:
+        b += struct.pack("<III", m, col, len(cs))
+        for x, z in cs: b += struct.pack("<ff", x, z)
     mk = raster_mask(td, k)
+    mask_at = len(b)
     b += struct.pack("<I", len(mk)) + mk
-    return bytes(b)
+    return bytes(b), mask_at
 
 out = f"{GAME}/assets/world/streets.bin"
-keys = sorted(k for k, td in tiles.items() if td["kerb"] or td["paint"] or td["furn"] or td["slab"])
+keys = sorted(k for k, td in tiles.items() if td["kerb"] or td["paint"] or td["furn"] or td["slab"] or td["fence"])
 blobs = [wtile(k, tiles[k]) for k in keys]
 with open(out, "wb") as f:
-    f.write(b"STR2" + struct.pack("<ffI", X0, Z0, len(keys)))
-    off = 16 + len(keys) * 16
-    for k, bl in zip(keys, blobs):
-        f.write(struct.pack("<iiII", k[0], k[1], off, len(bl))); off += len(bl)
-    for bl in blobs: f.write(bl)
+    # STR3: each index entry also says where the tile's plant mask starts, so veg can read it without the rest
+    f.write(b"STR3" + struct.pack("<ffI", X0, Z0, len(keys)))
+    off = 16 + len(keys) * 20
+    for k, (bl, ma) in zip(keys, blobs):
+        f.write(struct.pack("<iiIII", k[0], k[1], off, len(bl), ma)); off += len(bl)
+    for bl, ma in blobs: f.write(bl)
 log("wrote %s: %d tiles, %.1f MB" % (out, len(keys), os.path.getsize(out) / 1e6))
 json.dump({k: (round(v) if isinstance(v, float) else v) for k, v in stats.items()}, open(f"{GAME}/docs/ref/streets/stats.json", "w"), indent=1)

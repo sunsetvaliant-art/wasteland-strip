@@ -176,6 +176,12 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   unbolt_tub()/bolt_tub(), build_tray(), refresh_engine(). Engine stand = BasePiece kind "stand". Tests:
   PT="*res://tools/_kittest.gd" (480 builds, rules, a pickup cut / tray / bonnet / tub); tools/_kitshots.gd (lineup,
   trays, the F9 spots). Parked-car LOD: meta "lod_parked" (car.gd); NPC LOD past 50 m (npc.gd).
+- 0056 world data passes, in this order when redoing: tools/fill_roads.py (adds Overture roads to lines.bin where
+  none are painted), tools/fix_footprints.py (houses inside their roof outline, off the roads; marks the file),
+  tools/fix_types.py (businesses need proof; school campuses, big traced outlines cut into their own wings; marks the file; rerun from the 0055 buildings.json through fix_footprints first), then tools/make_streets.py (now STR3:
+  index entries carry the plant-mask offset; fences per block parcel). Backups of 0055 state: /tmp/buildings_0055.json,
+  /tmp/lines_0055.bin (gone in a fresh sandbox; the repo history has them). Buildings._yard fences are off while
+  Streets has data.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

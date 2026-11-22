@@ -2,7 +2,39 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0055, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0056, 2026-11-22.
+
+## Houses, fences, building types, F9 reports 2026-11-22 (0056)
+User: "why buildings have such massive footprints in the game, so large they sit on the road"; "fences really need to
+share corners, with houses that use the same side fence"; "huge concrete footings"; "random business establishments
+where a house sits irl"; "Murwillumbah high school ... just a massive shed. It's multiple buildings from varying decades
+strung across a hill".
+- [x] 0056 House footprints: the satellite outline is the roof edge now (walls inside it, less eaves; the verandah out
+      of it, not added to it); real sizes by kind; the house at the street end; the back of long outlines becomes a
+      shed / carport (1,065); checked with verandah + stairs against the painted roads (1,244 pushed back, 134 left
+      out). Houses average 128 m2 of walls, down from 211 (tools/fix_footprints.py)
+- [x] 0056 Back yard fences by the block: property parcels per block, one fence per shared boundary, shared corner
+      posts, along side streets and open ground, never across the front (tools/make_streets.py, Streets)
+- [x] 0056 Sloping blocks: brick piers and battens under the downhill side instead of a giant concrete plinth
+- [x] 0056 Building types checked: businesses with no storefront, commercial footprint, name or business land under
+      them, in among houses, are houses again (119)
+- [x] 0056 Schools are campuses: every building in the grounds (36 schools, 251 buildings) from an era (1920s timber
+      high-set, 1960s brick two-storey, 1970s besser block, modern), the name over the biggest (tools/fix_types.py).
+      Where OSM traced a whole campus as one shape (Murwillumbah High was a 205 x 142 m shed), it's cut back into its
+      own wings along the traced walls, long wings broken into separate buildings with walkway gaps
+- [x] 0056 Missing roads filled from Overture: 164 km (Tweed Heads South, Banora Point, Chinderah...) (tools/fill_roads.py)
+- [x] 0056 Falling through the ground after DRIVE IT (you were put into the old car as it was deleted)
+- [x] 0056 Distant mountains gone through the scope / binoculars (the scope camera stopped at 6 km)
+- [x] 0056 Driving frame drops: parked cars only wake for what will reach them; plant masks read straight from the
+      index; street detail draws nearer (kerbs 260 m, furniture 160-380 m, fences 120 m)
+- [x] 0056 Bonnet line not taking all the mesh inside it (workhorse); right-click menu stuck over the garage / tools
+- [x] 0056 A tub off one model bolts onto another (the workhorse tub on the AA-160); the AA-160 scaled to size (6.5 m)
+- [x] 0056 Tray height slider
+- [ ] Engine menu (user's idea, 2026-11-22): a floating, rotating model of the engine with its parts on; hover a part
+      to highlight it, click to select (name and description), double-click for a grid of every engine part in
+      your pack on the right; missing parts show as ghosts; drag a part from the grid onto the engine to fit it
+- [ ] North strip (old frame) road gaps: check Tweed Heads CBD against Overture once the frames agree
+- [ ] Shops in the main streets with no proof they're shops (399) stay shops for now: check against photos
 
 ## F9 reports 2026-11-21 (fixed in 0055)
 - [x] 0055 Footpath / car park paint streaky (texture was stretched one way)
@@ -13,7 +45,7 @@ Newest requests at the top of each section. Last updated: patch 0055, 2026-11-22
 - [x] 0055 Bridge turning both lanes 90 degrees at its ends (7 bridge ends had a hook baked in)
 - [x] 0055 FPS drop near the main street (38 NPCs 16 ms, 10 parked cars 8 ms): far idle NPCs think every third frame,
       still cars nobody's near are parked out of the physics
-- [ ] Tall buildings on steep blocks still sit on a high base wall (the ambulance depot); level the ground under them
+- [x] 0056 Tall buildings on steep blocks: piers and battens instead of the high concrete base wall
 - [ ] Diesel smoke from a turned-up pump isn't drawn yet; turbos next (low-comp heads pay off then)
 
 ## Streets by the block (asked 2026-11-21: "gutters, road islands, road markings, parking lot logic, footpath infrastructure")

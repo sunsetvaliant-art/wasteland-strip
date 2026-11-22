@@ -45,6 +45,7 @@ func toggle() -> void:
 	else: show_garage()
 
 func show_garage(from: Dictionary = {}, on_car: Car = null) -> void:
+	main.interact_menu.clear()           # 0.2.56: the right-click menu stuck over the garage screen
 	if open:
 		return
 	target = on_car
@@ -104,8 +105,11 @@ func drive() -> void:
 	c.freeze = false
 	c.global_position = spot + Vector3(0, float(design.axles[0].tyre_r) - float(design.ride) + 0.3, 0)
 	var p: Player = main.player
-	p.global_position = c.global_position + Vector3(1.5, 0, 0)
-	p._try_get_in()
+	var side := c.global_position + c.global_transform.basis.x * 1.6
+	p.global_position = Vector3(side.x, main.height_at(side.x, side.z) + 1.0, side.z)
+	# 0.2.56: into THIS car (the old one is still in the world this frame, waiting to be freed: getting into that one
+	# left you with no collision when it went, and you fell through the ground)
+	p._try_get_in(c)
 
 # ---------------------------------------------------------------- preview
 func _rebuild() -> void:
@@ -213,6 +217,7 @@ func _build_ui() -> void:
 			_choice("Tray", ["Alloy (checker plate)", "Steel (timber deck)"], 0 if tc.type == "alloy" else 1, func(i): tc.type = "alloy" if i == 0 else "steel"; _changed())
 			_slider("Length (0 = fit the chassis)", 0.0, 3.2, 0.05, float(tc.len), func(v): tc.len = v; _changed())
 			_slider("Width (0 = fit the body)", 0.0, 2.2, 0.02, float(tc.wid), func(v): tc.wid = v; _changed())
+			_slider("Height (up or down on the rails)", -0.3, 0.6, 0.01, float(tc.get("height", 0.0)), func(v): tc.height = v; _changed())
 			_check("Headboard", tc.head, func(v): tc.head = v; _changed())
 			_check("Ladder rack over the cab", tc.rack, func(v): tc.rack = v; _changed())
 			_check("Drop sides (they hinge)", tc.sides, func(v): tc.sides = v; _changed())

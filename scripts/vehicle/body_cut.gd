@@ -137,9 +137,11 @@ static func pieces(glb: String, want_tub: bool, want_bonnet: bool) -> Dictionary
 			for t in range(0, I.size(), 3):
 				var a := B[I[t]]; var b := B[I[t + 1]]; var c := B[I[t + 2]]
 				var ctr := (a + b + c) / 3.0
-				if not bon.is_empty() and ctr.y > floor_y and in_poly(poly, Vector2(ctr.x, ctr.z)):
+				# 0.2.56: everything inside the shut line above the line's lowest point (less a little: the bonnet's front
+				# edge curls down past it) is the bonnet, steep bits and all; only faces pointing straight down stay
+				if not bon.is_empty() and ctr.y > floor_y - 0.1 and in_poly(poly, Vector2(ctr.x, ctr.z)):
 					var nrm := (b - a).cross(c - a)
-					if absf(nrm.normalized().y) > 0.2:
+					if nrm.length_squared() < 1e-12 or nrm.normalized().y > -0.7:
 						bonI.append_array([I[t], I[t + 1], I[t + 2]])
 						continue
 				if not tub.is_empty() and behind_tub(tub, ctr): tubI.append_array([I[t], I[t + 1], I[t + 2]])

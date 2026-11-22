@@ -43,6 +43,13 @@ func _process(_dt: float) -> void:
 	_process_inner(_dt)
 	Prof.add("look-at menu", _pt)
 
+## Hide it now (a menu or tool screen opening over the game, which may pause it and stop this updating)
+func clear() -> void:
+	target = null
+	opts = []
+	shown = false
+	if root: root.queue_redraw()
+
 func _process_inner(_dt: float) -> void:
 	var p = main.player if main else null
 	var t: Node = null

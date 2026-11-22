@@ -73,6 +73,21 @@ func _ready():
 	c.build_tray({"type": "steel", "boxes": "tapered", "lights": "round", "spare": true})
 	await get_tree().process_frame
 	print("KITTEST steel tray built: ", not c.tray.is_empty())
+	# 0.2.56: a workhorse tub onto the AA-160 (both with tub lines)
+	var wglb := str(Car.catalog()["r24workhorse"].glb)
+	BodyCut._cuts[wglb] = {"tub": {"mode": "plane", "z": -0.4, "tilt": 0.0, "y": 0.6}}
+	BodyCut._cuts["flatbed"] = {"tub": {"mode": "plane", "z": -0.3, "tilt": 0.0, "y": 0.6}}
+	BodyCut._cache.clear()
+	var wk: Car = main.spawn_vehicle("r24workhorse", p.global_position + p.global_transform.basis.x * 14.0 + Vector3.UP, 0.0)
+	var fb: Car = main.spawn_vehicle("flatbed", p.global_position + p.global_transform.basis.x * 22.0 + Vector3.UP, 0.0)
+	for _i in 20: await get_tree().physics_frame
+	var wt := wk.unbolt_tub()
+	print("KITTEST AA-160 length %.1f m; workhorse tub off: %s" % [float(fb.def.ext[0]), wt != null])
+	var ft := fb.unbolt_tub()
+	await get_tree().process_frame
+	if ft: ft.global_position += Vector3(0, 0, 30)          # its own tub out of the way
+	if wt: wt.global_position = fb.global_position + Vector3(0, 2, -4)
+	print("KITTEST workhorse tub on the AA-160: ", fb.bolt_tub(), " tub=", fb.design.tub, " from ", fb.design.get("tub_from", ""))
 	# take parts off the engine through the rules
 	var k: Dictionary = c.design.kit
 	k.fuel = ""

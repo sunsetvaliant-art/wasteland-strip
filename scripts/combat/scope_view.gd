@@ -56,7 +56,7 @@ func _ready() -> void:
 	add_child(sub)
 	cam = Camera3D.new()
 	cam.near = 0.1
-	cam.far = 6000.0
+	cam.far = 48000.0          # 0.2.56: the backdrop mountains are 10-40 km off; at 6000 they vanished through the scope
 	cam.cull_mask = 0xFFFFF & ~(2 | 4)       # not your own gun (layer 2) or body (layer 3)
 	sub.add_child(cam)
 	rect = TextureRect.new()

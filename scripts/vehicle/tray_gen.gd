@@ -10,7 +10,7 @@ extends RefCounted
 ##   lights    plain round, square LED bars, sequential indicators, recessed in the rear bar
 ## A tray config is a plain Dictionary (design.tray) so it saves and travels with the car.
 
-const DEFAULT := {"type": "alloy", "len": 0.0, "wid": 0.0, "head": true, "rack": true, "sides": true, "boxes": "under",
+const DEFAULT := {"type": "alloy", "len": 0.0, "wid": 0.0, "height": 0.0, "head": true, "rack": true, "sides": true, "boxes": "under",
 	"spare": true, "tank": false, "jerry": false, "canopy": false, "lights": "led", "carpet": true}
 const BOXES := ["none", "under", "tapered", "gullwing"]
 const LIGHTS := ["round", "led", "seq", "recessed"]

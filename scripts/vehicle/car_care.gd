@@ -310,8 +310,13 @@ func _body_buttons(add: Callable, spanner: bool, free: bool, p) -> void:
 				car.unbolt_tub()
 				msg = "The tub's off. Keep it, swap it onto another ute, or scrap it.")
 		else:
-			add.call("SHIFTER: bolt a tub back on (one off this model, beside the car)", spanner, func():
-				msg = "Tub's back on." if car.bolt_tub() else "No tub off this model nearby.")
+			if tub == "swap":
+				add.call("SHIFTER: unbolt the tub", spanner, func():
+					car.unbolt_tub()
+					msg = "The tub's off.")
+			else:
+				add.call("SHIFTER: bolt a tub on (any loose tub beside the car)", spanner, func():
+					msg = "Tub's on." if car.bolt_tub() else "No loose tub nearby.")
 			if tub == "none":
 				add.call("Build a custom tray (12 scrap metal, a shifter)", spanner and (free or p.inv.count("scrap") >= 12), func():
 					if not free: p.inv.take("scrap", 12)
