@@ -475,6 +475,13 @@
    "date": "2026-11-22",
    "size": 5457060,
    "notes": "Four modern utes: a 2001 Toyota Hilux dual cab, 2004 Mazda B-Series dual cab, 2003 Ford Ranger dual cab and a 2004 Holden VZ Commodore ute, with clear glass and their interiors. They turn up in driveways, and they're in the garage and the Forge. Their wheels come off as wheel models you can fit to any car (Hilux alloys, B-Series alloys, Ranger alloys, VZ steelies). Body tools: FREE CAM (F) to fly slowly in and out of the mesh: WASD, Q/E down and up, right-drag to look, mouse wheel for speed, Shift for faster."
+  },
+  {
+   "file": "patch_0.2.0_0065.pck",
+   "version": "0.2.65",
+   "date": "2026-11-22",
+   "size": 7897576,
+   "notes": "A real ladder chassis: the rails kick up over the axles, stay up behind the back axle and pinch in at the front, with proper crossmembers. The live axles are a real diff housing (from the old game) at real size, with the pinion facing the gearbox. Leaf packs, coils, shocks and sway bars are slimmer, in dull painted steel. Engines now drop until they clear the bonnet on every body, and engine bays are painted the body's colour. The new utes: fixed the flat, unlit-looking paint; their wheels change from the garage's Wheels now; and the hubs and brake parts that came away with the body are gone."
   }
  ],
  "full": {
