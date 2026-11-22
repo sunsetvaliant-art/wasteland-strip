@@ -454,6 +454,13 @@
    "date": "2026-11-22",
    "size": 20487972,
    "notes": "Bonnet painter fixed: the brush never painted anything (a bug left its lookup empty). Now left-drag paints, the face under the cursor always takes it, and 'Fill panel' paints a whole panel in one click up to its shut line, or up to a line you brush round it first. The point tools are still there. Lugged tractor tyres no longer run backwards on one side, and the F100 steelies aren't black any more. Nine zombie bodies instead of one: the five Sketchfab ones are back and there are three new ones. Stutter: no building interiors are built while you drive fast (each one was 40-90 ms), the outsides show instead and come back in when you slow down; a low frame rate no longer drags the physics down with it. Also: cane sits back off the road and doesn't glint, a turned-up diesel blows black smoke, and the garage axle-tab error is fixed."
+  },
+  {
+   "file": "patch_0.2.0_0062.pck",
+   "version": "0.2.62",
+   "date": "2026-11-22",
+   "size": 79368,
+   "notes": "Body tools: the side-panel buttons work again (0.2.61 swallowed every click, so it was stuck on Tub) and the F9 form can be clicked while body tools are open. Painting now shows as a see-through tint over the car's own textures instead of plain grey, and there's an Erase button. Wheels stay on the axle end: the hub no longer drops off it when the tyre squashes, and live-axle wheels stay square to the housing as it flexes."
   }
  ],
  "full": {
