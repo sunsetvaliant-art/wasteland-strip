@@ -7,9 +7,9 @@ const GROUND := ["pasture", "forest_floor", "cane_trash", "farm_soil", "sand", "
 # Poly Haven PBR scans (CC0) and the BlendKit "Grass 01" lawn (slot 0), tinted only a touch towards the Tweed's colours
 # (2026-11-13: the open country read as dry gold; this is the wet subtropics, so the rough grass and the litter under
 # the trees are pulled green and the lawn lifted)
-const TINT := [Color(0.95, 0.9, 0.9), Color(0.5, 0.6, 0.42), Color(0.95, 1.0, 0.9), Color(1, 1, 1), Color(1.05, 1.02, 0.95), Color(0.9, 1.0, 0.9), Color(1, 1, 1), Color(0.95, 0.95, 0.9), Color(0.66, 0.84, 0.5)]
+const TINT := [Color(0.95, 1.0, 0.9), Color(0.5, 0.6, 0.42), Color(0.95, 1.0, 0.9), Color(1, 1, 1), Color(1.05, 1.02, 0.95), Color(0.9, 1.0, 0.9), Color(1, 1, 1), Color(0.95, 0.95, 0.9), Color(0.66, 0.84, 0.5)]
 # texture repeats per metre = 1 / the scan's real size (sizes: lawn 1 m, 2 m, 2 m, 3 m, 1.5 m, 3 m, 3 m, 1.3 m, 2.5 m)
-const UV_SCALE := [1.0, 0.5, 0.5, 0.333, 0.667, 0.333, 0.333, 0.77, 0.4]
+const UV_SCALE := [0.55, 0.5, 0.5, 0.333, 0.667, 0.333, 0.333, 0.77, 0.4]
 
 var terrain: Terrain3D
 var player: Player

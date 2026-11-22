@@ -761,6 +761,7 @@ mall_zone = unary_union([r.buffer(36.0) for r in mall_rects]) if mall_rects else
 spaces = [g for g in infra[("transit", "parking_space")] if g.geom_type == "Polygon"]
 space_tree = STRtree(spaces) if spaces else None
 ncp = nbay = 0
+cp_polys = []
 for g in infra[("transit", "parking")]:
     if g.geom_type not in ("Polygon", "MultiPolygon"): continue
     g = g.buffer(0)
@@ -774,6 +775,7 @@ for g in infra[("transit", "parking")]:
     lotg = lotg.difference(local_roads(g, 1.0))
     if lotg.is_empty: continue
     add_paint(lotg, 0.0)
+    cp_polys.append(g)
     lines = []
     own = [spaces[i] for i in space_tree.query(g)] if space_tree is not None else []
     own = [s for s in own if g.contains(s.centroid)]
@@ -821,9 +823,27 @@ log("car parks %d, bays %d" % (ncp, nbay))
 FENCE_MAT = {"timber": 0, "colorbond": 1, "brick": 2}
 nf = 0
 HOUSEY = HOUSE | {"units"}
+# 0.2.58: lanes (gravel and dirt tracks through the middle of blocks) and car parks aren't anybody's yard: they come
+# out of the block first, so parcels stop at them and the fence runs along a back lane instead of across it
+gravel_pieces = [ls.buffer(hs + 1.0, quad_segs=4) for ls, hs, _ in gravel]
+gravel_tree = STRtree(gravel_pieces) if gravel_pieces else None
+cp_tree = STRtree(cp_polys) if cp_polys else None
+def not_yard(g):
+    parts = []
+    if gravel_tree is not None: parts += [gravel_pieces[i] for i in gravel_tree.query(g)]
+    if cp_tree is not None: parts += [cp_polys[i].buffer(0.6) for i in cp_tree.query(g)]
+    # shops, sheds and halls in the block that aren't houses: their ground's their own
+    for i in rect_tree.query(g.buffer(36.0)):
+        if lot_kind[i] not in HOUSE and lot_kind[i] not in ("shed", "machine_shed", "units", "units70"):
+            # a big store's car park wraps 35 m round it (Buildings draws it at run time)
+            big = lot_kind[i] == "mall" and lot_rect[i].area >= 6000.0
+            parts.append(lot_rect[i].buffer(36.0 if big else 4.0))
+    return unary_union(parts) if parts else Polygon()
 for p, prof in fence_blocks:
     verge = 3.6 if prof != "EST" else 3.2
     prop = p.buffer(-verge)
+    if prop.is_empty or prop.area < 200: continue
+    prop = prop.difference(not_yard(prop)).buffer(-0.01).buffer(0.01)
     if prop.is_empty or prop.area < 200: continue
     ids = [i for i in lot_tree.query(prop, predicate="contains") if lot_kind[i] not in ("shed", "machine_shed")]
     hs_ = [i for i in ids if lot_kind[i] in HOUSE]
@@ -839,7 +859,9 @@ for p, prof in fence_blocks:
                 break
     keys = list(parcels.keys())
     # in the lot's frame: the front of the house (its walls; a Queenslander's verandah) and the way it faces
-    blds = unary_union([lot_rect[i].buffer(0.45) for i in lot_tree.query(prop.buffer(5))])
+    # every building, with room for what the generator hangs off it (a Queenslander's verandahs and stairs, eaves)
+    blds = unary_union([lot_rect[i].buffer(3.0 if lot_kind[i] == "qlder" else (1.2 if lot_kind[i] in HOUSE else 0.6))
+        for i in rect_tree.query(prop.buffer(8))])
     def behind(i):
         # the half of the world behind the house's front wall (its own frame, +z the front)
         x, z = lot_pts[i].x, lot_pts[i].y
@@ -887,10 +909,12 @@ for p, prof in fence_blocks:
             if sh.is_empty or sh.length < 0.8: continue
             sh = shapely.line_merge(sh) if sh.geom_type == "MultiLineString" else sh
             zone = unary_union([beh[i][0].intersection(pi), beh[j][0].intersection(parcels[j])]) if j in beh else beh[i][0]
-            emit(sh.intersection(zone.buffer(0.05)), i, j)
+            # a back yard is about 35 m deep: past that a parcel line is open paddock, not a fence (on a boundary
+            # the two houses are the same distance away, so one circle does)
+            emit(sh.intersection(zone.buffer(0.05)).intersection(lot_pts[i].buffer(35.0)), i, j)
         # the property line, except across the front (and within 45 m of the house)
         pl = pi.boundary.intersection(prop.boundary.buffer(0.05))
-        pl = pl.intersection(lot_pts[i].buffer(45.0))
+        pl = pl.intersection(lot_pts[i].buffer(35.0))
         fdir = beh[i][1]
         for ln in getattr(pl, "geoms", [pl]):
             if ln.geom_type != "LineString": continue
@@ -910,6 +934,11 @@ for p, prof in fence_blocks:
                 keep.append(tuple(q1))
             if len(keep) >= 2: emit(LineString(keep).intersection(beh[i][0].buffer(0.05)), i, None)
 log("fences: %d runs" % nf)
+if os.environ.get("FENCE_DUMP"):
+    json.dump({"fence": [cs for td in tiles.values() for _, _, cs in td["fence"]],
+        "lots": [[lot_kind[i], list(lot_rect[i].exterior.coords)] for i in range(len(lot_rect))],
+        "gravel": [list(ls.coords) for ls, _, _ in gravel], "seal": [[list(ls.coords), hs] for ls, hs, _ in seal],
+        "cp": [list(g.exterior.coords) for g in cp_polys if g.geom_type == "Polygon"]}, open(os.environ["FENCE_DUMP"], "w"))
 
 # ------------------------------------------------------------------ the hard ground mask (no plants): 1 m bits per tile
 def raster_mask(td, k):
@@ -980,7 +1009,7 @@ def wtile(k, td):
     b += struct.pack("<I", len(mk)) + mk
     return bytes(b), mask_at
 
-out = f"{GAME}/assets/world/streets.bin"
+out = os.environ.get("STREETS_OUT") or f"{GAME}/assets/world/streets.bin"
 keys = sorted(k for k, td in tiles.items() if td["kerb"] or td["paint"] or td["furn"] or td["slab"] or td["fence"])
 blobs = [wtile(k, tiles[k]) for k in keys]
 with open(out, "wb") as f:

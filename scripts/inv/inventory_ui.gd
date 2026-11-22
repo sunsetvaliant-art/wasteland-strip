@@ -20,6 +20,10 @@ var font: Font
 var C := 40.0
 var msg := ""
 var msg_t := 0.0
+# 0.2.58: search across your gear and the other side; matches light up in the grids and list in the middle, where
+# you can drag them out (or shift + click to send them across)
+var search: LineEdit
+static var typing := false            # the search box has the keyboard (the player doesn't walk off while you type)
 
 func setup(m) -> void:
 	main = m
@@ -36,6 +40,15 @@ func setup(m) -> void:
 	add_child(root)
 	root.visible = false
 	inv.changed.connect(func(): if open: root.queue_redraw())
+	search = LineEdit.new()
+	search.placeholder_text = "Search your gear..."
+	search.clear_button_enabled = true
+	search.custom_minimum_size = Vector2(260, 34)
+	search.text_changed.connect(func(_t): root.queue_redraw())
+	search.focus_entered.connect(func(): typing = true)
+	search.focus_exited.connect(func(): typing = false)
+	search.text_submitted.connect(func(_t): root.grab_focus())
+	root.add_child(search)
 
 func toggle(box: Node3D = null) -> void:
 	if open and box == container:
@@ -61,6 +74,8 @@ func close() -> void:
 	open = false
 	root.visible = false
 	container = null
+	search.release_focus()
+	typing = false
 	if not get_tree().paused:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
@@ -115,6 +130,11 @@ func _process(dt: float) -> void:
 func _input(e: InputEvent) -> void:
 	if not open:
 		return
+	if search.has_focus() and e is InputEventKey:
+		if (e as InputEventKey).keycode == KEY_ESCAPE and e.pressed:
+			root.grab_focus()                         # Esc leaves the search box first
+			get_viewport().set_input_as_handled()
+		return
 	if e.is_action_pressed("inventory") or e.is_action_pressed("menu") or (e.is_action_pressed("interact") and container):
 		get_viewport().set_input_as_handled()
 		close()
@@ -166,6 +186,7 @@ func _layout() -> void:
 		regions.append({"type": "grid", "grid": g, "rect": r, "label": pair[0], "side": "me"})
 		gy = r.end.y + 16.0
 		colw = max(colw, r.size.x)
+	var mid_x0 := gx + colw + 40.0
 	# the other side
 	var rx := vs.x * 0.94
 	if container:
@@ -176,6 +197,35 @@ func _layout() -> void:
 	else:
 		var r := Rect2(rx - near_grid.w * C, top + 50.0, near_grid.w * C, near_grid.h * C)
 		regions.append({"type": "grid", "grid": near_grid, "rect": r, "label": "On the ground nearby", "side": "near"})
+	# the middle: the search box, and what it finds
+	var right_x0: float = rx - float(box_grid(container).w if container else near_grid.w) * C - 40.0
+	var mw := clampf(right_x0 - mid_x0, 0.0, 420.0)
+	if mw < 200.0:
+		search.visible = false
+		return
+	search.visible = true
+	var sx: float = mid_x0 + (right_x0 - mid_x0 - mw) * 0.5
+	search.position = Vector2(sx, top + 30.0)
+	search.size = Vector2(mw, 34.0)
+	var words := search.text.strip_edges().to_lower().split(" ", false)
+	if words.is_empty(): return
+	var row_h := C * 0.95
+	var y := top + 76.0
+	for gr in regions.duplicate():
+		if gr.type != "grid": continue
+		for st in gr.grid.items:
+			if not held.is_empty() and st == held.stack: continue
+			if not _matches(st, words): continue
+			if y + row_h > vs.y - 50.0: break
+			regions.append({"type": "result", "rect": Rect2(sx, y, mw, row_h - 4.0), "stack": st, "src": gr})
+			y += row_h
+
+## Does a stack match every word of the search (its name, or its id)
+func _matches(st: Dictionary, words: PackedStringArray) -> bool:
+	var nm := (str(Items.def(st.id).get("name", "")) + " " + str(st.id)).to_lower()
+	for w in words:
+		if not nm.contains(w): return false
+	return true
 
 func _box_name(b: Node) -> String:
 	if b.has_meta("forge"):
@@ -199,8 +249,18 @@ func _gui(e: InputEvent) -> void:
 	var p: Vector2 = e.position
 	var r := _region_at(p)
 	if e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
+		root.grab_focus()
 		if r.get("type") == "takeall":
 			_take_all()
+			return
+		if r.get("type") == "result":
+			var rs: Dictionary = r.stack
+			if e.shift_pressed:
+				_quick_move(rs, r.src)
+			else:
+				_remove_from(rs, r.src)
+				held = {"stack": rs, "src": r.src, "sx": rs.x, "sy": rs.y, "sr": rs.r, "off": Vector2i.ZERO}
+			root.queue_redraw()
 			return
 		var s = _stack_at(r, p)
 		if s == null: return
@@ -395,6 +455,10 @@ func _draw_all() -> void:
 			"takeall":
 				root.draw_rect(r.rect, Color(0.85, 0.45, 0.15, 0.85))
 				_text(r.rect.position + Vector2(14, 23), "Take everything", 15, Color(1, 1, 1))
+			"result": _draw_result(r)
+	if search.visible and search.text.strip_edges() != "":
+		var n_found := regions.filter(func(q): return q.type == "result").size()
+		_text(search.position + Vector2(0, -6), "Found %d%s" % [n_found, "  ·  drag one out, or shift + click to send it across" if n_found > 0 else ""], 13, Color(1, 1, 1, 0.6))
 	# health and what's being used
 	var hp_r := Rect2(vs.x * 0.06 + 200.0, vs.y * 0.09 - 12.0, C * 4.0, 8.0)
 	root.draw_rect(hp_r, Color(0, 0, 0, 0.6))
@@ -440,9 +504,31 @@ func _draw_grid(r: Dictionary) -> void:
 	for y in int(g.h):
 		for x in int(g.w):
 			root.draw_rect(Rect2(rect.position + Vector2(x, y) * C, Vector2(C, C)), Color(1, 1, 1, 0.07), false, 1.0)
+	var words := search.text.strip_edges().to_lower().split(" ", false) if search else PackedStringArray()
 	for s in g.items:
 		if not held.is_empty() and s == held.stack: continue
-		_draw_item(s, Rect2(rect.position + Vector2(s.x, s.y) * C, Vector2(Items.size_of(s)) * C), 1.0, true)
+		var a := 1.0 if words.is_empty() or _matches(s, words) else 0.22
+		var ir := Rect2(rect.position + Vector2(s.x, s.y) * C, Vector2(Items.size_of(s)) * C)
+		_draw_item(s, ir, a, true)
+		if a == 1.0 and not words.is_empty(): root.draw_rect(ir.grow(-1.0), Color(0.95, 0.6, 0.25, 0.9), false, 2.0)
+
+func _draw_result(r: Dictionary) -> void:
+	var rect: Rect2 = r.rect
+	var st: Dictionary = r.stack
+	var hov: bool = hover.get("type") == "result" and hover.get("stack") == st
+	root.draw_rect(rect, Color(0.16, 0.15, 0.13, 0.95) if hov else Color(0.11, 0.11, 0.1, 0.92))
+	root.draw_rect(rect, Color(0.95, 0.6, 0.25, 0.7) if hov else Color(1, 1, 1, 0.12), false, 1.0)
+	var ic := ItemIcons.get_icon(st.id)
+	var ib := Rect2(rect.position + Vector2(4, 3), Vector2(rect.size.y * 1.6, rect.size.y - 6.0))
+	if ic:
+		var isz := ic.get_size()
+		var k: float = min(ib.size.x / isz.x, ib.size.y / isz.y)
+		root.draw_texture_rect(ic, Rect2(ib.get_center() - isz * k * 0.5, isz * k), false)
+	else:
+		root.draw_rect(ib, Items.KIND_COL.get(Items.def(st.id).kind, Color.GRAY).darkened(0.2))
+	var nm: String = Items.def(st.id).name
+	_text(Vector2(ib.end.x + 10.0, rect.position.y + rect.size.y * 0.5 - 1.0), nm + (("  x%d" % st.n) if int(st.n) > 1 else ""), 14, Color(1, 1, 1, 0.95))
+	_text(Vector2(ib.end.x + 10.0, rect.position.y + rect.size.y * 0.5 + 14.0), str(r.src.label), 11, Color(1, 1, 1, 0.5))
 
 func _draw_item(s: Dictionary, rect: Rect2, alpha: float, ok: bool, fit := false) -> void:
 	var d := Items.def(s.id)

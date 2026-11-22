@@ -209,6 +209,7 @@ func _physics_process(dt: float) -> void:
 	var target_h := 1.1 if crouching else 1.62
 	head.position.y = lerp(head.position.y, target_h, 10 * dt)
 	var inp := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	if InventoryUI.typing: inp = Vector2.ZERO          # typing in the inventory search box (0.2.58)
 	var speed := CROUCH if crouching else (RUN if (Input.is_action_pressed("sprint") and melee.can_sprint()) else WALK * 2.0)
 	if ads > 0.5: speed = min(speed, WALK * 1.3)
 	speed *= melee.speed_mul()

@@ -2,7 +2,29 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0057, 2026-11-22.
+Newest requests at the top of each section. Last updated: patch 0058, 2026-11-22.
+
+## Brakes, tyres, diffs, F9 reports 2026-11-22 (0058)
+User: brakes lock every tyre the instant you press S; a RWD car with an LSD or locked diff should power-skid and wiggle
+until wheel speed matches road speed; an open diff spins one wheel and the car goes where it's steered.
+- [x] 0058 Brakes: S is a driver's foot (squeezes on, eases off the moment a wheel locks: firm stops near the limit
+      on any ground, 80-0 in ~37 m); Shift+S stomps and locks. Proportioning by load so the rears don't lock first
+- [x] 0058 Tyres: combined slip (one grip budget for spin and slide; a spinning or locked tyre has little left
+      sideways); bitumen slides at 76% of its peak grip (was 85%)
+- [x] 0058 Live axles: pinion torque loads one rear tyre and lifts the other, so an open diff spins the light side
+      and goes straight; LSD / locked spin both and the tail steps out (tools/_tyretest.tscn)
+- [x] 0058 Inventory search: a box in the middle; matches light up in the grids and list underneath, drag one out
+      or shift + click to send it across
+- [x] 0058 Fences: lanes and car parks come out of the yards first (no fences across back lanes or through Auto One's
+      car park), fences stop 35 m behind a house, keep clear of verandahs; on a step between yards the fence is a
+      retaining wall with the fence on top (the high yard's plants looked like they floated along it)
+- [x] 0058 Pasture grass: a photo-scanned Poly Haven grass (sparse_grass, greened) instead of the cartoon blades
+- [x] 0058 Standing on a parked truck's tray can't fling it any more (the AA-160 flipped); ENGINE VIEW is the first
+      button under the bonnet
+- [ ] Kingscliff (F9 "Kingscliff mainland ????"): in a fresh test the town loads; ask the user what's wrong there
+      (the grass headland at the creek mouth? buildings not loaded after a long Forge flight?)
+- [ ] Forklift and tractor models with separate wheels: the user grabs them (Sketchfab needs a login) and drops
+      them in the Drive folder; then add them as vehicles (forklift mast and forks to work)
 
 ## Houses, fences, building types, F9 reports 2026-11-22 (0056)
 User: "why buildings have such massive footprints in the game, so large they sit on the road"; "fences really need to

@@ -206,6 +206,20 @@ func _fill() -> void:
 			_fill())
 		btns.add_child(b)
 	var has := func(id: String, n := 1) -> bool: return free or p.inv.count(id) >= n
+	var k: Dictionary = car.design.get("kit", {})
+	if not k.is_empty():
+		# 0.2.57: the engine in 3D, every part pickable, parts dragged on from your pack
+		var cc: Car = car
+		var on_change := func() -> void:
+			cc.call("refresh_engine")
+			CarCare.gain(p, 3)
+		var on_close := func() -> void:
+			if is_instance_valid(cc): show_for(cc)
+		add.call("ENGINE VIEW: the engine in 3D, drag parts on and off", true, func():
+			close()
+			main.engine_view.open_for(k, {"title": str(cc.def.get("name", "")), "changed": on_change, "on_close": on_close,
+				"block_ok": cc.bonnet_pivot == null or bool(cc.design.get("bonnet_off", false))}))
+
 	add.call("Look it over", not st.checked, func():
 		st.checked = true
 		msg = "You've had a good look.")
@@ -344,17 +358,6 @@ func _engine_text() -> String:
 func _engine_buttons(add: Callable, spanner: bool, free: bool, p, st: Dictionary) -> void:
 	var k: Dictionary = car.design.get("kit", {})
 	if k.is_empty(): return
-	# 0.2.57: the engine in 3D, every part pickable, parts dragged on from your pack
-	var cc: Car = car
-	var on_change := func() -> void:
-		cc.call("refresh_engine")
-		CarCare.gain(p, 3)
-	var on_close := func() -> void:
-		if is_instance_valid(cc): show_for(cc)
-	add.call("ENGINE VIEW: the engine in 3D, drag parts on and off", true, func():
-		close()
-		main.engine_view.open_for(k, {"title": str(cc.def.get("name", "")), "changed": on_change, "on_close": on_close,
-			"block_ok": cc.bonnet_pivot == null or bool(cc.design.get("bonnet_off", false))}))
 	var changed := func(m: String) -> void:
 		msg = m
 		car.call("refresh_engine")

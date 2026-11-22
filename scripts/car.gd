@@ -28,6 +28,8 @@ var steer_now := 0.0
 var throttle := 0.0
 var _wb := 0.0                                  # wheelbase, for the speed-sensitive steering limit
 var brake_in := 0.0
+var _brake_lim := 1.0                          # the pedal the driver's found locks the wheels (0.2.58)
+var _brake_locked := false
 var handbrake := false
 # driveline state
 var rpm := 750.0
@@ -257,6 +259,7 @@ func _build_wheels() -> void:
 				"steer": 0.0, "point": Vector3.ZERO, "normal": Vector3.UP, "slip": 0.0, "slip_a": 0.0, "surf": 1.0,
 				"vx": 0.0, "vy": 0.0, "fx": 0.0, "fy": 0.0, "drive_t": 0.0, "collider": null, "mu": 1.0, "crr": 0.015,
 				"fwd": Vector3.FORWARD, "sidev": Vector3.RIGHT, "slide": 0.75, "kind": "seal", "defl": 0.0, "slipv": 0.0,
+				"sr": 0.0, "dN": 0.0, "Ns": m_c * g,
 			}
 			wheels.append(w)
 
@@ -582,6 +585,9 @@ func _physics_process_inner(dt: float) -> void:
 		home_pos = global_position
 	if freeze:
 		return
+	if driver == null and Time.get_ticks_msec() - int(get_meta("stood_t", -100000)) < 400:
+		angular_velocity = angular_velocity.limit_length(0.5)
+		linear_velocity.y = clampf(linear_velocity.y, -6.0, 0.6)
 	_read_controls(dt)
 	# climb in and it cranks and catches; climb out and it's switched off
 	if driver and not running:
@@ -748,7 +754,29 @@ func _read_controls(dt: float) -> void:
 	if floor_it: throttle = thr
 	elif thr > throttle: throttle = move_toward(throttle, thr, (1.6 + 2.4 * throttle) * dt)
 	else: throttle = move_toward(throttle, thr, 6.0 * dt)
-	brake_in = move_toward(brake_in, brk, 8.0 * dt)
+	# brake pedal (0.2.58): a keyboard is all or nothing, and every set of brakes here can lock its tyres (they could
+	# all along: 2400 Nm a front wheel against the ~1100 Nm a loaded front tyre holds on bitumen). So S is a driver
+	# squeezing the pedal on and easing off the moment a wheel starts to lock, the way you brake an old car with no
+	# ABS: firm stops near the limit on any ground. Shift+S stomps it: everything locks and slides.
+	var stomp := driver != null and brk > 0.0 and Input.is_action_pressed("sprint")
+	if stomp:
+		brake_in = brk
+	elif brk > 0.0:
+		var locking := false
+		for w in wheels:
+			if w.contact and absf(w.vx) > 1.5 and float(w.get("sr", 0.0)) < -0.2: locking = true
+		# the foot remembers where the wheels locked and holds just under it, feeling for more as the load comes on
+		if locking:
+			if not _brake_locked: _brake_lim = brake_in * 0.9      # where it locked, once per lock-up
+			brake_in = move_toward(brake_in, 0.0, 5.0 * dt)         # off it until the wheel turns again
+		else:
+			_brake_lim = move_toward(_brake_lim, 1.0, 0.3 * dt)
+			brake_in = move_toward(brake_in, minf(brk, _brake_lim), 3.0 * dt)
+		_brake_locked = locking
+	else:
+		brake_in = move_toward(brake_in, 0.0, 8.0 * dt)
+		_brake_lim = 1.0
+		_brake_locked = false
 	var v: float = abs(linear_velocity.dot(global_transform.basis.z))
 	# steering filter: the lock you can use falls with speed so the fronts stay near their best slip angle instead
 	# of being thrown past it (that's the instant understeer): the angle that asks for about 0.9 g of cornering at
@@ -777,7 +805,7 @@ const TERRAIN_SURF := [
 	[0.76, 0.8, 0.09, "dirt"],     # farm soil
 	[0.6, 0.82, 0.13, "sand"],     # sand
 	[0.7, 0.72, 0.02, "rock"],     # mossy rock
-	[0.88, 0.85, 0.013, "seal"],   # concrete
+	[0.88, 0.76, 0.013, "seal"],   # concrete
 	[0.45, 0.68, 0.14, "mud"],     # river mud
 	[0.78, 0.8, 0.08, "grass"],    # rough grass
 ]
@@ -787,7 +815,7 @@ func _surface(w: Dictionary) -> void:
 	var c = w.collider
 	var surf: Array = [0.85, 0.75, 0.02, "seal"]      # props, other cars, buildings: hard
 	if c and c.is_in_group("road"):
-		surf = [0.95, 0.85, 0.013, "seal"]
+		surf = [0.95, 0.76, 0.013, "seal"]
 	elif c is Terrain3D or (c and c.get_class() == "StaticBody3D" and c.get_parent() is Terrain3D) or (c and str(c.name).begins_with("Terrain")):
 		if _terrain == null:
 			var m = get_tree().current_scene
@@ -801,7 +829,7 @@ func _surface(w: Dictionary) -> void:
 		# the road skin has no collision: on the seal if the road mask says so
 		var m2 = get_tree().current_scene
 		if m2 and m2.get("roads") and m2.roads.has_method("on_road") and m2.roads.on_road(w.point.x, w.point.z):
-			surf = [0.95, 0.85, 0.013, "seal"]
+			surf = [0.95, 0.76, 0.013, "seal"]
 	elif c and (c.is_in_group("corpses") or c is PhysicalBone3D or (c is RigidBody3D and (c as RigidBody3D).mass < 120.0)):
 		surf = [0.35, 0.6, 0.02, "flesh"]
 	# tyre pressure: soft tyres bag out and grip loose ground better, roll heavier; hard ones skate on it
@@ -906,9 +934,16 @@ func _driveline(dt: float) -> void:
 		for w in driven:
 			axles_d[w.axle] = true
 		var per_axle: float = t_axle_total / max(1, axles_d.size())
+		for w in wheels: w.dN = 0.0
 		for ai in axles_d:
 			var pair := driven.filter(func(w): return w.axle == ai)
 			var kind_d: String = pair[0].a.get("diff", "open")
+			# a live axle's pinion torque tries to roll the housing: it loads one rear tyre and lifts the other
+			# (the one-wheel peel: an open diff spins the light side and the loaded one keeps the car straight)
+			if str(pair[0].a.get("type", "live")) == "live" and not pair[0].a.steer and R != 0.0:
+				var t_ds: float = t_c * absf(R) / maxf(float(design.get("final", 3.5)), 1.0)
+				var dn: float = clampf(t_ds / maxf(2.0 * float(pair[0].a.track), 0.8), -2500.0, 2500.0) * signf(R)
+				for w in pair: w.dN = float(w.side) * dn
 			if pair.size() == 2:
 				var wl: Dictionary = pair[0]
 				var wr: Dictionary = pair[1]
@@ -926,21 +961,34 @@ func _driveline(dt: float) -> void:
 		for w in wheels:
 			var t_drive: float = w.drive_t if w.a.drive else 0.0
 			var tb: float = float(w.a.brake) * brake_in
+			# the proportioning valve: the light end gets less line pressure, so the rears don't lock first as the
+			# weight comes forward under brakes
+			if w.contact: tb *= clampf(w.N / maxf(float(w.Ns), 1.0), 0.35, 1.25)
 			if handbrake and not w.a.steer: tb = max(tb, 3500.0)
 			if gear == 0 and box.auto and w.a.drive: tb = max(tb, 6000.0)        # park pawl
 			if driver == null: tb = max(tb, 1500.0)        # nobody in it: left in gear with the handbrake on (no wheel turning by itself)
 			var fx := 0.0
 			var fy := 0.0
 			if w.contact and w.N > 0.0:
-				var muN: float = w.mu * w.N
+				var Ne: float = clampf(w.N + float(w.get("dN", 0.0)), w.N * 0.15, w.N * 1.85)
+				var muN: float = w.mu * Ne
 				var vref: float = max(abs(w.vx), 1.5)
 				var sr: float = (w.omega * w.r - w.vx) / vref
 				var sa: float = atan2(w.vy, max(abs(w.vx), 1.0))
-				# past the peak the tyre's sliding: grip falls to the surface's sliding share (big drop on grass / mud)
-				var slide_x: float = lerpf(1.0, w.slide, smoothstep(0.12, 0.7, abs(sr)))
-				var slide_y: float = lerpf(1.0, w.slide, smoothstep(0.14, 0.6, abs(sa)))
-				fx = muN * _pac(sr, 11.0, 1.65, 0.3) * slide_x
-				fy = -muN * _pac(sa, 15.0, 1.35, -0.2) * slide_y        # peaks about 8 deg of slip, like a real tyre
+				# combined slip (0.2.58): one grip budget shared by how hard the tyre's spinning (or locked) and how
+				# far it's sliding sideways, each measured against its own peak (12% slip, 8 degrees). The force
+				# points along that combined slip, so a tyre that's lit up has almost nothing left sideways: the tail
+				# steps out under power until the wheels slow to road speed and it bites and straightens. A locked
+				# tyre won't steer. (It used to keep 70% of its side grip however hard it spun.)
+				var nx: float = sr / 0.12
+				var ny: float = tan(clampf(sa, -1.4, 1.4)) / 0.14
+				var rho: float = sqrt(nx * nx + ny * ny)
+				if rho > 0.0001:
+					var f: float
+					if rho <= 1.0: f = 1.0 - pow(1.0 - rho, 3.0)
+					else: f = lerpf(1.0, w.slide, smoothstep(1.0, 6.0, rho))        # past the peak: sliding
+					fx = muN * f * nx / rho
+					fy = -muN * f * ny / rho
 				var lowspd: float = clamp(1.0 - (abs(w.vx) + abs(w.vy)) / 2.5, 0.0, 1.0)
 				fy = lerpf(fy, clamp(-w.vy * w.N * 0.9, -muN, muN), lowspd)       # don't skate about when stopped
 				var mag := sqrt(fx * fx + fy * fy)
@@ -961,6 +1009,7 @@ func _driveline(dt: float) -> void:
 			w.fy += fy / SUBSTEPS
 			if s == SUBSTEPS - 1:
 				w.slipv = Vector2(w.omega * w.r - w.vx, w.vy).length() if w.contact else 0.0
+				w.sr = (w.omega * w.r - w.vx) / maxf(absf(w.vx), 1.5) if w.contact else 0.0
 		# wheels on the ground that are free (no drive, no brake) follow the road closely
 	rpm = w_eng * 60.0 / TAU
 	engine_load = load_acc / SUBSTEPS

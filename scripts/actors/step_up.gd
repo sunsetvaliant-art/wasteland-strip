@@ -10,6 +10,11 @@ static func slide(body: CharacterBody3D) -> void:
 	var hv := Vector3(body.velocity.x, 0, body.velocity.z)
 	var was_floor := body.is_on_floor()
 	body.move_and_slide()
+	# 0.2.58: standing on a parked car's tray or roof: the car's told, so it doesn't get flung by the solver pushing a
+	# body it treats as unmovable out of it (the AA-160 went over when you stood on the back at low frame rates)
+	for i in body.get_slide_collision_count():
+		var cc := body.get_slide_collision(i).get_collider()
+		if cc is Car: (cc as Car).set_meta("stood_t", Time.get_ticks_msec())
 	if not was_floor or hv.length() < 0.3:
 		return
 	var blocked := false

@@ -213,6 +213,11 @@ func _height_grid(k: Vector2i) -> void:
 			var h := float(data.get_height(Vector3(_hx + i * 5.0, 0, _hz + j * 5.0)))
 			_hg[j * HN + i] = 0.0 if is_nan(h) else h
 
+## The ground exactly (the fences: the 5 m grid smooths over a step between two yards and a fence on it floats or sinks)
+func _he(x: float, z: float) -> float:
+	var v: float = main.terrain.data.get_height(Vector3(x, 0, z))
+	return _h(x, z) if is_nan(v) else v
+
 func _h(x: float, z: float) -> float:
 	var fx := (x - _hx) / 5.0; var fz := (z - _hz) / 5.0
 	var i := clampi(int(fx), 0, HN - 2); var j := clampi(int(fz), 0, HN - 2)
@@ -350,15 +355,25 @@ func _fence(g: BuildGen.Geo, fr: Array, org: Vector3) -> void:
 		for k in n:
 			var p0 := a.lerp(c, float(k) / n); var p1 := a.lerp(c, float(k + 1) / n)
 			var m := (p0 + p1) * 0.5
-			var gy := _h(m.x + org.x, m.y + org.z)
-			g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x, gy - 0.1 + hgt * 0.5, m.y)), Vector3(0.05 if fm != 2 else 0.2, hgt + 0.2, p0.distance_to(p1)))
+			# 0.2.58: where the ground steps across the fence (two yards levelled to different heights), the bottom
+			# runs down to the low side and the fence stands its full height above the high side: a retaining wall
+			# with the fence on top, instead of a fence the high yard's plants seemed to float along the top of
+			var nrm := Vector2(-dir.y, dir.x) * 0.7
+			var gy := _he(m.x + org.x, m.y + org.z)
+			var g1 := _he(m.x + nrm.x + org.x, m.y + nrm.y + org.z)
+			var g2 := _he(m.x - nrm.x + org.x, m.y - nrm.y + org.z)
+			var lo := minf(gy, minf(g1, g2)); var hi := maxf(gy, maxf(g1, g2))
+			if is_nan(lo) or is_nan(hi): lo = gy; hi = gy
+			var top := hi + hgt
+			g.box(mk, Transform3D(Basis(Vector3.UP, yaw), Vector3(m.x, (lo - 0.1 + top) * 0.5, m.y)), Vector3(0.05 if fm != 2 else 0.2, top - lo + 0.1, p0.distance_to(p1)))
 			if fm != 2:
-				var py := _h(p0.x + org.x, p0.y + org.z)
-				g.box("steel" if fm == 1 else "timber", Transform3D(Basis(Vector3.UP, yaw), Vector3(p0.x, py - 0.1 + hgt * 0.5 + 0.05, p0.y)), Vector3(0.09, hgt + 0.3, 0.09), false)
+				var py := _he(p0.x + org.x, p0.y + org.z)
+				var pl := minf(py, lo)
+				g.box("steel" if fm == 1 else "timber", Transform3D(Basis(Vector3.UP, yaw), Vector3(p0.x, (pl - 0.1 + top + 0.15) * 0.5, p0.y)), Vector3(0.09, top + 0.15 - pl + 0.1, 0.09), false)
 	# the post at the run's last corner (the one a neighbour's run meets)
 	if fm != 2 and pts.size() >= 4:
 		var e := Vector2(pts[pts.size() - 2] - org.x, pts[pts.size() - 1] - org.z)
-		var ey := _h(e.x + org.x, e.y + org.z)
+		var ey := _he(e.x + org.x, e.y + org.z)
 		g.box("steel" if fm == 1 else "timber", Transform3D(Basis.IDENTITY, Vector3(e.x, ey - 0.1 + hgt * 0.5 + 0.05, e.y)), Vector3(0.09, hgt + 0.3, 0.09), false)
 
 func _paint_mats() -> void:
