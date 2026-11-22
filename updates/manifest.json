@@ -419,6 +419,13 @@
    "date": "2026-11-22",
    "size": 37379672,
    "notes": "Houses, fences, building types and your bug reports. House footprints are the real size now: the satellite outline is the roof edge, so walls sit inside it, and houses that still touched a road are set back off it (1,244 moved, the leftover back yard gets a shed). Back yard fences are built block by block with one shared fence and shared corners between neighbours, in timber, colorbond or brick. On sloping blocks, brick piers and battens replace the giant concrete footings. Businesses with no proof they're a business, sitting among houses, are houses again (119). Schools are campuses of separate buildings from different decades: Murwillumbah High is its own wings across the hill instead of one huge shed. 164 km of missing roads were added (Tweed Heads South, Banora Point and others). Fixes: falling through the ground after DRIVE IT, distant mountains missing through the scope and binoculars, frame drops while driving, the bonnet line missing some mesh, the right-click menu stuck over the garage, a tub from one model bolts onto another (workhorse tub on the AA-160), the AA-160 scaled up to its real size, and a tray height slider."
+  },
+  {
+   "file": "patch_0.2.0_0057.pck",
+   "version": "0.2.57",
+   "date": "2026-11-22",
+   "size": 199268,
+   "notes": "The engine view, your idea. Under the bonnet (K beside a car) press ENGINE VIEW, or use it from the engine stand. The engine floats and turns slowly. Hover a part and it lights up with its name; click it for what it does and a button to take it off. Empty spots show as see-through ghosts of the part that goes there. Double-click and your engine parts open on the right, with the ones that fit the spot you clicked first. Drag a part onto the engine to fit it, or onto a taken spot to swap the two. Drag a selected part onto the list to take it off. Drag or right-drag to turn it, scroll to zoom. Engine parts now have inventory pictures and look like themselves when they're dropped on the ground."
   }
  ],
  "full": {
