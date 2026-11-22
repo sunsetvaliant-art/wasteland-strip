@@ -433,6 +433,13 @@
    "date": "2026-11-22",
    "size": 28580556,
    "notes": "Brakes, tyres and diffs, plus your bug reports. S now brakes like a driver's foot: it squeezes on and eases off the moment a wheel locks, so you get firm stops near the limit on any surface. Shift+S stomps and locks the wheels. Brake force follows the load, so the rears no longer lock first. Tyres share one grip budget between spinning and sliding, so a wheel that's lit up has little sideways grip left. A RWD car with an LSD or locked diff power-skids and steps out until wheel speed matches road speed. With an open diff, the live axle's torque unloads one rear wheel and it spins alone, so the car goes where it's steered. The inventory has a search box: matches light up and list in the middle, where you can drag them out or shift+click to send them across. Fences no longer cross back lanes, car parks or verandahs and stop 35 m behind a house. Where two yards sit at different heights, the fence becomes a retaining wall with the fence on top. The pasture grass is a photo-scanned texture. Standing on a parked truck's tray can't flip it any more, and ENGINE VIEW is now the first button under the bonnet."
+  },
+  {
+   "file": "patch_0.2.0_0059.pck",
+   "version": "0.2.59",
+   "date": "2026-11-22",
+   "size": 60159956,
+   "notes": "Driving aids, garage, the body painter, a tractor and new wheels. W now feathers the throttle short of wheelspin, so you can drive straight; Shift+W floors it. Drift assist turns the front wheels to follow a slide, and your steering adds on top (both switches are in the pause menu under Controls). Dragging parts onto the engine in the engine view works now. The garage has a tub height slider, a ride height for each axle, ticks to keep every axle the same (wheels, track, ride height, springs), and wheels you can set per axle. Live axle wheels stay square to the housing when it flexes. Body tools has a mesh painter: brush the model's own faces as tub, bonnet or cab. The Forge palette has an Engines & parts tab with categories that open and close. New wheels from Sketchfab: 20-spoke mags, wide 13 inch steelies, turbine alloys, five-spoke alloys and tractor lugs. New vehicle: a Lamborghini R6 tractor with its own front and rear wheels. Fixes: zombies can't grab you through walls or floors, the shed with a house inside it, servo shops turned into their canopies, roller-door sheds on slopes, and taller doorsteps you can walk up."
   }
  ],
  "full": {
