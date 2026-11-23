@@ -517,6 +517,13 @@
    "date": "2026-11-23",
    "size": 169064,
    "notes": "An unbolted engine no longer shoves the car up or drops through it: it sits on its mounts until a strap or chain pulls it out. Your own parts (like the Ranger's side steps) come off and go back on in the repair window (K) with a shifter. Turbo manifolds now come with a small, medium or large turbo, low or high mount: small spools early, large makes the most from about 3000 rpm."
+  },
+  {
+   "file": "patch_0.2.0_0071.pck",
+   "version": "0.2.71",
+   "date": "2026-11-23",
+   "size": 84552,
+   "notes": "Body tools: HIDE (under LIFT BONNET) hides the part you've picked, like the side steps, so you can paint the mesh underneath it. Anything you paint into that part disappears when you let go. SHOW brings it back."
   }
  ],
  "full": {
