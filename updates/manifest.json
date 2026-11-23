@@ -496,6 +496,13 @@
    "date": "2026-11-23",
    "size": 118924,
    "notes": "Fixed a loose tub (or bonnet) getting shoved up off the chassis: its collision was the size of the whole car. Parked cars no longer shake on their springs (the new utes were worst, and that walked loose parts off the chassis). The new utes weighed about 4 tonnes by mistake: now about 1.7, so they pull like the other cars."
+  },
+  {
+   "file": "patch_0.2.0_0068.pck",
+   "version": "0.2.68",
+   "date": "2026-11-23",
+   "size": 532536,
+   "notes": "Ratchet straps (J): orange 250 kg and navy 2 t, from hardwares and sheds. Click the load, then where it ties off; strap two cars together to tow. Unbolt the engine with the bonnet off, then strap it or chain it out. Body tools Paint now has Parts (name your own: side steps, bull bar...; they go in the Forge's My parts and turn up in sheds), Respray (pick the colour in the garage) and Lights (stick-on headlights or bulbs in the housings). Engines centred in the bay, clear of the firewall. Low and high mount turbo manifolds. Forklift crawl gear. The camera no longer flies in when you get in a car. Fewer draw calls in town. Tools lie on the ground at their real size."
   }
  ],
  "full": {
