@@ -524,6 +524,13 @@
    "date": "2026-11-23",
    "size": 84552,
    "notes": "Body tools: HIDE (under LIFT BONNET) hides the part you've picked, like the side steps, so you can paint the mesh underneath it. Anything you paint into that part disappears when you let go. SHOW brings it back."
+  },
+  {
+   "file": "patch_0.2.0_0072.pck",
+   "version": "0.2.72",
+   "date": "2026-11-23",
+   "size": 219524,
+   "notes": "Mud and sand test strips in the paddock north of Thornbill Drive, Murwillumbah: mud, soft sand, packed sand and wet sand, 100 m each. Tyres sink and leave ruts. Aired up (32 psi) in soft sand you dig down until the diff bellies out; let them down to about 14 psi and you float across. Mud cares about tread and tyre height, not pressure. Rooster tails of mud clods and sand spray. Diesel soot is now volumetric fog puffs on the Forward+ renderer."
   }
  ],
  "full": {
