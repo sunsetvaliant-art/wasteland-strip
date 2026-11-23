@@ -264,6 +264,12 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   while it's over the chassis. Car.own_parts()/take_off_part()/fit_part() (design "parts_off", per car; pieces() takes
   off_extra); loose parts carry metas part_of / part_label. Turbo manifolds ex_N_tlow_s|m|l / ex_N_thigh_s|m|l
   (EngineKit.TURBO_SIZE, turbo_size()); the size-less 0068 ids are hidden but still load. Test: tools/_t70.tscn.
+- 0071: body tools pt_hide (hidden label squashed out of reach). 0072: SoftGround (scripts/world/soft_ground.gd):
+  strips with a 10 cm depth grid (press(), depth_at(), surface()), 1 m HeightMapShape3D of the untouched surface,
+  test strips at SoftGround.TEST_AT (main calls test_strips before Vegetation; SOFT_OFF=1 skips). Car: wheel soft /
+  sink / belly, tread_k(), _roost() rooster tails, volumetric soot (_soot_puff/_soot_tick: FogVolume puffs, Forward+
+  only; forces env volumetric fog on with zero density while soot's about). Tests: tools/_softtest.tscn (SOFT_ONLY),
+  tools/_t72.gd (world, runpt).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

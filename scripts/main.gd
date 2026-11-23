@@ -94,6 +94,7 @@ func _ready() -> void:
 		buildings.name = "Buildings"
 		add_child(buildings)
 		buildings.setup(self)
+	if OS.get_environment("SOFT_OFF") == "": SoftGround.test_strips(self)      # 0.2.72: mud and sand by Thornbill Drive
 	veg = Vegetation.new()
 	veg.name = "Vegetation"
 	add_child(veg)

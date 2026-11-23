@@ -2,7 +2,29 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0071, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0072, 2026-11-23.
+
+## Mud and sand test strips, rooster tails, volumetric soot 2026-11-23 (0072)
+User: a test run away from houses (a paddock by Thornbill Drive, Murwillumbah industrial estate): a 100 m strip of
+mud beside 100 m strips of the sand types; test an aired-up and an aired-down tyre on each for realism (aired up in
+sand digs down till the axle bottoms out; mud cares less about pressure, more about tread pattern and tyre size and
+height so the axle stays clear); realistic mud and sand rooster tails; make the soot volumetric.
+- [x] 0072 Four 100 m x 5 m strips side by side in the paddock north of Thornbill Drive (signs at the start): MUD,
+      SOFT SAND, PACKED SAND, WET SAND. They give: a 10 cm grid the tyres press down and spinning tyres dig, ruts
+      that stay, the sides heaping up; grass and trees keep off
+- [x] 0072 Sand sinkage from contact pressure (inflation plus carcass) and load: a road tyre at 32 psi sinks ~20 cm
+      in soft sand and bellies the diff (stuck: 0.3 m in 10 s); at 14 psi it floats ~6-9 cm and drives off (60 m in
+      10 s). A 4x4 on mud terrains bogs at 26 psi and goes at 15 (82 m). Packed sand gives a little, wet sand is firm
+- [x] 0072 Mud: sinks to a hard pan whatever the pressure; the tread bites (mud terrains about twice a road tyre's
+      grip) and tall tyres keep the axle clear: road tyres crawl through at ~14 km/h, the 4x4 on mud terrains does 43
+- [x] 0072 Bellying out: once the ruts are deeper than the axle's clearance (live axle: tyre radius less 13 cm) the
+      diff carries the weight: the tyres lose most of their bite and it drags
+- [x] 0072 Rooster tails: clods off mud tyres, a finer spray off sand, dirt off loose ground, thrown up and back as
+      hard as the tyre's spinning
+- [x] 0072 Volumetric diesel soot: puffs of real fog that billow, drift up and thin out (Forward+; the world's
+      volumetric fog switches itself on while there's soot about, with no fog of its own if it's off in the settings)
+- [ ] Soft ground across the map (beaches, creek flats, wet paddocks after rain), and saving the ruts
+- [ ] Winching out, recovery tracks, snatch straps (stretchy) for a bogged car
 
 ## Hide a part in Body tools 2026-11-23 (0071)
 User: a toggle to hide the accessory you're painting in the body tools, so you can grab all the mesh under it, like

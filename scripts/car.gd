@@ -288,7 +288,7 @@ func _build_wheels() -> void:
 				# 0.2.59: lift (ride height) per axle: the wheel hangs further below the body
 				"mount": Vector3(side * float(a.track), float(design.ride) + L_static - float(a.get("lift", 0.0)), float(a.z)),
 				"T": T, "k": k, "pre": pre_f, "cb": c_crit * float(a.zeta_b), "cr": c_crit * float(a.zeta_r),
-				"r": float(a.tyre_r), "L": T, "L_prev": T, "Lg": T, "Lg_prev": T, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
+				"r": float(a.tyre_r), "L": T, "L_prev": T, "Lg": T, "Lg_prev": T, "soft": null, "sink": 0.0, "belly": 0.0, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
 				"steer": 0.0, "point": Vector3.ZERO, "normal": Vector3.UP, "slip": 0.0, "slip_a": 0.0, "surf": 1.0,
 				"vx": 0.0, "vy": 0.0, "fx": 0.0, "fy": 0.0, "drive_t": 0.0, "collider": null, "mu": 1.0, "crr": 0.015,
 				"fwd": Vector3.FORWARD, "sidev": Vector3.RIGHT, "slide": 0.75, "kind": "seal", "defl": 0.0, "slipv": 0.0,
@@ -900,6 +900,12 @@ func _physics_process_inner(dt: float) -> void:
 		w.Lg_prev = w.Lg
 		if hit:
 			var d: float = (top + up * 0.15).distance_to(hit.position) - 0.15
+			# 0.2.72: soft ground (mud, sand): the tyre rides down in the ruts it's pressed
+			w.soft = null
+			var hc = hit.collider
+			if hc and hc.has_meta("soft_ground"):
+				w.soft = hc.get_meta("soft_ground")
+				d += (w.soft as SoftGround).depth_at(hit.position)
 			var r_eff: float = w.r - w.defl                          # the tyre squats under load
 			w.L = clamp(d - r_eff, -0.05, w.T)
 			w.Lg = clamp(d - w.r, -0.15, w.T)
@@ -934,6 +940,15 @@ func _physics_process_inner(dt: float) -> void:
 			var other: float = arb_c.get(str(w.axle) + str(-w.side), comp)
 			f += float(a.arb) * (comp - other)
 		w.N = max(f, 0.0)
+		# 0.2.72: on soft ground the tyre presses it down (and digs if it spins); deep enough and the axle bellies out
+		if w.soft != null and is_instance_valid(w.soft):
+			var slip_v: float = float(w.omega) * float(w.r) - float(w.get("vx", 0.0))
+			w.sink = (w.soft as SoftGround).press(w.point, w.N, float(design.get("tyre_psi", 32.0)), w.r, float(w.r) * 0.72, slip_v, dt)
+			var clear: float = float(w.r) - (0.13 if str(w.a.get("type", "")) == "live" else 0.07)
+			w.belly = clampf((w.sink - clear) / 0.06, 0.0, 1.0)
+		else:
+			w.sink = 0.0
+			w.belly = 0.0
 	# sidewall deflection for next step: N over the tyre's vertical stiffness (about 200 kN/m at 32 psi)
 	var psi: float = float(design.get("tyre_psi", 32.0))
 	for w in wheels:
@@ -1144,7 +1159,10 @@ var _terrain: Terrain3D
 func _surface(w: Dictionary) -> void:
 	var c = w.collider
 	var surf: Array = [0.85, 0.75, 0.02, "seal"]      # props, other cars, buildings: hard
-	if c and c.is_in_group("road"):
+	if c and c.has_meta("soft_ground"):
+		surf = (c.get_meta("soft_ground") as SoftGround).surface(tread_k(), float(w.sink), float(w.r))
+		surf[2] = float(surf[2]) + 0.6 * float(w.belly)            # bellied out: dragging the diff through it
+	elif c and c.is_in_group("road"):
 		surf = [0.95, 0.76, 0.013, "seal"]
 	elif c is Terrain3D or (c and c.get_class() == "StaticBody3D" and c.get_parent() is Terrain3D) or (c and str(c.name).begins_with("Terrain")):
 		if _terrain == null:
@@ -1172,6 +1190,21 @@ func _surface(w: Dictionary) -> void:
 	w.slide = float(surf[1])
 	w.crr = float(surf[2]) * (1.0 + 0.5 * max(soft, 0.0))
 	w.kind = surf[3]
+
+## 0.2.72: how much bite the tread has in mud: mud terrains and tractor lugs 1, the 4x4 steelies' all-terrains 0.6,
+## road tyres 0.25
+var _tread := -1.0
+func tread_k() -> float:
+	if _tread >= 0.0: return _tread
+	var wm := str(design.get("wheel_model", "stock"))
+	for a in design.axles:
+		var aw := str((a as Dictionary).get("wheel_model", ""))
+		if aw != "": wm = aw
+	var big: bool = float(design.axles[0].tyre_r) > 0.36
+	if wm.contains("mt") or wm.contains("lug") or wm.begins_with("r6") or wm.begins_with("tractor"): _tread = 1.0
+	elif wm == "rim4x4" or (wm == "stock" and big): _tread = 0.6
+	else: _tread = 0.25
+	return _tread
 
 ## The tyre's force curve up to its peak; past the peak it stays at the peak and the slide factor does the falling
 ## off (the raw curve dropped to half at big slip on top of that, so a spinning tyre had a third of its grip and
@@ -1301,7 +1334,7 @@ func _driveline(dt: float) -> void:
 			var fy := 0.0
 			if w.contact and w.N > 0.0:
 				var Ne: float = clampf(w.N + float(w.get("dN", 0.0)), w.N * 0.15, w.N * 1.85)
-				var muN: float = w.mu * Ne
+				var muN: float = w.mu * Ne * (1.0 - 0.7 * float(w.belly))       # 0.2.72: the axle's carrying it, not the tyre
 				var vref: float = max(abs(w.vx), 1.5)
 				var sr: float = (w.omega * w.r - w.vx) / vref
 				var sa: float = atan2(w.vy, max(abs(w.vx), 1.0))
@@ -1358,6 +1391,7 @@ func _process(dt: float) -> void:
 		w.spin = fmod(w.spin + w.omega * dt, TAU)
 	_body_anim(dt)
 	_smoke(dt)
+	_roost(dt)
 	if driver == null or cab_view:
 		return
 	chase_yaw = lerp(chase_yaw, 0.0, 1.2 * dt) if Input.get_last_mouse_velocity().length() < 5 else chase_yaw
@@ -1373,12 +1407,76 @@ func _process(dt: float) -> void:
 	cam_chase.look_at(target, Vector3.UP)
 
 
+# ------------------------------------------------------------------ rooster tails (0.2.72)
+## Spinning (or fast) tyres on mud, sand and loose ground throw it up behind them: clods and spray off the tread,
+## up and back in the direction the tyre's turning, as much as it's slipping
+var _roost_p: Array = []
+static var _roost_mat: StandardMaterial3D
+func _roost(dt: float) -> void:
+	if _roost_p.is_empty():
+		var any := false
+		for w in wheels:
+			if w.contact and (w.soft != null or str(w.kind) in ["mud", "sand", "dirt"]): any = true
+		if not any: return
+		for w in wheels: _roost_p.append(_roost_make())
+	for i in wheels.size():
+		var w: Dictionary = wheels[i]
+		var p: CPUParticles3D = _roost_p[i]
+		var soft: bool = w.soft != null and is_instance_valid(w.soft)
+		var loose: bool = soft or str(w.kind) in ["mud", "sand", "dirt"]
+		var surf_v: float = float(w.omega) * float(w.r)              # the tread's speed
+		var slip: float = absf(surf_v - float(w.vx))
+		var k := 0.0
+		if w.contact and loose:
+			k = clampf(slip / 6.0, 0.0, 1.0) + clampf(absf(surf_v) / 25.0, 0.0, 0.35)
+			if not soft: k *= 0.45
+		p.emitting = k > 0.12
+		if not p.emitting: continue
+		var col: Color
+		if soft: col = SoftGround.TYPES[(w.soft as SoftGround).kind].spray
+		elif str(w.kind) == "sand": col = Color(0.8, 0.7, 0.52)
+		elif str(w.kind) == "mud": col = Color(0.24, 0.17, 0.1)
+		else: col = Color(0.42, 0.33, 0.22)
+		p.color = col
+		var fwd: Vector3 = w.fwd
+		var back := -fwd * signf(surf_v if absf(surf_v) > 0.1 else 1.0)
+		p.global_position = (w.point as Vector3) + back * float(w.r) * 0.5 + Vector3.UP * 0.05
+		p.direction = (back + Vector3.UP * 0.75).normalized()
+		var sp := clampf(absf(surf_v) * 0.55, 2.0, 16.0)
+		p.initial_velocity_min = sp * 0.55
+		p.initial_velocity_max = sp
+		# mud comes off in clods, sand in a finer spray
+		p.scale_amount_min = 0.06 if (soft and (w.soft as SoftGround).kind == "mud") or str(w.kind) == "mud" else 0.035
+		p.scale_amount_max = p.scale_amount_min * 2.6
+
+func _roost_make() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.amount = 90
+	p.lifetime = 1.2
+	p.local_coords = false
+	p.spread = 16.0
+	p.gravity = Vector3(0, -9.8, 0)
+	p.damping_min = 0.4; p.damping_max = 1.2
+	p.angular_velocity_min = -400.0; p.angular_velocity_max = 400.0
+	p.emitting = false
+	var qm := BoxMesh.new(); qm.size = Vector3(1, 0.7, 0.8)
+	if _roost_mat == null:
+		_roost_mat = StandardMaterial3D.new()
+		_roost_mat.vertex_color_use_as_albedo = true
+		_roost_mat.roughness = 0.9
+	qm.material = _roost_mat
+	p.mesh = qm
+	var sc := Curve.new(); sc.add_point(Vector2(0, 1.0)); sc.add_point(Vector2(1, 0.6)); p.scale_amount_curve = sc
+	add_child(p)
+	return p
+
 # ------------------------------------------------------------------ diesel smoke (0.2.61)
 ## A turned-up pump (or too much fuel in the tune) blows black smoke out the back on the throttle, a haze at idle
 var _smoke_p: CPUParticles3D
 var _smoke_lvl := -1.0
 var _smoke_t := 0.0
 func _smoke(dt: float) -> void:
+	_soot_tick(dt)
 	_smoke_t -= dt
 	if _smoke_t <= 0.0:
 		_smoke_t = 0.5
@@ -1394,6 +1492,92 @@ func _smoke(dt: float) -> void:
 	_smoke_p.initial_velocity_min = 1.0 + 3.0 * ld
 	_smoke_p.initial_velocity_max = 2.0 + 5.0 * ld
 	_smoke_p.scale_amount_max = 1.0 + 1.6 * k
+	# 0.2.72: volumetric soot: puffs of real fog that billow, drift and thin out (Forward+ renderer); the particles
+	# stay for the dense bit right at the pipe
+	if _soot_vol_ok():
+		_soot_acc += dt * (4.0 + 14.0 * ld) * clampf(k, 0.0, 1.2)
+		while _soot_acc >= 1.0:
+			_soot_acc -= 1.0
+			_soot_puff(k, ld)
+		_smoke_p.color.a *= 0.55
+
+# volumetric soot (0.2.72)
+var _soot: Array = []            # [FogVolume, FogMaterial, age, life, velocity, start size, density]
+var _soot_acc := 0.0
+static var _soot_until := 0.0
+static var _soot_forced := false
+static var _vol_checked := false
+static var _vol_ok := false
+
+func _exit_tree() -> void:
+	for e in _soot:
+		if is_instance_valid(e[0]): (e[0] as Node).queue_free()
+	_soot.clear()
+
+static func _soot_vol_ok() -> bool:
+	if not _vol_checked:
+		_vol_checked = true
+		_vol_ok = RenderingServer.get_current_rendering_method() == "forward_plus" and OS.get_environment("SOOT_OFF") == ""
+	return _vol_ok
+
+func _soot_puff(k: float, ld: float) -> void:
+	if _smoke_p == null: return
+	var fv := FogVolume.new()
+	fv.shape = RenderingServer.FOG_VOLUME_SHAPE_ELLIPSOID
+	var fm := FogMaterial.new()
+	fm.albedo = Color(0.05, 0.05, 0.05)
+	fm.edge_fade = 0.8
+	fv.material = fm
+	get_parent().add_child(fv)
+	var origin := _smoke_p.global_position
+	var back := -global_basis.z
+	var vel := back * (1.2 + 3.5 * ld) + Vector3(randf_range(-0.4, 0.4), 0.5 + randf() * 0.6, randf_range(-0.4, 0.4)) + linear_velocity * 0.6
+	fv.global_position = origin + back * 0.2
+	var s0 := 0.45 + 0.25 * k
+	fv.size = Vector3.ONE * s0
+	_soot.append([fv, fm, 0.0, 2.6 + 1.6 * k, vel, s0, clampf(2.5 * k, 0.6, 4.0)])
+	if _soot.size() > 28:
+		var old: Array = _soot.pop_front()
+		if is_instance_valid(old[0]): (old[0] as Node).queue_free()
+
+func _soot_tick(dt: float) -> void:
+	var now := Time.get_ticks_msec() * 0.001
+	if not _soot.is_empty():
+		_soot_until = now + 1.5
+		var keep: Array = []
+		for e in _soot:
+			var fv: FogVolume = e[0]
+			if not is_instance_valid(fv): continue
+			e[2] = float(e[2]) + dt
+			var t := float(e[2]) / float(e[3])
+			if t >= 1.0:
+				fv.queue_free()
+				continue
+			var v: Vector3 = e[4]
+			v = v * maxf(0.0, 1.0 - 1.6 * dt) + Vector3(0, 0.55 * dt, 0)        # slows in the air, the heat lifts it
+			e[4] = v
+			fv.global_position += v * dt
+			var sz := lerpf(float(e[5]), 3.4, 1.0 - pow(1.0 - t, 2.0))
+			fv.size = Vector3(sz, sz * 0.75, sz)
+			(e[1] as FogMaterial).density = float(e[6]) * pow(1.0 - t, 1.6) * pow(float(e[5]) / sz, 1.2)
+			keep.append(e)
+		_soot = keep
+	# the world's volumetric fog has to be on for the puffs to show: switched on while there's soot about (with no
+	# fog of its own if you've got it off in the settings) and back off after
+	var m = get_tree().current_scene
+	if m == null or m.get("env") == null: return
+	var env: Environment = m.env
+	var setting_on: bool = bool(Settings.get_v("volumetric_fog"))
+	if now < _soot_until and not setting_on and not _soot_forced:
+		_soot_forced = true
+		env.volumetric_fog_enabled = true
+		env.volumetric_fog_density = 0.0
+		env.volumetric_fog_length = 64.0
+	elif _soot_forced and (now >= _soot_until or setting_on):
+		_soot_forced = false
+		env.volumetric_fog_density = 0.0035
+		env.volumetric_fog_length = 160.0
+		env.volumetric_fog_enabled = setting_on
 
 func _smoke_make() -> void:
 	var p := CPUParticles3D.new()
