@@ -510,6 +510,13 @@
    "date": "2026-11-23",
    "size": 129292,
    "notes": "Laptop: the tune panel now stays open when you pick LAPTOP under the bonnet (it needs an ECU on the engine). The laptop is in the Forge's Tools tab, with the straps and spanners."
+  },
+  {
+   "file": "patch_0.2.0_0070.pck",
+   "version": "0.2.70",
+   "date": "2026-11-23",
+   "size": 169064,
+   "notes": "An unbolted engine no longer shoves the car up or drops through it: it sits on its mounts until a strap or chain pulls it out. Your own parts (like the Ranger's side steps) come off and go back on in the repair window (K) with a shifter. Turbo manifolds now come with a small, medium or large turbo, low or high mount: small spools early, large makes the most from about 3000 rpm."
   }
  ],
  "full": {
