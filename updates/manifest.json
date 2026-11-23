@@ -503,6 +503,13 @@
    "date": "2026-11-23",
    "size": 532536,
    "notes": "Ratchet straps (J): orange 250 kg and navy 2 t, from hardwares and sheds. Click the load, then where it ties off; strap two cars together to tow. Unbolt the engine with the bonnet off, then strap it or chain it out. Body tools Paint now has Parts (name your own: side steps, bull bar...; they go in the Forge's My parts and turn up in sheds), Respray (pick the colour in the garage) and Lights (stick-on headlights or bulbs in the housings). Engines centred in the bay, clear of the firewall. Low and high mount turbo manifolds. Forklift crawl gear. The camera no longer flies in when you get in a car. Fewer draw calls in town. Tools lie on the ground at their real size."
+  },
+  {
+   "file": "patch_0.2.0_0069.pck",
+   "version": "0.2.69",
+   "date": "2026-11-23",
+   "size": 129292,
+   "notes": "Laptop: the tune panel now stays open when you pick LAPTOP under the bonnet (it needs an ECU on the engine). The laptop is in the Forge's Tools tab, with the straps and spanners."
   }
  ],
  "full": {
