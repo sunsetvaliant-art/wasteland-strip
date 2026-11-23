@@ -149,7 +149,7 @@ const LOOT := {
 	"none": [],
 	# on the dead: what people had on them when it happened (pockets, a belt, a bag)
 	# car parts stores, mechanics' shelves, wrecks (0.2.49)
-	"carparts": [["strap_250", 0.3, 1, 2], ["strap_2t", 0.2, 1, 1], ["ratchet", 0.25, 1, 1], ["car_battery", 0.4, 1, 1], ["oil_can", 0.7, 1, 3], ["tyre_iron", 0.35, 1, 1], ["wrench", 0.4, 1, 1], ["pipe_wrench", 0.2, 1, 1],
+	"carparts": [["laptop", 0.1, 1, 1], ["strap_250", 0.3, 1, 2], ["strap_2t", 0.2, 1, 1], ["ratchet", 0.25, 1, 1], ["car_battery", 0.4, 1, 1], ["oil_can", 0.7, 1, 3], ["tyre_iron", 0.35, 1, 1], ["wrench", 0.4, 1, 1], ["pipe_wrench", 0.2, 1, 1],
 		["tape", 0.5, 1, 2], ["wire", 0.5, 1, 3], ["scrap", 0.5, 1, 4], ["jerry_fuel", 0.12, 1, 1], ["torch", 0.25, 1, 1], ["crowbar", 0.12, 1, 1]],
 	"engine_parts": [],          # filled from EngineKit by roll_loot (0.2.55)
 	"wreck": [["scrap", 0.9, 2, 6], ["wire", 0.5, 1, 3], ["car_battery", 0.2, 1, 1], ["oil_can", 0.25, 1, 1], ["cloth", 0.3, 1, 2], ["tyre_iron", 0.15, 1, 1], ["jerry_fuel", 0.05, 1, 1]],
@@ -172,7 +172,7 @@ const LOOT := {
 	"drawers": [["lighter", 0.15, 1, 1], ["car_key", 0.15, 1, 1], ["cloth", 0.4, 1, 3], ["tape", 0.12, 1, 1], ["shirt_flanno", 0.3, 1, 1], ["pants_jeans", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["binoculars", 0.05, 1, 1], ["ammo_357", 0.1, 6, 18], ["radio", 0.05, 1, 1], ["bandage", 0.15, 1, 2]],
 	"nightstand": [["car_key", 0.15, 1, 1], ["torch", 0.3, 1, 1], ["bandage", 0.3, 1, 2], ["ammo_357", 0.12, 6, 12], ["ammo_45", 0.1, 6, 12], ["gun_python", 0.03, 1, 1], ["gun_magnum45", 0.02, 1, 1]],
 	"bookshelf": [["binoculars", 0.1, 1, 1], ["radio", 0.08, 1, 1], ["torch", 0.1, 1, 1], ["bandage", 0.1, 1, 1]],
-	"office": [["car_key", 0.2, 1, 1], ["radio", 0.3, 1, 1], ["torch", 0.3, 1, 1], ["binoculars", 0.1, 1, 1], ["thermos", 0.2, 1, 1], ["ammo_45", 0.05, 4, 12]],
+	"office": [["laptop", 0.15, 1, 1], ["car_key", 0.2, 1, 1], ["radio", 0.3, 1, 1], ["torch", 0.3, 1, 1], ["binoculars", 0.1, 1, 1], ["thermos", 0.2, 1, 1], ["ammo_45", 0.05, 4, 12]],
 	"shed_shelf": [["strap_250", 0.3, 1, 2], ["strap_2t", 0.15, 1, 1], ["spanner", 0.15, 1, 1], ["pliers", 0.15, 1, 1], ["screwdriver", 0.2, 1, 1], ["hacksaw", 0.12, 1, 1], ["hatchet", 0.2, 1, 1], ["flint", 0.08, 1, 1], ["lighter", 0.12, 1, 1], ["seeds", 0.15, 1, 4], ["machete", 0.12, 1, 1], ["crowbar", 0.15, 1, 1], ["sledge", 0.06, 1, 1], ["bottle", 0.3, 1, 3], ["scrap", 0.5, 1, 4], ["wire", 0.3, 1, 2], ["brick", 0.2, 2, 8], ["tin_sheet", 0.2, 1, 2], ["gunpowder", 0.12, 1, 2], ["tape", 0.3, 1, 1], ["hammer", 0.15, 1, 1], ["nails", 0.3, 1, 2], ["plank", 0.2, 1, 3], ["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1]],
 	"workbench": [["strap_250", 0.25, 1, 2], ["strap_2t", 0.15, 1, 1], ["ratchet", 0.3, 1, 1], ["spanner", 0.3, 1, 1], ["multigrips", 0.2, 1, 1], ["car_battery", 0.25, 1, 1], ["car_key", 0.15, 1, 1], ["wire", 0.4, 1, 3], ["tyre_iron", 0.3, 1, 1], ["pipe_wrench", 0.25, 1, 1], ["scrap", 0.6, 1, 4], ["wire", 0.3, 1, 2], ["brass", 0.25, 2, 8], ["gunpowder", 0.2, 1, 2], ["tape", 0.35, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.35, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
 	"laundry": [["cloth", 0.7, 2, 5], ["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],

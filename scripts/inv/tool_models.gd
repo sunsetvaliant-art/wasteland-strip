@@ -104,6 +104,15 @@ static func make(id: String) -> Node3D:
 			_cyl(r, 0.016, 0.02, Vector3(0, 0.12, 0), _m(Color(0.1, 0.3, 0.8)))
 		"soft_drink":
 			_cyl(r, 0.033, 0.12, Vector3.ZERO, _m(Color(0.8, 0.1, 0.1), 0.8, 0.3))
+		"laptop":
+			var grey := _m(Color(0.16, 0.16, 0.18), 0.3, 0.5)
+			_box(r, Vector3(0.34, 0.022, 0.24), Vector3.ZERO, grey)                                       # the base
+			_box(r, Vector3(0.3, 0.004, 0.11), Vector3(0, 0.013, 0.03), black)                             # keys
+			_box(r, Vector3(0.34, 0.012, 0.23), Vector3(0, 0.1, -0.16), grey, Vector3(-1.25, 0, 0))       # the lid, open
+			var scr := _m(Color(0.15, 0.35, 0.55), 0.0, 0.2)
+			scr.emission_enabled = true; scr.emission = Color(0.1, 0.3, 0.5); scr.emission_energy_multiplier = 0.6
+			_box(r, Vector3(0.3, 0.002, 0.19), Vector3(0, 0.104, -0.153), scr, Vector3(-1.25, 0, 0))
+			_cyl(r, 0.004, 0.5, Vector3(0.2, 0.0, 0.1), black, Vector3(0, 0, PI / 2))                      # the cable
 		"bandage":
 			_cyl(r, 0.03, 0.06, Vector3.ZERO, _m(Color(0.92, 0.9, 0.85), 0.0, 0.95), Vector3(PI / 2, 0, 0))
 		_:

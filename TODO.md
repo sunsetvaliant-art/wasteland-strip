@@ -2,7 +2,12 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0068, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0069, 2026-11-23.
+
+## Laptop 2026-11-23 (0069)
+User: can't find a laptop in the palette; the laptop menu won't open from the repair screen.
+- [x] 0069 LAPTOP in the under-the-bonnet window opened its tune panel and wiped it straight away: it stays open now
+- [x] 0069 Laptop in the Forge's Tools tab (with straps and spanners), its own model, and in parts stores and offices
 
 ## Straps, respray, your own parts, lamps, turbos, engines out 2026-11-23 (0068)
 User: forklift first and reverse super low; the camera flies in from far away getting in a car; make the game run

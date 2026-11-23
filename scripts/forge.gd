@@ -411,6 +411,8 @@ func _make_visual(entry: Dictionary) -> Node3D:
 				vroot.add_child(mi)
 			return vroot
 		"kitpart":
+			var tmv := ToolModels.make(str(entry.key))         # 0.2.69: the laptop, straps (their own models)
+			if tmv: return tmv
 			return EngineKit.part_node(str(entry.key))
 	return Node3D.new()
 
@@ -888,6 +890,9 @@ func _build_ui() -> void:
 		for id in DirAccess.get_directories_at(base):
 			groups[ph_tab[d]].append({"type": "prop", "key": id, "name": _pretty(id), "path": "%s/%s/%s.gltf" % [base, id, id]})
 	groups["Tools"].append({"type": "hoist", "key": "gantry", "name": "Gantry and chain hoist (lifts bodies, engines)"})   # 0.2.66
+	groups["Tools"].append({"type": "kitpart", "key": "laptop", "name": "Laptop and tuning cable (ECU tunes)"})            # 0.2.69
+	for tid in ["strap_250", "strap_2t", "wrench", "ratchet", "spanner", "multigrips"]:
+		groups["Tools"].append({"type": "kitpart", "key": tid, "name": str(Items.def(tid).name)})
 	for g in groups:
 		groups[g].sort_custom(func(a, b): return a.name < b.name)
 	for g in ["Weapons", "Car parts", "Tools", "Survival", "World", "Nature"]:

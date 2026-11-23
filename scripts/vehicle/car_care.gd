@@ -202,8 +202,9 @@ func _fill() -> void:
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.custom_minimum_size = Vector2(0, 34)
 		b.pressed.connect(func():
+			_tuning = false
 			fn.call()
-			_fill())
+			if not _tuning: _fill())          # 0.2.69: the laptop's panel was built and then wiped by this refill
 		btns.add_child(b)
 	var has := func(id: String, n := 1) -> bool: return free or p.inv.count(id) >= n
 	var k: Dictionary = car.design.get("kit", {})
@@ -443,7 +444,9 @@ func _engine_buttons(add: Callable, spanner: bool, free: bool, p, st: Dictionary
 		add.call("LAPTOP: tune the ECU (fuel, timing, rev limit)", free or p.inv.count("laptop") > 0, func():
 			_tune_panel(k))
 
+var _tuning := false
 func _tune_panel(k: Dictionary) -> void:
+	_tuning = true
 	for ch in btns.get_children(): ch.queue_free()
 	var t: Dictionary = k.get("tune", {"fuel": 0.0, "timing": 0.0, "limit": 0.0})
 	k["tune"] = t
@@ -463,6 +466,7 @@ func _tune_panel(k: Dictionary) -> void:
 	var b := Button.new(); b.text = "Done"
 	b.pressed.connect(func():
 		msg = "Tune saved to the ECU."
+		_tuning = false
 		_fill())
 	btns.add_child(b)
 
