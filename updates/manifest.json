@@ -531,6 +531,13 @@
    "date": "2026-11-23",
    "size": 219524,
    "notes": "Mud and sand test strips in the paddock north of Thornbill Drive, Murwillumbah: mud, soft sand, packed sand and wet sand, 100 m each. Tyres sink and leave ruts. Aired up (32 psi) in soft sand you dig down until the diff bellies out; let them down to about 14 psi and you float across. Mud cares about tread and tyre height, not pressure. Rooster tails of mud clods and sand spray. Diesel soot is now volumetric fog puffs on the Forward+ renderer."
+  },
+  {
+   "file": "patch_0.2.0_0073.pck",
+   "version": "0.2.73",
+   "date": "2026-11-23",
+   "size": 4262720,
+   "notes": "Beaches reshaped along the open coast: the sand bars and lumps that poked up through the surf are under water now, the beach runs up evenly from the water for about 40 m, and it's all sand (half of it had been painted concrete). The mud and sand test strips are raised beds now, ramped on and off, so the ruts can't dig down to the grass."
   }
  ],
  "full": {
