@@ -166,6 +166,9 @@ func loadout(creative: bool) -> void:
 		for a in [["ammo_303", 60], ["ammo_762", 80], ["ammo_357", 36], ["ammo_45", 36], ["ammo_12g", 40], ["bandage", 10], ["medkit", 1], ["food_can", 4]]:
 			add(Items.fresh(a[0], a[1]))
 		add(Items.fresh("machete", 1))
+		add(Items.fresh("strap_2t", 2))          # 0.2.68
+		add(Items.fresh("strap_250", 4))
+		add(Items.fresh("wrench", 1))
 	else:
 		equip["secondary"] = Items.fresh("gun_python")
 		equip.secondary.data.ammo = 6

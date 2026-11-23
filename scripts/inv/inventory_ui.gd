@@ -423,6 +423,10 @@ func _context(s: Dictionary, r: Dictionary) -> void:
 	if d.kind in ["med", "food"] and r.side != "near":
 		if inv.use(s, r.grid): flash("Using %s…" % d.name)
 		return
+	if d.kind == "strap" and r.side != "near":       # 0.2.68: lay out a strap
+		toggle(null)
+		inv.player.strap_start(str(s.id))
+		return
 	if d.has("slot"):
 		var slot: String = d.slot
 		if d.kind == "gun" and inv.equip.has(slot) and not inv.equip.has("secondary" if slot == "primary" else "primary"):

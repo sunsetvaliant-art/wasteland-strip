@@ -30,6 +30,7 @@ var boards := {}                   # "lot:d3" / "lot:w2" -> {"n": planks, "side"
 var broken := {}                   # "lot:w2" -> true: windows someone's put through
 var cars_taken := {}               # lot -> true: its project car's been driven off (don't make another)
 var _lot_cars := {}                # lot -> [Node3D, spawn position]
+var _lot_parts := {}               # 0.2.68: lot -> [a part of your own lying about, spawn position]
 const DRIVE_CHANCE := {"qlder": 0.16, "cottage": 0.16, "brick": 0.18, "two_storey": 0.2, "shop": 0.05, "workshop": 0.2, "warehouse": 0.15}
 const PROJECT_CHANCE := {"shop": 0.0, "qlder": 0.05, "cottage": 0.05, "brick": 0.04, "two_storey": 0.03, "shed": 0.15, "machine_shed": 0.22,
 	"workshop": 0.2, "dairy": 0.08, "warehouse": 0.05}
@@ -842,6 +843,24 @@ func _lod_thread(c: Vector2i, jobs: Array) -> void:
 	_lod_done[c] = am
 	_lod_mutex.unlock()
 
+## 0.2.68 (frame rate): the little things in a building that had no draw distance get one, by size, and the smallest
+## stop casting shadows. A town was ~3700 draw calls, half of them shadow passes of furniture nobody could see.
+static func _cull_tune(root: Node) -> void:
+	for nd in root.find_children("*", "GeometryInstance3D", true, false):
+		var gi := nd as GeometryInstance3D
+		if gi.visibility_range_end > 0.0 or gi.has_meta("cull_tuned"): continue
+		gi.set_meta("cull_tuned", true)
+		var ab := gi.get_aabb()
+		var sc := gi.global_basis.get_scale()
+		var big := maxf(ab.size.x * sc.x, maxf(ab.size.y * sc.y, ab.size.z * sc.z))
+		if big < 0.8:
+			gi.visibility_range_end = 45.0
+			gi.visibility_range_end_margin = 5.0
+			if big < 0.4: gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		elif big < 3.0:
+			gi.visibility_range_end = 110.0
+			gi.visibility_range_end_margin = 10.0
+
 func _build_full(i: int) -> void:
 	var p := _plan(i)
 	var xf := _xf(i, p)
@@ -870,6 +889,8 @@ func _build_full(i: int) -> void:
 		box.set_meta("loot_gen", gen)
 	full[i] = b
 	b.set_meta("plan", p)
+	_cull_tune(b)
+	get_tree().create_timer(2.0).timeout.connect(func(): if is_instance_valid(b): _cull_tune(b))    # the props that come a moment later
 	if _boxes.has(i):
 		if is_instance_valid(_boxes[i]): (_boxes[i] as Node).queue_free()
 		_boxes.erase(i)
@@ -1236,6 +1257,17 @@ func _project_car(i: int, p: Dictionary, b: Node3D) -> void:
 	else:
 		node = _shell(kind, Vector3(wp.x, gy, wp.z), yaw, rng)
 	_lot_cars[i] = [node, node.global_position]
+	# 0.2.68: a part of your own (painted in Body tools) left lying by the project now and then
+	var own := BodyCut.custom_parts()
+	if not own.is_empty() and rng.randf() < 0.45:
+		var cp: Dictionary = own[rng.randi() % own.size()]
+		var pb := BodyCut.part_body(str(cp.glb), "acc", int(cp.label))
+		if pb:
+			pb.set_meta("forge_name", str(cp.name))
+			main.add_child(pb)
+			var pp: Vector3 = b.global_transform * (lp + Vector3(2.4, 0, rng.randf_range(-1.0, 1.0)))
+			pb.global_transform = Transform3D(Basis(Vector3.UP, rng.randf() * TAU), Vector3(pp.x, gy + 0.4, pp.z))
+			_lot_parts[i] = [pb, pb.global_position]
 
 ## A car body off its chassis, sat on the ground (not drivable: put it on a chassis in the garage)
 func _shell(kind: String, pos: Vector3, yaw: float, rng: RandomNumberGenerator) -> Node3D:
@@ -1324,6 +1356,10 @@ func _drop_full(i: int) -> void:
 				z.free_body()
 		if left == 0: horde_cleared[i] = Time.get_unix_time_from_system()
 		_hordes.erase(i)
+	if _lot_parts.has(i):
+		var ep: Array = _lot_parts[i]
+		_lot_parts.erase(i)
+		if is_instance_valid(ep[0]) and (ep[0] as Node3D).global_position.distance_to(ep[1]) < 3.0: (ep[0] as Node3D).queue_free()
 	if _lot_cars.has(i):
 		var e: Array = _lot_cars[i]
 		_lot_cars.erase(i)

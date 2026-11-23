@@ -39,7 +39,7 @@ func _ready():
 		if c.parts.engine_node:
 			var ab: AABB = c.parts._aabb_of(c.parts.engine_node, Transform3D.IDENTITY)
 			var off: Array = c.design.cab_offset
-			print("CAR eng ", key, " top ", snappedf(ab.end.y, 0.01), " x ", snappedf(ab.position.x, 0.01), "..", snappedf(ab.end.x, 0.01), " z ", snappedf(ab.position.z, 0.01), "..", snappedf(ab.end.z, 0.01), " off ", off, " skin ", BodyCut.skin_low(str(c.def.glb), ab.position.x - float(off[0]), ab.end.x - float(off[0]), ab.position.z - float(off[2]), ab.end.z - float(off[2])), " more drop ", c.parts._engine_fit())
+			print("CAR eng ", key, " top ", snappedf(ab.end.y, 0.01), " x ", snappedf(ab.position.x, 0.01), "..", snappedf(ab.end.x, 0.01), " z ", snappedf(ab.position.z, 0.01), "..", snappedf(ab.end.z, 0.01), " off ", off, " skin ", BodyCut.skin_low(str(c.def.glb), ab.position.x - float(off[0]), ab.end.x - float(off[0]), ab.position.z - float(off[2]), ab.end.z - float(off[2])), " more fit ", c.parts._engine_fit(), " bay ", BodyCut.bay_span(str(c.def.glb)))
 		print("CAR ", key, " pos ", snapped(c.global_position, Vector3(0.01, 0.01, 0.01)), " up ", snapped(c.global_transform.basis.y, Vector3(0.01, 0.01, 0.01)))
 		c.queue_free()
 		await get_tree().process_frame

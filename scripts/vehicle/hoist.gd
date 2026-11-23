@@ -151,6 +151,7 @@ func hook(rb: RigidBody3D) -> String:
 	length = maxf(0.2, top_point().distance_to(rb.global_transform * attach))
 	if length > HIGH: return "The chain won't reach down that far."
 	load_rb = rb
+	if rb.has_method("wake"): rb.wake()           # an unbolted engine comes off its mounts
 	_old_damp = Vector2(rb.linear_damp, rb.angular_damp)
 	rb.linear_damp = maxf(rb.linear_damp, 0.4)          # it swings, but it settles
 	rb.angular_damp = maxf(rb.angular_damp, 2.0)

@@ -48,6 +48,11 @@ const SIDE := ["intake", "exhaust"]
 static func block_id(lay: String, big: bool) -> String: return "eb_%s_%s" % [lay, "big" if big else "small"]
 static func head_id(cyl: int, vt: String, comp: String) -> String: return "eh_%d_%s_%s" % [cyl, vt, comp]
 static func exhaust_id(cyl: int) -> String: return "ex_%d" % cyl
+## "" for a plain manifold, "tlow" / "thigh" for a turbo one (0.2.68)
+static func turbo_of(ex_id: String) -> String:
+	if ex_id.ends_with("_tlow"): return "tlow"
+	if ex_id.ends_with("_thigh"): return "thigh"
+	return ""
 static func intake_id(lay: String) -> String: return "ei_%s" % lay
 static func fuel_id(f: String) -> String: return "ef_%s" % f
 static func ecu_id(diesel: bool, cyl: int) -> String: return "ecu_%s_%d" % ["d" if diesel else "p", cyl]
@@ -66,12 +71,15 @@ static func _register() -> void:
 	for lay in BLOCKS:
 		for big in [false, true]:
 			var b: Dictionary = BLOCKS[lay]
-			_items[block_id(lay, big)] = {"name": "%s %s block (%.1f L)" % ["Big" if big else "Small", b.name, b.litres[1 if big else 0]], "w": 4, "h": 3, "stack": 1, "kind": "misc", "part": "block"}
+			_items[block_id(lay, big)] = {"name": "%s %s block (%.1f L)" % ["Big" if big else "Small", b.name, b.litres[1 if big else 0]], "w": 4, "h": 3, "stack": 1, "kind": "misc", "part": "block", "big": true, "kg": float(b.kg[1 if big else 0])}
 	for cyl in [3, 4, 6]:
 		for vt in VALVETRAIN:
 			for c in COMP:
 				_items[head_id(cyl, vt, c)] = {"name": "%d-cyl %s head, %s" % [cyl, VALVETRAIN[vt].name, COMP[c].name], "w": 3 if cyl < 6 else 4, "h": 1, "stack": 1, "kind": "misc", "part": "head"}
 		_items[exhaust_id(cyl)] = {"name": "%d-cyl exhaust manifold" % cyl, "w": 3 if cyl < 6 else 4, "h": 1, "stack": 1, "kind": "misc", "part": "exhaust"}
+		# 0.2.68: turbo manifolds, the snail low down beside the block or up high over the manifold
+		_items[exhaust_id(cyl) + "_tlow"] = {"name": "%d-cyl turbo manifold, low mount" % cyl, "w": 3 if cyl < 6 else 4, "h": 2, "stack": 1, "kind": "misc", "part": "exhaust"}
+		_items[exhaust_id(cyl) + "_thigh"] = {"name": "%d-cyl turbo manifold, high mount" % cyl, "w": 3 if cyl < 6 else 4, "h": 2, "stack": 1, "kind": "misc", "part": "exhaust"}
 	for lay in ["i3", "i4", "i6", "v6", "v8"]:
 		_items[intake_id(lay)] = {"name": "%s intake manifold" % (BLOCKS[lay].name.capitalize() if lay.begins_with("i") else BLOCKS[lay].name + " valley"), "w": 3, "h": 2 if lay.begins_with("v") else 1, "stack": 1, "kind": "misc", "part": "intake"}
 	for f in FUELS:
@@ -211,11 +219,21 @@ static func stats(k: Dictionary) -> Dictionary:
 	var ex: Array = k.get("exhaust", [])
 	var ex_ok := ex.size() >= int(b.banks) and not ex.slice(0, int(b.banks)).has("")
 	if not ex_ok: peak_nm *= 0.82
+	# 0.2.68: turbos: a third more once it's spooled (the high mount a touch more, a touch later), nothing at idle
+	var boost := 0.0
+	var spool := 2000.0
+	for i in mini(ex.size(), int(b.banks)):
+		match turbo_of(str(ex[i])):
+			"tlow": boost += 0.33 / float(b.banks); spool = minf(spool, 1900.0)
+			"thigh": boost += 0.4 / float(b.banks); spool = 2300.0
 	# curve: rises to the peak, holds, falls toward the redline (a DOHC holds on; a flathead falls away)
 	var fall := lerpf(0.55, 0.64, (vt_power - 0.7) / 0.3)
 	var curve := [[0, peak_nm * 0.45], [800, peak_nm * (0.72 if diesel else 0.62)], [int(peak * 0.55), peak_nm * 0.88],
 		[int(peak), peak_nm], [int(lerpf(peak, redline, 0.5)), peak_nm * lerpf(1.0, fall, 0.45)],
 		[int(redline), peak_nm * fall], [int(redline + 600.0), peak_nm * fall * 0.75]]
+	if boost > 0.0:
+		for pt in curve:
+			pt[1] = float(pt[1]) * (1.0 + boost * clampf((float(pt[0]) - spool * 0.6) / (spool * 0.4), 0.0, 1.0))
 	var cyl := int(b.cyl)
 	return {"name": describe(k), "glb": "", "cyl": cyl, "sound": sound_key(k), "pitch_mul": pitch_mul(k), "rough": 0.35 if diesel else (0.12 if ph[1] == "flat" else 0.0),
 		"idle": 750 if not diesel else 680, "redline": int(redline), "limiter": int(redline + 300.0), "curve": curve,
@@ -229,8 +247,10 @@ static func describe(k: Dictionary) -> String:
 	var heads: Array = k.get("heads", [])
 	var ph := parse_head(str(heads[0])) if not heads.is_empty() and str(heads[0]) != "" else []
 	var fs := str(k.get("fuel", "")).trim_prefix("ef_")
-	return "%.1f L %s%s%s" % [b.litres[1 if pb[1] else 0], b.name, (" " + VALVETRAIN[ph[1]].name) if not ph.is_empty() else "",
-		(" diesel" if FUELS.has(fs) and FUELS[fs].diesel else (" EFI" if fs == "tb" else ""))]
+	var turbo := ""
+	for e in k.get("exhaust", []): if turbo_of(str(e)) != "": turbo = " turbo"
+	return "%.1f L %s%s%s%s" % [b.litres[1 if pb[1] else 0], b.name, (" " + VALVETRAIN[ph[1]].name) if not ph.is_empty() else "",
+		(" diesel" if FUELS.has(fs) and FUELS[fs].diesel else (" EFI" if fs == "tb" else "")), turbo]
 
 ## Which recorded engine to play and how to pitch it: V8s burble, sixes are smooth, diesels clatter
 static func sound_key(k: Dictionary) -> String:
@@ -443,7 +463,19 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 			var colz := Vector3(pe0.x, pe0.y, 0) + out * 0.13 - up * 0.16 + Vector3(0, 0, -L * 0.32)
 			mk.box("rust", Vector3(0.025, 0.05, bc * PITCH), Vector3(pe0.x, pe0.y, zc) + out * 0.004, bas)        # flange
 			mk.cyl("rust", 0.035, 0.08, colz, Basis.IDENTITY)
-			mk.pipe("rust", colz, colz + Vector3(0, -0.22, -0.18), 0.03)
+			var tb := turbo_of(str(exs[bi]))
+			if tb == "":
+				mk.pipe("rust", colz, colz + Vector3(0, -0.22, -0.18), 0.03)
+			else:
+				# 0.2.68: the turbo: low mount beside the block at the collector, high mount up over the manifold
+				var tp: Vector3 = colz + out * 0.06 if tb == "tlow" else Vector3(pe0.x, pe0.y, zc - L * 0.15) + out * 0.2 + up * 0.14
+				if tb == "thigh": mk.pipe("rust", colz, tp - up * 0.05, 0.03)
+				var bz := Basis(Vector3.RIGHT, PI * 0.5)
+				mk.cyl("iron", 0.075, 0.07, tp, bz)                                   # turbine housing
+				mk.cyl("alloy", 0.08, 0.075, tp + Vector3(0, 0, 0.09), bz)            # compressor housing
+				mk.cyl("steel", 0.03, 0.05, tp + Vector3(0, 0, 0.045), bz)            # centre section
+				mk.pipe("rust", tp - Vector3(0, 0.05, 0.02), tp + Vector3(0, -0.3, -0.2), 0.032)          # dump pipe
+				mk.pipe("alloy", tp + Vector3(0, 0.06, 0.09), tp + up * 0.12 + into * 0.25 + Vector3(0, 0.08, 0.12), 0.027)   # to the intake
 	# ---- intake
 	var iid := str(k.get("intake", ""))
 	var flange := Vector3(0, deck + 0.14, 0)
@@ -760,7 +792,8 @@ static func part_info(id: String) -> String:
 				_: t += "Medium compression: the all-rounder."
 			return t
 		"exhaust":
-			return "Bolts to a %d-cylinder head. Without one on every bank the engine loses about a fifth of its torque." % int(id.trim_prefix("ex_"))
+			var tdesc := {"tlow": " A turbo sits low beside the block: about a third more torque once it spools up, from about 2000 rpm.", "thigh": " The turbo sits up high over the manifold: a bit more boost than a low mount, coming in a bit later (about 2300 rpm)."}
+			return ("Bolts to a %d-cylinder head. Without one on every bank the engine loses about a fifth of its torque." % int(id.trim_prefix("ex_"))) + str(tdesc.get(turbo_of(id), ""))
 		"intake":
 			return "Feeds every port on its block and carries the carby or throttle body on top. Only fits the block it was made for."
 		"fuel":

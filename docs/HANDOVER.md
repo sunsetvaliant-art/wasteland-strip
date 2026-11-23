@@ -249,6 +249,17 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   includes tyre squat): the squat in the damper made heavy cars chatter. Catalog "kg" is the game's scaled weight
   (mass = kg * 2.3; a real 1.8 t ute is ~780). tools/_drivecheck.tscn (DC_CARS) prints chatter, 0-60, braking,
   turn and kerb numbers; tools/_tubtest.tscn (TT_CAR, TT_RIDE) watches a loose tub on its chassis.
+- 0068: BodyCut cut entry keys: paint (labels 1 cab, 2 tub, 3 bonnet, 4+ = parts[i-4]), parts [{name, off}],
+  respray {n, runs} (mask), lights [Lamps entries]. pieces(glb, tub, bonnet, col) returns acc {label: meshes} too and
+  splits resprayed faces into respray_mat() (shader keeps the texture's luminance). BodyCut.part_body() makes a loose
+  part / cut cab / cut tub; custom_parts() lists them; loose_shapes() is the body/tub mount collision. Lamps
+  (scripts/vehicle/lamps.gd) build and light them; Car.lamps, _aim_beams(). Strap (scripts/vehicle/strap.gd), player
+  strap mode (J / inventory Use, InteractMenu.hold blocks fire), Car._on_tow() frees the brakes. LooseLump
+  (scripts/vehicle/loose_lump.gd) = unbolted engine, Car.unbolt_engine()/bolt_engine(). BodyCut.bay_span() finds the
+  firewall; rig._engine_fit() returns a Vector3. EngineKit turbo manifolds ex_N_tlow / ex_N_thigh (turbo_of()).
+  ToolModels (scripts/inv/tool_models.gd) and Items "size". Prof.totals; tools/_perfprobe.gd (world, via runpt) prints
+  draw calls and per-job ms; runpt.sh under a 600 s foreground timeout leaves project.godot patched: run it in the
+  background. Tests: tools/_painttest, _straptest, _fittest, _turboshot.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

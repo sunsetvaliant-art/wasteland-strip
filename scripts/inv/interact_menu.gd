@@ -25,8 +25,9 @@ var hidden := {}              # instance id -> time (ms) the menu may show on it
 var shown := false
 
 ## Gun and melee ask this before acting on a left click: true just after a click went to the menu
+static var hold := false          # 0.2.68: the player's laying out a strap: clicks are for that, not the gun or fists
 static func blocking() -> bool:
-	return Time.get_ticks_msec() < _block_until
+	return hold or Time.get_ticks_msec() < _block_until
 
 func setup(m) -> void:
 	main = m
@@ -146,12 +147,55 @@ func _pick(p) -> Array:
 			elif c.loose_body_seated():
 				o.append(_o("Bolt the body on", func(): c.start_job("Doing up the body mounts", 6, each, p, func():
 					p._toast("Body's on." if c.bolt_body() else "It moved: sit it back on square.")), spanner, "You need a shifter"))
+			# 0.2.68: the engine out the top as a lump (a chain or a strap pulls it), or a loose one bolted back in
+			if str(c.design.get("kit", {}).get("block", "")) != "":
+				var why_e: String = c.engine_out_ok()
+				o.append(_o("Unbolt the engine", func(): c.start_job("Undoing the engine mounts", 4, each, p, func():
+					c.unbolt_engine()
+					p._toast("Engine's loose on its mounts: chain it or strap it out.")), spanner and why_e == "", why_e if why_e != "" else "You need a shifter"))
+			else:
+				for le in get_tree().get_nodes_in_group("loose_engines"):
+					if (le as Node3D).global_position.distance_to(c.global_position) < 4.0:
+						o.append(_o("Bolt the engine in", func(): c.start_job("Doing up the engine mounts", 4, each, p, func():
+							p._toast("Engine's in." if c.bolt_engine(le) else "Lower it into the bay first.")), spanner, "You need a shifter"))
+						break
+			for st in get_tree().get_nodes_in_group("straps"):
+				if (st as Strap).touches(c):
+					var st3: Strap = st
+					o.append(_o("Take the %s off" % str(Strap.KINDS[st3.kind].name).to_lower(), func():
+						p.inv.add(Items.fresh(st3.kind, 1))
+						st3.queue_free()
+						p._toast("Strap's off.")))
 			if not c.tray.is_empty():
 				if not (c.tray.sides as Array).is_empty():
 					o.append(_o("Raise the tray sides" if c.sides_down else "Drop the tray sides", func(): c.sides_down = not c.sides_down))
 				if not (c.tray.doors as Array).is_empty():
 					o.append(_o("Close the doors" if c.doors_open else "Open the doors", func(): c.doors_open = not c.doors_open))
 			return [c, o]
+		# 0.2.68: straps on whatever you're looking at come off (and back to you)
+		var strap_opts := []
+		for st in get_tree().get_nodes_in_group("straps"):
+			if (st as Strap).touches(n):
+				var st2: Strap = st
+				strap_opts.append(_o("Take the %s off" % str(Strap.KINDS[st2.kind].name).to_lower(), func():
+					p.inv.add(Items.fresh(st2.kind, 1))
+					st2.queue_free()
+					p._toast("Strap's off.")))
+		if n is LooseLump:
+			var ol := strap_opts.duplicate()
+			var each_e := 0.5 if Settings.creative() else 2.5
+			var spanner_e: bool = p.inv.count("wrench") > 0 or Settings.creative()
+			for cc in get_tree().get_nodes_in_group("vehicles"):
+				if cc is Car and (cc as Car).global_position.distance_to(n.global_position) < 4.0 and str((cc as Car).design.get("kit", {}).get("block", "")) == "":
+					var car_e := cc as Car
+					ol.append(_o("Bolt the engine in", func(): car_e.start_job("Doing up the engine mounts", 4, each_e, p, func():
+						p._toast("Engine's in." if car_e.bolt_engine(n) else "Lower it into the bay first.")), spanner_e, "You need a shifter"))
+					break
+			for hh in get_tree().get_nodes_in_group("hoists"):
+				var ho0 := hh as Hoist
+				if ho0.load_rb == n or (ho0.load_rb == null and ho0.candidate() == n):
+					for m in ho0.menu(p): ol.append(_o(m[0], m[1], m[2], m[3]))
+			if not ol.is_empty(): return [n, ol]
 		# 0.2.66: the gantry, or something loose under one: hook the chain on or off
 		if n is Hoist:
 			var oh := []
@@ -166,6 +210,8 @@ func _pick(p) -> Array:
 					# a body still sat on its mounts can be bolted down as well
 					if n.has_meta("body_of") or n.has_meta("tub_of"): oh2.append_array(_bolt_opts(p, n))
 					return [n, oh2]
+		if not strap_opts.is_empty() and n is RigidBody3D and not n.is_in_group("pickups"):
+			return [n, strap_opts]
 		# 0.2.66: a loose body or tub sat on a chassis's mounts: bolt it down from here too
 		if n is RigidBody3D and (n.has_meta("body_of") or n.has_meta("tub_of")):
 			var each2 := 0.5 if Settings.creative() else 2.5
@@ -228,6 +274,11 @@ func _pick(p) -> Array:
 			elif n.has_meta("container_name"): nm = n.get_meta("container_name")
 			return [n, [_o("Open " + nm.to_lower(), _open.bind(n))]]
 		if n.is_in_group("pickups") and n.has_meta("items"):
+			var st0: Array = n.get_meta("items", [])
+			if not st0.is_empty() and Items.def(str(st0[0].id)).get("big", false):
+				var heavy: bool = (n as RigidBody3D).mass > Items.CARRY_MAX_KG
+				return [n, [_o(WorldItem.label(n), func(): pass, false,
+					"Too big to pocket: %s" % ("chain it up (gantry) or strap it onto something" if heavy else "carry it (middle mouse) and set it on a vehicle"))]]
 			return [n, [_o("Pick up " + WorldItem.label(n), _use.bind(p, n))]]
 		n = n.get_parent()
 	return [null, []]

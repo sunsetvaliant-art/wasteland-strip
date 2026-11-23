@@ -276,16 +276,28 @@ func rebuild_engine() -> void:
 ## 0.2.65: drop the engine until its top clears the bonnet skin (measured per body, tools/bonnet_tops.py) by 3 cm;
 ## at most 70 cm (the Meshy bodies sit their bonnets low over the wheels: up to 0.46 m needed)
 var _fit_pending := 0
-func _engine_fit() -> float:
-	if engine_node == null or car.design.get("no_cab", false) or not bool(car.def.get("eng_fit", true)): return 0.0
+var eng_rear := INF              # the back of the engine (car frame) once it's fitted: the gearbox and tailshaft run from it
+func _engine_fit() -> Vector3:
+	if engine_node == null or car.design.get("no_cab", false) or not bool(car.def.get("eng_fit", true)): return Vector3.ZERO
 	var ab := _aabb_of(engine_node, Transform3D.IDENTITY)
-	if ab.size == Vector3.ZERO: return 0.0
+	if ab.size == Vector3.ZERO: return Vector3.ZERO
 	var off: Array = car.design.cab_offset
 	var o := Vector3(float(off[0]), float(off[1]), float(off[2]))
-	var lo := BodyCut.skin_low(str(car.def.glb), ab.position.x - o.x + 0.03, ab.end.x - o.x - 0.03, ab.position.z - o.z + 0.03, ab.end.z - o.z - 0.03)
-	if lo == INF: return 0.0
+	# 0.2.68: fore and aft first: centred in the bay between the radiator and the firewall, never into the firewall
+	var dz := 0.0
+	var bay := BodyCut.bay_span(str(car.def.glb))
+	if not bay.is_empty():
+		var fw: float = float(bay[0]) + o.z - 0.05          # the firewall, less a little room
+		var fr: float = float(bay[1]) + o.z - 0.22          # the radiator and fan
+		var room := fr - fw
+		var want := (fw + fr) * 0.5 - ab.get_center().z
+		if ab.size.z > room: want = fw - ab.position.z      # too long to centre: tight to the firewall's clearance
+		dz = clampf(want, -0.8, 0.8)
+	var dx := o.x - ab.get_center().x
+	var lo := BodyCut.skin_low(str(car.def.glb), ab.position.x + dx - o.x + 0.03, ab.end.x + dx - o.x - 0.03, ab.position.z + dz - o.z + 0.03, ab.end.z + dz - o.z - 0.03)
+	if lo == INF: return Vector3(dx, 0, dz)
 	var drop := (lo + o.y - 0.03) - ab.end.y
-	return clampf(drop, -0.7, 0.0)
+	return Vector3(dx, clampf(drop, -0.7, 0.0), dz)
 
 func _aabb_of(n: Node, parent: Transform3D) -> AABB:
 	var xf := parent
@@ -313,7 +325,7 @@ func _build_tailshaft() -> void:
 		return
 	var ts_fn := func():
 		var fz: float = car.design.axles[0].z
-		var a := Vector3(0, frame_y - 0.05, fz - float(car.eng.len) - 0.5)
+		var a := Vector3(0, frame_y - 0.05, (eng_rear - 0.5) if eng_rear < INF else (fz - float(car.eng.len) - 0.5))
 		var b := _axle_centre(rear) + Vector3(0, -0.015, 0.2)       # the pinion flange (0.2.65 housing)
 		return [a, b]
 	tailshaft = _beam(cyl_mesh, m_steel, 0.075, 0.075, ts_fn, true)
@@ -495,8 +507,9 @@ func _process(_dt: float) -> void:
 		_fit_pending -= 1
 		if _aabb_of(engine_node, Transform3D.IDENTITY).size != Vector3.ZERO:
 			var f := _engine_fit()
-			engine_node.position.y += f
-			if OS.get_environment("FIT_DEBUG") != "": print("FIT ", car.design.get("cab"), " ", f, " now y ", engine_node.position.y)
+			engine_node.position += f
+			eng_rear = _aabb_of(engine_node, Transform3D.IDENTITY).position.z
+			if OS.get_environment("FIT_DEBUG") != "": print("FIT ", car.design.get("cab"), " ", f, " now ", engine_node.position)
 			_fit_pending = 0
 	for i in car.wheels.size():
 		var w: Dictionary = car.wheels[i]

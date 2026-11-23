@@ -93,6 +93,8 @@ func apply(main: Node) -> void:
 	# ~45 km) still stand up on the skyline the way they do on a clear day
 	env.fog_depth_end = max(float(v.view_distance) * 2.2, 30000.0)
 	main.sun.directional_shadow_max_distance = float(v.shadow_distance)
+	# 0.2.68: two shadow cascades on low and medium (every shadow caster was drawn four times over)
+	main.sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if int(v.shadow_quality) <= 1 else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	main.veg.set_ranges(float(v.tree_distance), float(v.grass_distance), float(v.grass_density))
 	for c in main.get_tree().get_nodes_in_group("cameras"):
 		(c as Camera3D).far = max(float(v.view_distance) + 2000.0, 48000.0)      # the backdrop's skyline is always in view

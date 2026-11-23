@@ -963,8 +963,8 @@
   "steer_rear": true,
   "rigid": true,
   "front_share": 0.25,
-  "gearbox": "auto3",
-  "final": 28.0,
+  "gearbox": "fork2",
+  "final": 12.0,
   "eng_fit": false,
   "tyre_psi": 120
  }

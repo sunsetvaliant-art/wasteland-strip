@@ -17,6 +17,8 @@ static func spawn(parent: Node, stacks: Array, pos: Vector3, vel := Vector3.ZERO
 	rb.continuous_cd = true
 	var vis: Node3D
 	var box := Vector3(0.3, 0.12, 0.3)
+	var tm: Node3D = null
+	if d.kind != "gun" and not (d.has("model") and ResourceLoader.exists(d.model)): tm = ToolModels.make(str(s.id))
 	if d.kind == "gun":
 		var g := Gun.new()
 		rb.add_child(g)
@@ -30,7 +32,7 @@ static func spawn(parent: Node, stacks: Array, pos: Vector3, vel := Vector3.ZERO
 		vis = Node3D.new()
 		vis.add_child(raw)
 		var bb := _aabb(raw)
-		var want: float = SIZE.get(d.kind, 0.3)
+		var want: float = float(d.get("size", SIZE.get(d.kind, 0.3)))       # 0.2.68: tools at their real size
 		var k: float = want / max(bb.size.x, max(bb.size.y, bb.size.z), 0.01)
 		raw.scale = Vector3.ONE * k
 		raw.position = -bb.get_center() * k
@@ -45,6 +47,12 @@ static func spawn(parent: Node, stacks: Array, pos: Vector3, vel := Vector3.ZERO
 		vis = Node3D.new()
 		vis.add_child(mi)
 		box = bb.size
+	elif tm != null:
+		# 0.2.68: a made-in-code model at real size (straps, knife, battery, wire...)
+		vis = tm
+		var bb2 := _aabb(vis)
+		for c in vis.get_children(): (c as Node3D).position -= bb2.get_center()
+		box = bb2.size
 	else:
 		# folded clothes / a plain packet
 		var mi := MeshInstance3D.new()
@@ -63,6 +71,9 @@ static func spawn(parent: Node, stacks: Array, pos: Vector3, vel := Vector3.ZERO
 	bs.size = box.max(Vector3(0.05, 0.05, 0.05))
 	cs.shape = bs
 	rb.add_child(cs)
+	if d.get("big", false):
+		rb.mass = float(d.get("kg", 60.0))      # 0.2.68: too big to pocket: carry it if you can, chain or strap it if not
+		rb.add_to_group("physgun")
 	rb.add_to_group("pickups")
 	rb.set_meta("items", stacks)
 	parent.add_child(rb)

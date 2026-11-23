@@ -2,7 +2,55 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0067, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0068, 2026-11-23.
+
+## Straps, respray, your own parts, lamps, turbos, engines out 2026-11-23 (0068)
+User: forklift first and reverse super low; the camera flies in from far away getting in a car; make the game run
+better; an accessories paint (name your own kind of part: side steps, bumpers, tub racks, spotlights; paint it, save
+it, it spawns in the world, its own palette section; same for cabs and tubs cut by hand); paint the cars (pick the
+paintable faces with the mesh painter); a bulb / light placer body tool (generic round or rectangle headlights, or a
+bulb to light a housing the model has); engines not merged into firewalls; low and high mount manifolds. Then: a
+model for every tool you find; too big to pocket = lift it and put it on a vehicle, loose or strapped; straps by two
+clicks (load, then tie-off point), they tow too; orange 250 kg and navy 2 t straps in hardwares and sheds; once
+engines are centred, a strap pulls an unbolted engine out of the bay.
+- [x] 0068 Forklift box: crawl (7:1) and drive (2:1) with a 7:1 reverse: about 1 km/h at idle in crawl (manual,
+      Q / E)
+- [x] 0068 Getting in a car the chase camera starts where your own camera was (it flew in from wherever it was left)
+- [x] 0068 Frame rate: low and medium shadows use two cascades (every shadow caster was drawn four times); small
+      things in buildings get a draw distance (45 m under 80 cm, 110 m under 3 m) and the smallest stop casting
+      shadows; only your own headlights throw shadows; the bonnet hinge lookup hashed every body's paint every frame
+- [x] 0068 Body tools Paint has three layers: Parts (cab, tub, bonnet and parts of your own: type a name, Add part,
+      paint it; tick Take it off to leave it off the car), Respray (the faces that take the car's colour) and Lights
+- [x] 0068 Your parts, and every model's cut cab and tub, are in the Forge's palette under My parts (a section per
+      name; refreshed when you open it); your parts turn up now and then beside the projects in sheds and yards; a
+      cut cab or tub sits on its mounts and bolts onto a chassis
+- [x] 0068 Respray: Garage > Paint colour (Factory paint puts it back); the old paint's light, shade and grime stay,
+      the colour changes; the engine bay and an unbolted tub follow it
+- [x] 0068 Lamps: round or rectangle headlights stuck on, or bulbs sunk into the model's own housings, head or tail;
+      mirror to the other side; they glow with L, tail bulbs flare on the brakes, the beams come from the outermost
+      headlights
+- [x] 0068 Engines sit centred in the bay between the radiator and the firewall (each body's firewall found from its
+      skin: where the windscreen climbs away), tight to the firewall's clearance if too long to centre; the
+      tailshaft starts behind it
+- [x] 0068 Turbo manifolds for 3, 4 and 6 cylinder heads: low mount (beside the block at the collector, about a third
+      more torque from ~2000 rpm) and high mount (up over the manifold, a bit more, from ~2300); in the Forge's
+      engine parts and the parts loot
+- [x] 0068 Ratchet straps: orange 250 kg and navy 2 t (hardwares, sheds, workbenches, parts stores). J (or Use it in
+      the inventory): click the load where it starts, click where it ties off. A load tied to a vehicle is ratcheted
+      tight; between two vehicles it's a tow strap (the towed car rolls free, no handbrake); twice its rating and it
+      snaps; F on the strapped thing takes it off and gives it back
+- [x] 0068 Unbolt the engine (F on the car, bonnet off or body off, a shifter): it sits loose in the bay; a strap or
+      the gantry's chain pulls it out (it doesn't catch on the car it came out of till it's clear); lower one back
+      into the bay and Bolt the engine in
+- [x] 0068 Models on the ground at real size for the tools (Poly Haven ones resized) and made-in-code models for the
+      rest (straps, knife, tyre iron, bat, battery, wire, rope, lighter, flint, key, bottle, scrap, brick...); new
+      tools to find: socket ratchet, ring spanner, pliers, multigrips, screwdriver, hacksaw, bolt cutters, tape
+      measure, gas torch, hand drill
+- [x] 0068 Engine blocks are too big to pocket: on the ground they weigh what they weigh, so chain or strap them
+- [ ] Gearbox as its own part (unbolt it from the bellhousing with the cab off, chain it out)
+- [ ] Straps and loose engines aren't saved with the world yet; a strap is a straight line (doesn't wrap round)
+- [ ] Forklift jib (a hook on the forks for engines)
+- [ ] Occlusion culling for buildings (interiors still draw from outside)
 
 ## Loose tub shoved up on the Ranger 2026-11-23 (0067)
 User: unbolted the tub on the new Ranger dual cab (lowered on its suspension) and it rose up by itself, as if

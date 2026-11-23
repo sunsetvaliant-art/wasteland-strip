@@ -149,6 +149,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN and e.pressed:
 			if freecam: fc_speed = maxf(fc_speed / 1.25, 0.05)
 			else: dist = minf(dist * 1.1, 20.0)
+		elif e.button_index == MOUSE_BUTTON_LEFT and mode == "paint" and pt_layer == "lights":
+			if e.pressed: _light_click(e.position)
 		elif e.button_index == MOUSE_BUTTON_LEFT and mode == "paint":
 			painting = e.pressed
 			if e.pressed: _paint_at(e.position, true)
@@ -275,6 +277,11 @@ func _save() -> void:
 				if int(r[2]) == 3: has_b = true
 			if has_t: entry.erase("tub")                         # a painted tub is the tub, no plane behind it
 			if has_b: entry["bonnet"] = {"hinge": str(bon.get("hinge", "rear")), "pts": []}
+	if pt_glb == glb:
+		if not pt_parts.is_empty(): entry["parts"] = pt_parts.duplicate(true)
+		var rr := BodyCut.runs_of(pt_res)
+		if not rr.is_empty(): entry["respray"] = {"n": pt_res.size(), "runs": rr}
+		if not pt_lights.is_empty(): entry["lights"] = pt_lights.duplicate(true)
 	BodyCut.save(glb, entry)
 	if status: status.text = "Saved to %s  (put that file in the Drive folder to ship it)" % BodyCut.user_file_path()
 
@@ -404,6 +411,19 @@ var pt_chunks: Array = []
 const PT_CH := 4096
 const PT_COL := [Color(0.62, 0.62, 0.64), Color(0.45, 0.65, 1.0), Color(1.0, 0.6, 0.25), Color(0.4, 1.0, 0.45)]
 
+var pt_lights: Array = []                  # 0.2.68: lamps (Lamps): [{t, p, n, s, a, d}]
+var lt_type := "round"
+var lt_size := 0.18
+var lt_aspect := 0.55
+var lt_depth := 0.0
+var lt_mirror := true
+var _lt_node: Node3D
+var pt_parts: Array = []                   # 0.2.68: your own parts, labels 4+: [{name, off}]
+var pt_res := PackedByteArray()            # 0.2.68: the respray mask, 1 = takes the car's paint colour
+var pt_layer := "parts"                    # parts (cab / tub / bonnet / yours) or respray
+var pt_res_val := 1
+var pt_prev_col := Color(0.12, 0.3, 0.7)
+var _new_part_name := ""
 var pt_base := PackedVector3Array()        # the model's triangles as they are (pt_tris is what's shown: bonnet lifted or not)
 var pt_lift := false                       # 0.2.63: "Lift bonnet": the bonnet faces swing up on the hinge so you can paint under
 var _lift_dirty := false
@@ -429,6 +449,11 @@ func _paint_load() -> void:
 	pt_lab = BodyCut.labels_of(raw.get("paint", {})) if int(raw.get("paint", {}).get("n", -1)) == ntri else PackedByteArray()
 	if pt_lab.size() != ntri:
 		pt_lab = PackedByteArray(); pt_lab.resize(ntri)
+	pt_parts = (raw.get("parts", []) as Array).duplicate(true)
+	pt_lights = (raw.get("lights", []) as Array).duplicate(true)
+	pt_res = BodyCut.labels_of(raw.get("respray", {})) if int(raw.get("respray", {}).get("n", -1)) == ntri else PackedByteArray()
+	if pt_res.size() != ntri:
+		pt_res = PackedByteArray(); pt_res.resize(ntri)
 	_paint_geom()
 
 ## The bonnet's hinge from the faces painted bonnet: across the car at its back edge (front edge if it hinges at
@@ -512,10 +537,16 @@ func _paint_mesh(ci: int) -> ArrayMesh:
 	if b <= a: return null
 	var V := PackedVector3Array(); var N := PackedVector3Array(); var C := PackedColorArray()
 	for t in b - a:
-		var lv: int = pt_lab[a + t]
-		if lv == 0: continue
-		var col: Color = PT_COL[lv]
-		col.a = 0.55
+		var col: Color
+		if pt_layer == "respray":
+			if pt_res[a + t] == 0: continue
+			col = pt_prev_col
+			col.a = 0.85
+		else:
+			var lv: int = pt_lab[a + t]
+			if lv == 0: continue
+			col = _lab_col(lv)
+			col.a = 0.55
 		var n := pt_nrm[a + t]
 		# lifted both ways: a model's winding can point its normals inward, and the copy inside the panel just hides
 		for sgn in [1.0, -1.0]:
@@ -547,7 +578,14 @@ func _paint_build() -> void:
 		_pt_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_pt_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 		_pt_mat.render_priority = 1
+	_lt_node = null
+	if not pt_lights.is_empty():
+		var info := Lamps.build(pt_lights)
+		_lt_node = info.node
+		model.add_child(_lt_node)
+		Lamps.set_lit(info, true, false)
 	pt_chunks.clear()
+	if pt_layer == "lights": return
 	for ci in ceili(float(pt_ctr.size()) / PT_CH):
 		var mi := MeshInstance3D.new()
 		mi.mesh = _paint_mesh(ci)
@@ -587,11 +625,65 @@ func _paint_textured_lifted() -> void:
 				var mi := MeshInstance3D.new(); mi.mesh = am; mi.transform = m.xf
 				(pair[1] as Node3D).add_child(mi)
 
+# ------------------------------------------------------------------------------------------------ lamps (0.2.68)
+func _light_click(sp: Vector2) -> void:
+	if pt_tm == null: return
+	var from := cam.project_ray_origin(sp) - spot
+	var dir := cam.project_ray_normal(sp)
+	var r := pt_tm.intersect_ray(from, dir)
+	if r.is_empty(): return
+	var hit: Vector3 = r.position
+	var n: Vector3 = r.normal
+	if n.dot(-dir) < 0.0: n = -n                  # face it at you (models wind both ways)
+	var e := {"t": lt_type, "p": [snappedf(hit.x, 0.001), snappedf(hit.y, 0.001), snappedf(hit.z, 0.001)],
+		"n": [snappedf(n.x, 0.001), snappedf(n.y, 0.001), snappedf(n.z, 0.001)], "s": snappedf(lt_size, 0.005),
+		"a": snappedf(lt_aspect, 0.01), "d": snappedf(lt_depth, 0.002)}
+	pt_lights.append(e)
+	if lt_mirror and absf(hit.x) > 0.05:
+		var m := e.duplicate(true)
+		m.p[0] = -float(e.p[0]); m.n[0] = -float(e.n[0])
+		pt_lights.append(m)
+	_rebuild_model()
+	_paint_status()
+
+func _lights_ui() -> void:
+	var tb := HFlowContainer.new(); tb.custom_minimum_size = Vector2(400, 0); panel.add_child(tb)
+	for ty in Lamps.TYPES:
+		var b := Button.new(); b.text = ty[1]; b.toggle_mode = true; b.button_pressed = lt_type == ty[0]
+		b.pressed.connect(func():
+			lt_type = ty[0]; _build_ui())
+		tb.add_child(b)
+	_slider("Size (m across)", 0.04, 0.35, 0.005, lt_size, func(v): lt_size = v)
+	if lt_type == "rect": _slider("Height / width", 0.25, 1.0, 0.01, lt_aspect, func(v): lt_aspect = v)
+	_slider("Sunk into the panel (m)", -0.02, 0.12, 0.002, lt_depth, func(v): lt_depth = v)
+	var mc := CheckBox.new(); mc.text = "Mirror to the other side"; mc.button_pressed = lt_mirror
+	mc.toggled.connect(func(v): lt_mirror = v)
+	panel.add_child(mc)
+	_button("Undo the last lamp", func():
+		if not pt_lights.is_empty():
+			pt_lights.pop_back()
+			if lt_mirror and not pt_lights.is_empty(): pt_lights.pop_back()
+		_rebuild_model())
+	_button("Clear all lamps", func():
+		pt_lights.clear(); _rebuild_model())
+	var l := Label.new()
+	l.text = "Click on the body to put a lamp there, facing out of the panel. Round / rectangle headlights are generic units to stick on a body that has none; Bulb sits in the model's own housing (sink it in a few cm) and lights it up; Tail bulbs glow red with the lights and flare on the brakes. The car's headlight beams come from the outermost headlights at the front. %d lamps on this body." % pt_lights.size()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)
+
+## The tint a label shows in: cab blue, tub orange, bonnet green, your own parts round the colour wheel
+func _lab_col(lv: int) -> Color:
+	if lv < PT_COL.size(): return PT_COL[lv]
+	return Color.from_hsv(fmod(0.83 + 0.37 * float(lv - 4), 1.0), 0.75, 1.0)
+
 func _paint_status() -> void:
 	if status == null: return
-	var n := [0, 0, 0, 0]
-	for v in pt_lab: n[v] += 1
-	status.text = "%s · %d triangles · tub %d · bonnet %d · cab (painted) %d" % [glb, pt_ctr.size(), n[2], n[3], n[1]]
+	var n := {}
+	for v in pt_lab: n[v] = int(n.get(v, 0)) + 1
+	var nr := 0
+	for v in pt_res: nr += v
+	var own := ""
+	for i in pt_parts.size(): own += " · %s %d" % [str(pt_parts[i].name), int(n.get(4 + i, 0))]
+	status.text = "%s · %d triangles · tub %d · bonnet %d · cab (painted) %d%s · respray %d" % [glb, pt_ctr.size(), int(n.get(2, 0)), int(n.get(3, 0)), int(n.get(1, 0)), own, nr]
 
 ## Closest point on triangle abc to p (Ericson, Real-Time Collision Detection 5.1.5)
 static func _tri_closest(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> Vector3:
@@ -616,6 +708,11 @@ var pt_fill_deg := 20.0
 var _pt_adj: Array = []                    # per triangle: Array of edge neighbours (built on first fill)
 
 func _paint_set(i: int, dirty: Dictionary) -> void:
+	if pt_layer == "respray":
+		if pt_res[i] != pt_res_val:
+			pt_res[i] = pt_res_val
+			dirty[i / PT_CH] = true
+		return
 	if pt_lab[i] != pt_part:
 		if pt_lift and (pt_lab[i] == 3 or pt_part == 3): _lift_dirty = true
 		pt_lab[i] = pt_part
@@ -644,7 +741,7 @@ func _paint_at(sp: Vector2, click := false) -> void:
 					var ids = pt_grid.get(Vector3i(gx, gy, gz))
 					if ids == null: continue
 					for i in (ids as Array):
-						if seen.has(i) or pt_lab[i] == pt_part: continue
+						if seen.has(i) or (pt_lab[i] == pt_part if pt_layer == "parts" else pt_res[i] == pt_res_val): continue
 						seen[i] = true
 						if not pt_through and pt_nrm[i].dot(-dir) < 0.05: continue
 						var q := _tri_closest(hit, pt_tris[i * 3], pt_tris[i * 3 + 1], pt_tris[i * 3 + 2])
@@ -686,6 +783,7 @@ func _paint_fill(f0: int, dirty: Dictionary) -> void:
 	var cosl := cos(deg_to_rad(pt_fill_deg))
 	var cos_seed := cos(deg_to_rad(minf(pt_fill_deg * 2.0, 89.0)))
 	var n0 := pt_nrm[f0]
+	var seed_lab := pt_lab[f0]
 	var seen := {f0: true}
 	var q: Array[int] = [f0]
 	while not q.is_empty():
@@ -694,18 +792,86 @@ func _paint_fill(f0: int, dirty: Dictionary) -> void:
 		for o in (_pt_adj[t] as Array):
 			if seen.has(o): continue
 			seen[o] = true
-			if pt_lab[o] != 0 and pt_lab[o] != pt_part: continue          # a brushed boundary
+			if pt_layer == "parts" and pt_lab[o] != 0 and pt_lab[o] != pt_part: continue          # a brushed boundary
+			if pt_layer == "respray" and pt_lab[o] != seed_lab: continue        # the respray stops where the part changes
 			if absf(pt_nrm[o].dot(pt_nrm[t])) < cosl: continue           # a crease (either winding)
 			if absf(pt_nrm[o].dot(n0)) < cos_seed: continue              # curled too far round from where you clicked
 			q.append(o)
 
 func _paint_ui() -> void:
-	var hb := HBoxContainer.new(); panel.add_child(hb)
-	for pp in [[2, "Tub"], [3, "Bonnet"], [1, "Cab"], [0, "Erase"]]:
-		var b := Button.new(); b.text = pp[1]; b.toggle_mode = true; b.button_pressed = pt_part == pp[0]
+	# 0.2.68: two layers: what each face IS (cab, tub, bonnet, parts of your own) and which faces take a respray
+	var ly := HBoxContainer.new(); panel.add_child(ly)
+	for lm in [["parts", "Parts"], ["respray", "Respray (paint colour)"], ["lights", "Lights"]]:
+		var b := Button.new(); b.text = lm[1]; b.toggle_mode = true; b.button_pressed = pt_layer == lm[0]
 		b.pressed.connect(func():
-			pt_part = pp[0]; _build_ui())
-		hb.add_child(b)
+			pt_layer = lm[0]
+			_build_ui()
+			_rebuild_model())
+		ly.add_child(b)
+	if pt_layer == "lights":
+		_lights_ui()
+		return
+	if pt_layer == "respray":
+		var rb2 := HBoxContainer.new(); panel.add_child(rb2)
+		for rv in [[1, "Paint it"], [0, "Leave it (glass, trim, rubber)"]]:
+			var b := Button.new(); b.text = rv[1]; b.toggle_mode = true; b.button_pressed = pt_res_val == rv[0]
+			b.pressed.connect(func():
+				pt_res_val = rv[0]; _build_ui())
+			rb2.add_child(b)
+		var cp := ColorPickerButton.new(); cp.color = pt_prev_col; cp.custom_minimum_size = Vector2(400, 28)
+		cp.text = "Preview colour"
+		cp.color_changed.connect(func(c2):
+			pt_prev_col = c2
+			for ci in pt_chunks.size(): (pt_chunks[ci] as MeshInstance3D).mesh = _paint_mesh(ci))
+		panel.add_child(cp)
+		_button("Clear the respray", func():
+			for i in pt_res.size(): pt_res[i] = 0
+			_rebuild_model())
+	else:
+		var hb := HBoxContainer.new(); panel.add_child(hb)
+		for pp in [[2, "Tub"], [3, "Bonnet"], [1, "Cab"], [0, "Erase"]]:
+			var b := Button.new(); b.text = pp[1]; b.toggle_mode = true; b.button_pressed = pt_part == pp[0]
+			b.pressed.connect(func():
+				pt_part = pp[0]; _build_ui())
+			hb.add_child(b)
+		# parts of your own: name one, paint it, it's an item (Forge palette "My parts", found in sheds)
+		var own := HFlowContainer.new(); own.custom_minimum_size = Vector2(400, 0); panel.add_child(own)
+		for i in pt_parts.size():
+			var b := Button.new(); b.text = str(pt_parts[i].name); b.toggle_mode = true; b.button_pressed = pt_part == 4 + i
+			b.modulate = _lab_col(4 + i).lightened(0.3)
+			b.pressed.connect(func():
+				pt_part = 4 + i; _build_ui())
+			own.add_child(b)
+		var nb := HBoxContainer.new(); panel.add_child(nb)
+		var le := LineEdit.new(); le.placeholder_text = "New part: side steps, bull bar, spotlights..."; le.custom_minimum_size = Vector2(300, 0)
+		le.text = _new_part_name
+		le.text_changed.connect(func(t2): _new_part_name = t2)
+		nb.add_child(le)
+		var ab := Button.new(); ab.text = "Add part"
+		ab.pressed.connect(func():
+			var nm := _new_part_name.strip_edges()
+			if nm == "" or pt_parts.size() >= 200: return
+			pt_parts.append({"name": nm, "off": false})
+			pt_part = 4 + pt_parts.size() - 1
+			_new_part_name = ""
+			_build_ui())
+		nb.add_child(ab)
+		if pt_part >= 4 and pt_part - 4 < pt_parts.size():
+			var cur: Dictionary = pt_parts[pt_part - 4]
+			var off := CheckBox.new(); off.text = "Take \"%s\" off this car (it's still an item)" % str(cur.name); off.button_pressed = bool(cur.get("off", false))
+			off.toggled.connect(func(v): cur["off"] = v)
+			panel.add_child(off)
+			var rn := HBoxContainer.new(); panel.add_child(rn)
+			var le2 := LineEdit.new(); le2.text = str(cur.name); le2.custom_minimum_size = Vector2(250, 0)
+			rn.add_child(le2)
+			var rb3 := Button.new(); rb3.text = "Rename"
+			rb3.pressed.connect(func():
+				if le2.text.strip_edges() != "": cur["name"] = le2.text.strip_edges()
+				_build_ui())
+			rn.add_child(rb3)
+			_button("Clear \"%s\" paint" % str(cur.name), func():
+				for i in pt_lab.size(): if pt_lab[i] == pt_part: pt_lab[i] = 0
+				_rebuild_model())
 	var lb := Button.new(); lb.toggle_mode = true; lb.button_pressed = pt_lift
 	lb.text = "DROP BONNET" if pt_lift else "LIFT BONNET (paint what's under it)"
 	lb.pressed.connect(func():
@@ -743,5 +909,9 @@ func _paint_ui() -> void:
 		if pt_lift: _lift_refresh()
 		else: _rebuild_model())
 	var l := Label.new()
-	l.text = "Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in Cab and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = kept as cab, no tint = left to the lines. Erase takes the paint off. LIFT BONNET swings the green faces up on the hinge so you can paint the junk under the skin: paint it Bonnet to lift with it, Cab to stay, and it moves when you let go."
+	if pt_layer == "respray":
+		l.text = "Paint the faces that take the car's colour (body panels; leave glass, chrome, rubber, lights and the interior). Fill stops where one part meets another. Pick the colour per car in the garage (Paint colour)."
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)
+		return
+	l.text = "Your own parts (side steps, bumpers, racks, spotlights): type a name, Add part, paint its faces. Saved, it's in the Forge's palette under My parts, and turns up in sheds and yards. Tick Take it off to leave it off this car. Left-drag to paint the model's own faces (Fill: click a panel to take all of it up to its shut line; on a smooth one-piece body brush a line round it first in Cab and the fill stops there). Right-drag turns the view, wheel zooms. Orange = tub, green = bonnet, blue = kept as cab, no tint = left to the lines. Erase takes the paint off. LIFT BONNET swings the green faces up on the hinge so you can paint the junk under the skin: paint it Bonnet to lift with it, Cab to stay, and it moves when you let go."
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)

@@ -357,6 +357,15 @@ func spawn(entry: Dictionary, xf: Transform3D, frozen := false) -> Node3D:
 			n = Hoist.new()
 			main.add_child(n)
 			n.global_transform = xf
+		"bodypart":
+			# 0.2.68: a part of your own painted in Body tools, or a cut cab / tub
+			var bp := BodyCut.part_body(str(entry.glb), str(entry.what), int(entry.get("label", 0)))
+			if bp:
+				bp.set_meta("forge_name", str(entry.name))
+				main.add_child(bp)
+				bp.global_transform = xf
+				bp.global_position += Vector3.UP * 0.05
+			n = bp
 		"kitpart":
 			# an engine part on the ground, to pick up and bolt on (0.2.59)
 			n = WorldItem.spawn(main, [Items.fresh(str(entry.key), 1)], xf.origin + Vector3(0, 0.3, 0))
@@ -393,6 +402,14 @@ func _make_visual(entry: Dictionary) -> Node3D:
 			return _make_marker(entry.key)
 		"hoist":
 			return Hoist.make_visual()
+		"bodypart":
+			var vroot := Node3D.new()
+			var pc := BodyCut.pieces(str(entry.glb), str(entry.what) == "tub" or (str(entry.what) == "cab" and BodyCut.of(str(entry.glb)).has("tub")), false)
+			var ms: Array = pc.acc.get(int(entry.get("label", 0)), []) if str(entry.what) == "acc" else pc.get(str(entry.what), [])
+			for am in ms:
+				var mi := MeshInstance3D.new(); mi.mesh = am
+				vroot.add_child(mi)
+			return vroot
 		"kitpart":
 			return EngineKit.part_node(str(entry.key))
 	return Node3D.new()
@@ -879,6 +896,7 @@ func _build_ui() -> void:
 			for k in Vegetation.DEF: items.append({"type": "plant", "key": k, "name": k.capitalize() + " (plant)"})
 		_palette_page(tabs, g, items)
 	_engine_page(tabs)
+	_my_parts_page(tabs)
 	var mk := []
 	for k in MARKERS: mk.append({"type": "marker", "key": k, "name": k.replace("_", " ").capitalize() + (" spawn" if not k.ends_with("spawn") else "")})
 	_palette_page(tabs, "NPCs & spawns", mk)
@@ -1071,6 +1089,65 @@ func _palette_page(tabs: TabContainer, title: String, items: Array) -> void:
 			_set_palette(false))
 		g.add_child(b)
 	tabs.add_child(sc)
+
+## Your own parts (0.2.68): every part named and painted in Body tools, a section per name; and every cut cab and tub.
+## Refilled each time the tab's opened, so a part saved a minute ago is there.
+func _my_parts_page(tabs: TabContainer) -> void:
+	var sc := ScrollContainer.new()
+	sc.name = "My parts"
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var vb := VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(vb)
+	sc.visibility_changed.connect(func(): if sc.visible: _fill_my_parts(vb))
+	tabs.add_child(sc)
+	_fill_my_parts(vb)
+
+func _model_name(glb: String) -> String:
+	for k in Car.catalog():
+		if str(Car.catalog()[k].glb) == glb: return str(Car.catalog()[k].name)
+	return glb
+
+func _fill_my_parts(vb: VBoxContainer) -> void:
+	for c in vb.get_children(): c.queue_free()
+	var secs := {}
+	for cp in BodyCut.custom_parts():
+		var nm := str(cp.name)
+		if not secs.has(nm): secs[nm] = []
+		(secs[nm] as Array).append({"type": "bodypart", "what": "acc", "glb": cp.glb, "label": cp.label, "key": "acc:%s:%d" % [cp.glb, cp.label],
+			"name": "%s (%s)" % [nm, _model_name(str(cp.glb))]})
+	var cabs := []; var tubs := []
+	for g in BodyCut.all():
+		if BodyCut.of(str(g)).has("tub") and _model_name(str(g)) != str(g):
+			cabs.append({"type": "bodypart", "what": "cab", "glb": g, "key": "cab:" + str(g), "name": _model_name(str(g)) + " cab"})
+			tubs.append({"type": "bodypart", "what": "tub", "glb": g, "key": "tub:" + str(g), "name": _model_name(str(g)) + " tub"})
+	if secs.is_empty() and cabs.is_empty():
+		var l := Label.new()
+		l.text = "Nothing here yet. In Body tools (pause menu), Paint: type a part name (side steps, bull bar, spotlights), Add part, paint its faces and SAVE. Cut a tub off a model and its cab and tub turn up here too."
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(520, 0)
+		vb.add_child(l)
+		return
+	var names := secs.keys(); names.sort()
+	for nm in names: _parts_section(vb, str(nm), secs[nm])
+	if not cabs.is_empty(): _parts_section(vb, "Cut cabs", cabs)
+	if not tubs.is_empty(): _parts_section(vb, "Cut tubs", tubs)
+
+func _parts_section(vb: VBoxContainer, title: String, items: Array) -> void:
+	var h := Label.new(); h.text = title.to_upper(); h.add_theme_font_size_override("font_size", 15)
+	vb.add_child(h)
+	var g := GridContainer.new(); g.columns = 2
+	vb.add_child(g)
+	for it in items:
+		var b := Button.new()
+		b.text = it.name
+		b.custom_minimum_size = Vector2(260, 40)
+		b.clip_text = true
+		b.pressed.connect(func():
+			selected = it
+			place_yaw = 0.0
+			_set_tool(0)
+			_set_palette(false))
+		g.add_child(b)
 
 ## Engines and their parts (0.2.59): every part of the modular kit, in categories that open and close
 func _engine_page(tabs: TabContainer) -> void:

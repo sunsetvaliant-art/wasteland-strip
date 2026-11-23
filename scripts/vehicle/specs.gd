@@ -26,6 +26,7 @@ const GEARBOXES := {
 	"man4": {"name": "4-speed manual", "auto": false, "ratios": [3.07, 1.68, 1.19, 1.0], "reverse": 3.2, "shift_time": 0.35},
 	"man5": {"name": "5-speed manual", "auto": false, "ratios": [3.97, 2.34, 1.46, 1.0, 0.85], "reverse": 4.0, "shift_time": 0.35},
 	"truck4": {"name": "4-speed truck box (granny first)", "auto": false, "ratios": [6.32, 3.09, 1.69, 1.0], "reverse": 7.4, "shift_time": 0.6},
+	"fork2": {"name": "Forklift powershift (crawl and drive)", "auto": false, "ratios": [7.0, 2.0], "reverse": 7.0, "shift_time": 0.25},
 }
 const DIFFS := ["open", "lsd", "locked"]
 

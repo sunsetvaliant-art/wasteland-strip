@@ -202,6 +202,25 @@ func _build_ui() -> void:
 		_changed())
 	# --- tub or tray (0.2.55)
 	var cut := BodyCut.of(str(Car.catalog().get(design.cab, {}).get("glb", "")))
+	# --- respray (0.2.68): the faces marked Respray in Body tools take this colour
+	_title("Paint")
+	if not cut.has("respray"):
+		_note("Mark this body's paintable faces in Body tools (Paint > Respray) and you can pick its colour here.")
+	else:
+		var cpb := ColorPickerButton.new()
+		cpb.custom_minimum_size = Vector2(380, 30)
+		cpb.text = "Paint colour"
+		cpb.color = Color.html(str(design.paint_col)) if str(design.get("paint_col", "")) != "" else BodyCut.paint_of(str(Car.catalog().get(design.cab, {}).get("glb", "")))
+		cpb.color_changed.connect(func(c2: Color):
+			design.paint_col = c2.to_html(false)
+			_changed())
+		panel.add_child(cpb)
+		var fb := Button.new(); fb.text = "Factory paint"
+		fb.pressed.connect(func():
+			design.erase("paint_col")
+			_build_ui()
+			_changed())
+		panel.add_child(fb)
 	_title("Tub / tray")
 	if not cut.has("tub"):
 		_note("This body has no tub line yet: set it in the pause menu's Body tools first.")

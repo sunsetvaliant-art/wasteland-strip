@@ -102,6 +102,60 @@ func _ready() -> void:
 	add_child(inv)
 	inv.setup(self)
 
+# ---------------------------------------------------------------- straps (0.2.68)
+var strap_kind := ""
+var strap_a := {}
+
+func strap_start(kind: String) -> void:
+	if inv.count(kind) <= 0:
+		_toast("You've no %s." % str(Strap.KINDS[kind].name).to_lower())
+		return
+	strap_kind = kind
+	strap_a = {}
+	InteractMenu.hold = true
+	_toast("%s: click the load where the strap starts, then where it ties off (right-click to stop)" % str(Strap.KINDS[kind].name))
+
+func strap_end(msg := "") -> void:
+	strap_kind = ""
+	strap_a = {}
+	InteractMenu.hold = false
+	if msg != "": _toast(msg)
+
+func _strap_key() -> void:
+	if vehicle: return
+	var have2: bool = inv.count("strap_2t") > 0
+	var have1: bool = inv.count("strap_250") > 0
+	if strap_kind == "":
+		if have2: strap_start("strap_2t")
+		elif have1: strap_start("strap_250")
+		else: _toast("You've no straps (hardware stores and sheds have them).")
+	elif strap_kind == "strap_2t" and have1: strap_start("strap_250")
+	elif strap_kind == "strap_250" and have2 and strap_a.is_empty(): strap_end("Strap put away.")
+	else: strap_end("Strap put away.")
+
+func _strap_click() -> void:
+	var cam := active_camera()
+	var from := cam.global_position
+	var q := PhysicsRayQueryParameters3D.create(from, from - cam.global_transform.basis.z * 4.5, 0xFFFFFFFF, [get_rid()])
+	var h := get_world_3d().direct_space_state.intersect_ray(q)
+	if h.is_empty():
+		_toast("Nothing in reach there.")
+		return
+	if strap_a.is_empty():
+		strap_a = {"node": h.collider, "p": h.position}
+		_toast("Now click where it ties off.")
+		return
+	var an = strap_a.node
+	if an != null and not is_instance_valid(an): an = null
+	if an == h.collider and an is RigidBody3D:
+		_toast("Tie it to something else.")
+		return
+	var st := Strap.make(get_tree().current_scene, strap_kind, an as Node3D, strap_a.p, h.collider as Node3D, h.position)
+	inv.take(strap_kind, 1)
+	var tow: bool = (an is Car) and (h.collider is Car)
+	var nm := str(Strap.KINDS[strap_kind].name).to_lower()
+	strap_end(("%s on: it's a tow strap now (%.1f m)." % [nm, st.length]) if tow else ("%s ratcheted down." % nm if st.length < (strap_a.p as Vector3).distance_to(h.position) - 0.001 else "%s on." % nm))
+
 func active_camera() -> Camera3D:
 	if vehicle:
 		return vehicle.active_camera()
@@ -158,6 +212,16 @@ func _unhandled_input(e: InputEvent) -> void:
 		_work_on_car()
 	if e.is_action_pressed("reload") and gun():
 		gun().start_reload()
+	# 0.2.68: straps: J (or Use one in the inventory), click the load, click where it ties off; right-click or J again
+	if e.is_action_pressed("strap"):
+		_strap_key()
+	if strap_kind != "" and e is InputEventMouseButton and e.pressed:
+		if e.button_index == MOUSE_BUTTON_LEFT:
+			_strap_click()
+			get_viewport().set_input_as_handled()
+		elif e.button_index == MOUSE_BUTTON_RIGHT:
+			strap_end("Strap put away.")
+			get_viewport().set_input_as_handled()
 	if e.is_action_pressed("holster"):
 		holstered = not holstered
 	if e.is_action_pressed("weapon_next"): _select(gun_i + 1)
@@ -660,6 +724,7 @@ func _try_get_in(only: Node = null) -> void:
 	for c in get_tree().get_nodes_in_group("vehicles"):
 		if only != null and c != only: continue
 		if c.global_position.distance_to(global_position) < (5.0 if only else 4.0) and c.driver == null:
+			if strap_kind != "": strap_end()
 			c.set_meta("player_car", true)          # saved with the world from now on
 			vehicle = c
 			c.driver = self
@@ -667,6 +732,10 @@ func _try_get_in(only: Node = null) -> void:
 			c.add_collision_exception_with(self)
 			shape.disabled = true
 			body_mesh.visible = false
+			# 0.2.68: the chase camera starts where your own camera was and swings round behind the car (it used to
+			# fly in from wherever it was left, often the other side of the map)
+			var from_cam := get_viewport().get_camera_3d()
+			if from_cam and c.cam_chase: c.cam_chase.global_transform = from_cam.global_transform
 			c.active_camera().current = true
 			camera_changed.emit(c.active_camera())
 			vehicle_changed.emit(c)

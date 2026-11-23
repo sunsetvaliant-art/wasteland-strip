@@ -8,6 +8,7 @@ static var cur := {}
 static var worst := {}
 static var spikes: Array = []
 static var _last := 0
+static var totals := {}         # 0.2.68: every job's time since start (the perf probe reads it)
 
 static func t() -> int:
 	return Time.get_ticks_usec()
@@ -15,6 +16,7 @@ static func t() -> int:
 static func add(job: String, t0: int) -> void:
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0
 	cur[job] = float(cur.get(job, 0.0)) + ms
+	totals[job] = float(totals.get(job, 0.0)) + ms
 	if ms > float(worst.get(job, 0.0)): worst[job] = snappedf(ms, 0.1)
 
 ## once a frame, first thing (main)
