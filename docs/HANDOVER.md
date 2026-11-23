@@ -270,6 +270,10 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   sink / belly, tread_k(), _roost() rooster tails, volumetric soot (_soot_puff/_soot_tick: FogVolume puffs, Forward+
   only; forces env volumetric fog on with zero density while soot's about). Tests: tools/_softtest.tscn (SOFT_ONLY),
   tools/_t72.gd (world, runpt).
+- 0073: CoastFix (scripts/world/coast_fix.gd) patches the terrain's height and control maps at start from
+  assets/world/coast_fix.bin (COAST_OFF=1 skips). Rebuild it: godot --headless -s res://tools/dump_terrain.gd (needs
+  ~400 MB in /tmp/td), then python3 tools/coast_fix.py /tmp/td assets/world/coast_fix.bin [preview.png]. Control map
+  bits: base id << 27, overlay << 22, blend << 14. SoftGround beds: cap[] per column, ramps over 6 m. Test: _t73.gd.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

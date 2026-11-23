@@ -67,6 +67,7 @@ func _ready() -> void:
 	add_child(sky)
 	sky.setup(self)
 	_build_terrain()
+	if OS.get_environment("COAST_OFF") == "": CoastFix.apply(terrain)        # 0.2.73: the beaches
 	_extend_north()
 	if OS.get_environment("WATER_OFF") == "":
 		_build_water()

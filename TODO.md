@@ -2,7 +2,24 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0072, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0073, 2026-11-23.
+
+## Beaches reshaped, raised test beds 2026-11-23 (0073)
+User: soft ground around the map is a wicked idea, but how is mud decided? The beaches are out of shape: bits of
+terrain poke through the surf and the beach edges are out of shape. On the test strips, where the tyres push the sand
+aside the grass shows underneath.
+- [x] 0073 The open coast (within ~550 m of open sea, so the rivers and flood plain are left alone): sand bars and
+      lumps that poked up through the surf put under; the beach runs up from the water at an even 4.5 % for ~40 m,
+      taking the low ground behind the waterline down to it and fading out before the dunes; sand over the beach,
+      the shallows, the dune faces and anything painted concrete within 100 m (the aerial colours made half the
+      beach concrete). tools/dump_terrain.gd + tools/coast_fix.py -> assets/world/coast_fix.bin, laid on at start
+- [x] 0073 The test strips are raised beds as deep as each ground goes soft, ramped on and off over 6 m, with sides:
+      the ruts can't go below the grass any more
+- [ ] Where soft ground goes across the map (the answer given 0073): sand on the beach band and dunes from the coast
+      fix; mud where the ground's low, flat and wet: creek and river flats under ~2 m beside the water, cane drains,
+      swampy paddocks, the "river mud" ground texture; more of it, and deeper, after rain; firm where it's dried out.
+      The terrain would need its own soft layer (the strips are separate meshes on top of the grass)
+- [ ] The north extension's coast (the 3 km added on top) isn't in the coast fix yet
 
 ## Mud and sand test strips, rooster tails, volumetric soot 2026-11-23 (0072)
 User: a test run away from houses (a paddock by Thornbill Drive, Murwillumbah industrial estate): a 100 m strip of

@@ -26,6 +26,8 @@ var width := 5.0
 var nx := 0
 var nz := 0
 var base := PackedFloat32Array()      # surface height (local y) per cell corner, untouched
+var cap := PackedFloat32Array()       # 0.2.73: how deep each column can go (a raised bed: never down past the grass)
+var ground := PackedFloat32Array()    # the terrain under each column's middle
 var depth := PackedFloat32Array()     # how far it's been pressed down (negative: heaped up)
 var _img: Image
 var _tex: ImageTexture
@@ -58,10 +60,20 @@ func build(main: Node) -> void:
 	# the ground under it, every metre, then filled in between (the terrain's 5 m triangles are straight between)
 	var mx := int(length) + 1
 	var mz := int(width) + 1
+	# 0.2.73: a raised bed as deep as the ground goes soft (the ruts used to dig below the terrain and show the grass
+	# through), ramped up over 6 m at each end so you drive on and off
+	var bed := float(TYPES[kind].max) + 0.06
+	var raise_at := func(fx: float) -> float: return bed * clampf(minf(fx, length - fx) / 6.0, 0.0, 1.0)
 	var coarse := PackedFloat32Array(); coarse.resize(mx * mz)
+	var terr := PackedFloat32Array(); terr.resize(mx * mz)
 	for j in mz:
 		for i in mx:
-			coarse[j * mx + i] = float(main.height_at(global_position.x + float(i), global_position.z + float(j))) + 0.04
+			var th := float(main.height_at(global_position.x + float(i), global_position.z + float(j)))
+			terr[j * mx + i] = th
+			coarse[j * mx + i] = th + 0.04 + float(raise_at.call(float(i)))
+	cap.resize(nx)
+	ground.resize(nx)
+	for i in nx: cap[i] = float(raise_at.call(float(i) * CELL)) + 0.03
 	for j in nz:
 		for i in nx:
 			var fx := float(i) * CELL; var fz := float(j) * CELL
@@ -69,6 +81,7 @@ func build(main: Node) -> void:
 			var tx := fx - float(i0); var tz := fz - float(j0)
 			var h := lerpf(lerpf(coarse[j0 * mx + i0], coarse[j0 * mx + i0 + 1], tx), lerpf(coarse[(j0 + 1) * mx + i0], coarse[(j0 + 1) * mx + i0 + 1], tx), tz)
 			base[j * nx + i] = h
+			if j == nz / 2: ground[i] = lerpf(lerpf(terr[j0 * mx + i0], terr[j0 * mx + i0 + 1], tx), lerpf(terr[(j0 + 1) * mx + i0], terr[(j0 + 1) * mx + i0 + 1], tx), tz)
 			# mud starts pocked and wet, sand a little rippled
 			var n := sin(float(i) * 0.37 + float(j) * 0.9) * 0.5 + sin(float(i) * 0.11 - float(j) * 0.23) * 0.5
 			depth[j * nx + i] = n * (0.03 if kind == "mud" else 0.008)
@@ -118,6 +131,26 @@ func _build_mesh() -> void:
 	mi.material_override = m
 	mi.visibility_range_end = 400.0
 	add_child(mi)
+	# the bed's sides, down into the ground
+	var sk := SurfaceTool.new()
+	sk.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for zz in [0.0, width]:
+		var j := 0 if zz == 0.0 else nz - 1
+		var nrm := Vector3(0, 0, -1) if zz == 0.0 else Vector3(0, 0, 1)
+		for i in nx - 1:
+			var a0 := Vector3(float(i) * CELL, base[j * nx + i], zz); var a1 := Vector3(float(i + 1) * CELL, base[j * nx + i + 1], zz)
+			var b0 := Vector3(a0.x, ground[i] - 0.15, zz); var b1 := Vector3(a1.x, ground[i + 1] - 0.15, zz)
+			sk.set_normal(nrm)
+			for v in [a0, b0, a1, a1, b0, b1]: sk.add_vertex(v)
+	var skm := StandardMaterial3D.new()
+	skm.albedo_color = (t.col as Color).darkened(0.25)
+	skm.roughness = 0.95
+	skm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var smi := MeshInstance3D.new()
+	smi.mesh = sk.commit()
+	smi.material_override = skm
+	smi.visibility_range_end = 400.0
+	add_child(smi)
 	# a sign at the start of the strip
 	var lb := Label3D.new()
 	lb.text = str(t.name)
@@ -209,6 +242,7 @@ func press(p: Vector3, N: float, psi: float, r: float, b: float, slip: float, dt
 	# wheelspin digs (the tyre throws it out behind)
 	want += float(t.dig) * absf(slip) * dt * clampf(N / 3000.0, 0.3, 2.0)
 	want = minf(want, hard + 0.05)
+	want = minf(want, cap[c.x])                  # never through the bottom of the bed
 	var hw := maxi(1, roundi(b * 0.5 / CELL))
 	for dj in range(-hw, hw + 1):
 		var j := c.y + dj
