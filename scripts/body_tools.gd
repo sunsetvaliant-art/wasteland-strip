@@ -425,6 +425,7 @@ var pt_res_val := 1
 var pt_prev_col := Color(0.12, 0.3, 0.7)
 var _new_part_name := ""
 var pt_base := PackedVector3Array()        # the model's triangles as they are (pt_tris is what's shown: bonnet lifted or not)
+var pt_hide := -1                          # 0.2.71: faces painted as this part are hidden (and can't be picked) so you can see under them
 var pt_lift := false                       # 0.2.63: "Lift bonnet": the bonnet faces swing up on the hinge so you can paint under
 var _lift_dirty := false
 const LIFT_DEG := 60.0
@@ -432,6 +433,7 @@ const LIFT_DEG := 60.0
 func _paint_load() -> void:
 	if pt_glb == glb and not pt_base.is_empty(): return
 	pt_glb = glb
+	pt_hide = -1
 	pt_base = PackedVector3Array()
 	for m in BodyCut.meshes_of(glb):
 		var mesh: Mesh = m.mesh
@@ -487,6 +489,11 @@ func _paint_geom() -> void:
 		for i in pt_lab.size():
 			if pt_lab[i] == 3:
 				for k in 3: pt_tris[i * 3 + k] = L * pt_base[i * 3 + k]
+	if pt_hide > 0:
+		# hidden: squashed to a point far below, where neither the brush nor a click can find them
+		for i in pt_lab.size():
+			if pt_lab[i] == pt_hide:
+				for k in 3: pt_tris[i * 3 + k] = Vector3(0, -1000, 0)
 	pt_ctr = PackedVector3Array(); pt_nrm = PackedVector3Array(); pt_grid = {}
 	var ntri := pt_tris.size() / 3
 	pt_ctr.resize(ntri); pt_nrm.resize(ntri)
@@ -544,7 +551,7 @@ func _paint_mesh(ci: int) -> ArrayMesh:
 			col.a = 0.85
 		else:
 			var lv: int = pt_lab[a + t]
-			if lv == 0: continue
+			if lv == 0 or lv == pt_hide: continue
 			col = _lab_col(lv)
 			col.a = 0.55
 		var n := pt_nrm[a + t]
@@ -563,7 +570,7 @@ var _pt_mat: StandardMaterial3D
 func _paint_build() -> void:
 	_paint_load()
 	# the model itself, textures and all (the bonnet's faces in their own pieces, swung up, when it's lifted)
-	if not pt_lift:
+	if not pt_lift and pt_hide <= 0:
 		for m in BodyCut.meshes_of(glb):
 			var mi := MeshInstance3D.new()
 			mi.mesh = m.mesh
@@ -596,7 +603,7 @@ func _paint_build() -> void:
 	_paint_status()
 
 func _paint_textured_lifted() -> void:
-	var L := _lift_xf()
+	var L := _lift_xf() if pt_lift else Transform3D.IDENTITY
 	var lid := Node3D.new(); lid.transform = L; model.add_child(lid)
 	var ti := 0
 	for m in BodyCut.meshes_of(glb):
@@ -612,7 +619,8 @@ func _paint_textured_lifted() -> void:
 			for t in range(0, I.size(), 3):
 				var lv := pt_lab[ti] if ti < pt_lab.size() else 0
 				ti += 1
-				if lv == 3: up.append_array([I[t], I[t + 1], I[t + 2]])
+				if pt_hide > 0 and lv == pt_hide: continue
+				if lv == 3 and pt_lift: up.append_array([I[t], I[t + 1], I[t + 2]])
 				else: keep.append_array([I[t], I[t + 1], I[t + 2]])
 			for pair in [[keep, model], [up, lid]]:
 				if (pair[0] as PackedInt32Array).is_empty(): continue
@@ -670,6 +678,14 @@ func _lights_ui() -> void:
 	l.text = "Click on the body to put a lamp there, facing out of the panel. Round / rectangle headlights are generic units to stick on a body that has none; Bulb sits in the model's own housing (sink it in a few cm) and lights it up; Tail bulbs glow red with the lights and flare on the brakes. The car's headlight beams come from the outermost headlights at the front. %d lamps on this body." % pt_lights.size()
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD; l.custom_minimum_size = Vector2(400, 0); panel.add_child(l)
 
+func _lab_name(lv: int) -> String:
+	match lv:
+		1: return "cab"
+		2: return "tub"
+		3: return "bonnet"
+	if lv >= 4 and lv - 4 < pt_parts.size(): return str(pt_parts[lv - 4].name)
+	return "part"
+
 ## The tint a label shows in: cab blue, tub orange, bonnet green, your own parts round the colour wheel
 func _lab_col(lv: int) -> Color:
 	if lv < PT_COL.size(): return PT_COL[lv]
@@ -715,6 +731,7 @@ func _paint_set(i: int, dirty: Dictionary) -> void:
 		return
 	if pt_lab[i] != pt_part:
 		if pt_lift and (pt_lab[i] == 3 or pt_part == 3): _lift_dirty = true
+		if pt_hide > 0 and pt_part == pt_hide: _lift_dirty = true          # it vanishes with the rest when you let go
 		pt_lab[i] = pt_part
 		dirty[i / PT_CH] = true
 
@@ -757,6 +774,7 @@ func _paint_adj() -> void:
 	var edges := {}
 	for t in nt: _pt_adj[t] = []
 	for t in nt:
+		if pt_hide > 0 and pt_lab[t] == pt_hide: continue          # hidden faces are all squashed to one point
 		var k: Array[Vector3i] = []
 		for j in 3: k.append(Vector3i((pt_tris[t * 3 + j] * 1000.0).round()))
 		for j in 3:
@@ -879,6 +897,19 @@ func _paint_ui() -> void:
 		_lift_refresh()
 		_build_ui())
 	panel.add_child(lb)
+	# 0.2.71: hide the part you're painting (or any other) to get at the junk under it, like the bonnet lift
+	if pt_layer == "parts" or pt_layer == "respray":
+		var hid_name := _lab_name(pt_hide) if pt_hide > 0 else ""
+		var hb2 := Button.new(); hb2.toggle_mode = true; hb2.button_pressed = pt_hide > 0
+		if pt_hide > 0: hb2.text = "SHOW %s again" % hid_name.to_upper()
+		elif pt_part > 0: hb2.text = "HIDE %s (paint what's under it)" % _lab_name(pt_part).to_upper()
+		else: hb2.text = "HIDE a part: pick one above first"
+		hb2.disabled = pt_hide <= 0 and pt_part <= 0
+		hb2.pressed.connect(func():
+			pt_hide = -1 if pt_hide > 0 else pt_part
+			_lift_refresh()
+			_build_ui())
+		panel.add_child(hb2)
 	var hf := HBoxContainer.new(); panel.add_child(hf)
 	for fm in [[false, "Brush (drag)"], [true, "Fill panel (click)"]]:
 		var b := Button.new(); b.text = fm[1]; b.toggle_mode = true; b.button_pressed = pt_fill == fm[0]

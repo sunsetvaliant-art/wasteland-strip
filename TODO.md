@@ -2,7 +2,14 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0070, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0071, 2026-11-23.
+
+## Hide a part in Body tools 2026-11-23 (0071)
+User: a toggle to hide the accessory you're painting in the body tools, so you can grab all the mesh under it, like
+the bonnet lift.
+- [x] 0071 HIDE <part> under LIFT BONNET (Parts and Respray layers): the faces painted as the part you've picked
+      (yours, tub, bonnet or cab) disappear and can't be brushed or clicked, so you paint what's under them; faces you
+      paint into it vanish when you let go; SHOW puts them back
 
 ## Engine unbolt collision, parts off the car, turbo sizes 2026-11-23 (0070)
 User: an unbolted engine dropped through to the ground and the car lifted up over it; side steps painted and saved as
@@ -80,8 +87,17 @@ something was pushing it.
       so they pull like the rest (0-60 in about 7.5 s, the Hilux couldn't make 60 before)
 - [ ] The new utes hop a lot harder than the old cars over a 12 cm kerb (vertical kick about 1.3 m/s vs 0.4)
 
-## Mud 2026-11-23
-User: MudRunner-style mud for 4x4 rigs at some stage.
+## Mud, sand and beaches 2026-11-23
+User: MudRunner-style mud for 4x4 rigs at some stage. Then: sand and mud tyre physics; the beaches need some love: the
+ground textures leading up to the beach are patchy and pocky. Asked whether the sea sheet under all the terrain
+costs frame rate (it barely does: it's one draw call in the see-through pass, so wherever the ground is in front of it
+the depth test throws it away before it's shaded; the screen copy the water reads costs a little, and the rivers need
+that anyway).
+- [ ] Beaches: a clean dune > dry sand > wet sand > surf blend down to the water instead of the patchy texture mix;
+      dune grass, driftwood, a foam line on the sand
+- [ ] Sand tyre physics: soft sand bogs a road tyre at road pressure; air down (the garage's tyre pressure) and keep
+      the revs up; wet sand by the water is firm
+- [ ] Trim the sea sheet to the coast so it isn't drawn under the whole map (small win)
 - [ ] Deformable mud: wheels sink and dig ruts that stay, drag and wheelspin by depth, mud on the tyres and body;
       tyre tread (MT vs road) and pressure matter; diff locks and low range earn their keep; winching out
 

@@ -162,6 +162,25 @@ func _paint_only(main) -> void:
 	bt.orbit = Vector2(0.7, 0.45); bt.dist = 6.0
 	for _i in 4: await get_tree().process_frame
 	await _shot("t59_lift")
+	# 0.2.71: HIDE the bonnet (a real click) and see under it; then show it again
+	bt.pt_lift = false; bt._lift_refresh(); bt.pt_part = 3; bt._build_ui()
+	for _i in 3: await get_tree().process_frame
+	var hbtn: Button = null
+	for n in bt.panel.find_children("*", "Button", true, false):
+		if (n as Button).text.begins_with("HIDE BONNET"): hbtn = n
+	if hbtn:
+		var hp: Vector2 = hbtn.get_global_rect().get_center()
+		for pr in [true, false]:
+			var he := InputEventMouseButton.new(); he.button_index = MOUSE_BUTTON_LEFT; he.pressed = pr; he.position = hp; he.global_position = hp
+			Input.parse_input_event(he)
+			await get_tree().process_frame
+	var hidden := 0
+	for i in bt.pt_lab.size():
+		if bt.pt_lab[i] == 3 and bt.pt_tris[i * 3].y < -500.0: hidden += 1
+	var down: Dictionary = (bt.pt_tm as TriangleMesh).intersect_ray(Vector3(0, 3, 1.7), Vector3.DOWN)
+	print("T59 hide: button ", hbtn != null, " pt_hide ", bt.pt_hide, " hidden faces ", hidden, " ray from above hits label ", bt.pt_lab[int(down.get("face_index", 0))] if not down.is_empty() else -1, " at y ", (down.get("position", Vector3.ZERO) as Vector3).y)
+	await _shot("t59_hide")
+	bt.pt_hide = -1; bt._lift_refresh(); bt._build_ui()
 	# free cam: F, then W held for a second
 	var fk := InputEventKey.new(); fk.physical_keycode = KEY_F; fk.keycode = KEY_F; fk.pressed = true
 	Input.parse_input_event(fk)
