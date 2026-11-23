@@ -50,9 +50,19 @@ static func head_id(cyl: int, vt: String, comp: String) -> String: return "eh_%d
 static func exhaust_id(cyl: int) -> String: return "ex_%d" % cyl
 ## "" for a plain manifold, "tlow" / "thigh" for a turbo one (0.2.68)
 static func turbo_of(ex_id: String) -> String:
-	if ex_id.ends_with("_tlow"): return "tlow"
-	if ex_id.ends_with("_thigh"): return "thigh"
+	if ex_id.contains("_tlow"): return "tlow"
+	if ex_id.contains("_thigh"): return "thigh"
 	return ""
+
+## 0.2.70: the turbo's size: s, m (also the 0.2.68 manifolds with no size) or l
+const TURBO_SIZE := {"s": {"name": "small", "boost": 0.22, "spool": 1500.0, "scale": 0.75},
+	"m": {"name": "medium", "boost": 0.36, "spool": 2100.0, "scale": 1.0},
+	"l": {"name": "large", "boost": 0.6, "spool": 3000.0, "scale": 1.4}}
+static func turbo_size(ex_id: String) -> String:
+	if turbo_of(ex_id) == "": return ""
+	for sz in ["s", "l", "m"]:
+		if ex_id.ends_with("_" + sz): return sz
+	return "m"
 static func intake_id(lay: String) -> String: return "ei_%s" % lay
 static func fuel_id(f: String) -> String: return "ef_%s" % f
 static func ecu_id(diesel: bool, cyl: int) -> String: return "ecu_%s_%d" % ["d" if diesel else "p", cyl]
@@ -65,7 +75,7 @@ static func item_def(id: String) -> Dictionary:
 
 static func all_items() -> Array:
 	if _items.is_empty(): _register()
-	return _items.keys()
+	return _items.keys().filter(func(id): return not _items[id].get("hidden", false))      # 0.2.70: old ids load, aren't offered
 
 static func _register() -> void:
 	for lay in BLOCKS:
@@ -78,8 +88,11 @@ static func _register() -> void:
 				_items[head_id(cyl, vt, c)] = {"name": "%d-cyl %s head, %s" % [cyl, VALVETRAIN[vt].name, COMP[c].name], "w": 3 if cyl < 6 else 4, "h": 1, "stack": 1, "kind": "misc", "part": "head"}
 		_items[exhaust_id(cyl)] = {"name": "%d-cyl exhaust manifold" % cyl, "w": 3 if cyl < 6 else 4, "h": 1, "stack": 1, "kind": "misc", "part": "exhaust"}
 		# 0.2.68: turbo manifolds, the snail low down beside the block or up high over the manifold
-		_items[exhaust_id(cyl) + "_tlow"] = {"name": "%d-cyl turbo manifold, low mount" % cyl, "w": 3 if cyl < 6 else 4, "h": 2, "stack": 1, "kind": "misc", "part": "exhaust"}
-		_items[exhaust_id(cyl) + "_thigh"] = {"name": "%d-cyl turbo manifold, high mount" % cyl, "w": 3 if cyl < 6 else 4, "h": 2, "stack": 1, "kind": "misc", "part": "exhaust"}
+		for mt in [["tlow", "low mount"], ["thigh", "high mount"]]:
+			# the 0.2.68 ones (no size: a medium turbo) stay so old builds still load
+			_items[exhaust_id(cyl) + "_" + mt[0]] = {"name": "%d-cyl turbo manifold, %s, medium turbo" % [cyl, mt[1]], "w": 3 if cyl < 6 else 4, "h": 2, "stack": 1, "kind": "misc", "part": "exhaust", "hidden": true}
+			for sz in ["s", "m", "l"]:
+				_items[exhaust_id(cyl) + "_" + mt[0] + "_" + sz] = {"name": "%d-cyl turbo manifold, %s, %s turbo" % [cyl, mt[1], TURBO_SIZE[sz].name], "w": 3 if cyl < 6 else 4, "h": 2 if sz != "l" else 3, "stack": 1, "kind": "misc", "part": "exhaust"}
 	for lay in ["i3", "i4", "i6", "v6", "v8"]:
 		_items[intake_id(lay)] = {"name": "%s intake manifold" % (BLOCKS[lay].name.capitalize() if lay.begins_with("i") else BLOCKS[lay].name + " valley"), "w": 3, "h": 2 if lay.begins_with("v") else 1, "stack": 1, "kind": "misc", "part": "intake"}
 	for f in FUELS:
@@ -223,9 +236,12 @@ static func stats(k: Dictionary) -> Dictionary:
 	var boost := 0.0
 	var spool := 2000.0
 	for i in mini(ex.size(), int(b.banks)):
-		match turbo_of(str(ex[i])):
-			"tlow": boost += 0.33 / float(b.banks); spool = minf(spool, 1900.0)
-			"thigh": boost += 0.4 / float(b.banks); spool = 2300.0
+		var tz := turbo_size(str(ex[i]))
+		if tz == "": continue
+		# 0.2.70: the size sets how much and how late; a high mount a touch more, a touch later than a low one
+		var hi_m := turbo_of(str(ex[i])) == "thigh"
+		boost += float(TURBO_SIZE[tz].boost) * (1.12 if hi_m else 1.0) / float(b.banks)
+		spool = float(TURBO_SIZE[tz].spool) * (1.1 if hi_m else 1.0)
 	# curve: rises to the peak, holds, falls toward the redline (a DOHC holds on; a flathead falls away)
 	var fall := lerpf(0.55, 0.64, (vt_power - 0.7) / 0.3)
 	var curve := [[0, peak_nm * 0.45], [800, peak_nm * (0.72 if diesel else 0.62)], [int(peak * 0.55), peak_nm * 0.88],
@@ -471,11 +487,14 @@ static func _build(mk: Mk, k: Dictionary) -> void:
 				var tp: Vector3 = colz + out * 0.06 if tb == "tlow" else Vector3(pe0.x, pe0.y, zc - L * 0.15) + out * 0.2 + up * 0.14
 				if tb == "thigh": mk.pipe("rust", colz, tp - up * 0.05, 0.03)
 				var bz := Basis(Vector3.RIGHT, PI * 0.5)
-				mk.cyl("iron", 0.075, 0.07, tp, bz)                                   # turbine housing
-				mk.cyl("alloy", 0.08, 0.075, tp + Vector3(0, 0, 0.09), bz)            # compressor housing
-				mk.cyl("steel", 0.03, 0.05, tp + Vector3(0, 0, 0.045), bz)            # centre section
-				mk.pipe("rust", tp - Vector3(0, 0.05, 0.02), tp + Vector3(0, -0.3, -0.2), 0.032)          # dump pipe
-				mk.pipe("alloy", tp + Vector3(0, 0.06, 0.09), tp + up * 0.12 + into * 0.25 + Vector3(0, 0.08, 0.12), 0.027)   # to the intake
+				var ts := float(TURBO_SIZE[turbo_size(str(exs[bi]))].scale)          # 0.2.70: small, medium, large
+				tp += out * (ts - 1.0) * 0.06
+				mk.cyl("iron", 0.075 * ts, 0.07 * ts, tp, bz)                                   # turbine housing
+				mk.cyl("alloy", 0.08 * ts, 0.075 * ts, tp + Vector3(0, 0, 0.09 * ts), bz)       # compressor housing
+				mk.cyl("steel", 0.03 * ts, 0.05 * ts, tp + Vector3(0, 0, 0.045 * ts), bz)       # centre section
+				mk.cyl("alloy", 0.035 * ts, 0.04, tp + Vector3(0, 0, 0.14 * ts), bz)            # the inlet
+				mk.pipe("rust", tp - Vector3(0, 0.05 * ts, 0.02), tp + Vector3(0, -0.3, -0.2), 0.032 * ts)          # dump pipe
+				mk.pipe("alloy", tp + Vector3(0, 0.06 * ts, 0.09 * ts), tp + up * 0.12 + into * 0.25 + Vector3(0, 0.08, 0.12), 0.027 * ts)   # to the intake
 	# ---- intake
 	var iid := str(k.get("intake", ""))
 	var flange := Vector3(0, deck + 0.14, 0)
@@ -792,8 +811,14 @@ static func part_info(id: String) -> String:
 				_: t += "Medium compression: the all-rounder."
 			return t
 		"exhaust":
-			var tdesc := {"tlow": " A turbo sits low beside the block: about a third more torque once it spools up, from about 2000 rpm.", "thigh": " The turbo sits up high over the manifold: a bit more boost than a low mount, coming in a bit later (about 2300 rpm)."}
-			return ("Bolts to a %d-cylinder head. Without one on every bank the engine loses about a fifth of its torque." % int(id.trim_prefix("ex_"))) + str(tdesc.get(turbo_of(id), ""))
+			var tdesc := ""
+			if turbo_of(id) != "":
+				var tz := turbo_size(id)
+				var hi_m := turbo_of(id) == "thigh"
+				tdesc = " A %s turbo %s: about %d%% more torque once it spools up, from about %d rpm." % [TURBO_SIZE[tz].name,
+					"up high over the manifold" if hi_m else "low down beside the block", int(float(TURBO_SIZE[tz].boost) * (1.12 if hi_m else 1.0) * 100.0),
+					int(float(TURBO_SIZE[tz].spool) * (1.1 if hi_m else 1.0))]
+			return ("Bolts to a %d-cylinder head. Without one on every bank the engine loses about a fifth of its torque." % int(id.trim_prefix("ex_"))) + tdesc
 		"intake":
 			return "Feeds every port on its block and carries the carby or throttle body on top. Only fits the block it was made for."
 		"fuel":

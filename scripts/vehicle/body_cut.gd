@@ -200,7 +200,7 @@ static func bonnet_floor(bon: Dictionary) -> float:
 
 ## Cut a model into pieces: {cab: [meshes], tub: [meshes], bonnet: [meshes], under: [meshes]}; each piece mesh is
 ## an ArrayMesh in the body frame. Which pieces come back depends on what's set and what's asked for.
-static func pieces(glb: String, want_tub: bool, want_bonnet: bool, col := Color(0, 0, 0, 0)) -> Dictionary:
+static func pieces(glb: String, want_tub: bool, want_bonnet: bool, col := Color(0, 0, 0, 0), off_extra: Array = []) -> Dictionary:
 	var cut := of(glb)
 	var tub: Dictionary = cut.get("tub", {}) if want_tub else {}
 	var bon: Dictionary = cut.get("bonnet", {}) if want_bonnet else {}
@@ -212,6 +212,7 @@ static func pieces(glb: String, want_tub: bool, want_bonnet: bool, col := Color(
 	var parts: Array = cut.get("parts", [])
 	for i in parts.size():
 		if bool((parts[i] as Dictionary).get("off", false)): off_lv[4 + i] = true
+	for lv in off_extra: off_lv[int(lv)] = true           # 0.2.70: taken off this one car
 	var key := glb + JSON.stringify([tub, bon, hash(JSON.stringify(paint)), hash(JSON.stringify(cut.get("respray", {}))) if respray else 0, col.to_html() if respray else "", off_lv.keys()])
 	if _cache.has(key): return _cache[key]
 	var lab := labels_of(paint) if not paint.is_empty() else PackedByteArray()
@@ -413,6 +414,9 @@ static func part_body(glb: String, what: String, label := 0) -> RigidBody3D:
 		rb.add_child(cs)
 	var sz := aabb.size.max(Vector3(0.06, 0.06, 0.06))
 	rb.mass = clampf(sz.x * sz.y * sz.z * 60.0, 4.0, 400.0)
+	if what == "acc":
+		rb.set_meta("part_of", glb)
+		rb.set_meta("part_label", label)
 	if what == "tub":
 		rb.set_meta("tub_of", glb); rb.mass = 110.0
 		rb.set_meta("forge_name", "Tub")

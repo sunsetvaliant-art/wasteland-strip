@@ -2,7 +2,17 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0069, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0070, 2026-11-23.
+
+## Engine unbolt collision, parts off the car, turbo sizes 2026-11-23 (0070)
+User: an unbolted engine dropped through to the ground and the car lifted up over it; side steps painted and saved as
+a part of the Ranger couldn't be taken off from the repair menu; three turbos, physically small, medium and large.
+- [x] 0070 An unbolted engine never touches its own car while it's in the bay (it sat inside the body's collision box
+      and shoved the car up), and the mounts hold it up while it's dragged about in there till it's out
+- [x] 0070 Your own parts come off and go back on in the repair window (K): SHIFTER: take off the side steps (they
+      land beside the car), SHIFTER: bolt on the side steps (bring them over). Per car
+- [x] 0070 Turbo manifolds come with a small, medium or large turbo (low or high mount, 3, 4 and 6 cylinders):
+      small ~22% from 1500 rpm, medium ~36% from 2100, large ~60% from 3000; the snail's size to match
 
 ## Laptop 2026-11-23 (0069)
 User: can't find a laptop in the palette; the laptop menu won't open from the repair screen.

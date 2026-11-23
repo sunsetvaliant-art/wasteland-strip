@@ -8,7 +8,7 @@ func _ready():
 	var sun := DirectionalLight3D.new(); sun.rotation_degrees = Vector3(-50, 30, 0); add_child(sun)
 	var cam := Camera3D.new(); add_child(cam); cam.current = true; cam.fov = 40
 	var x := -1.2
-	for ex in ["ex_6", "ex_6_tlow", "ex_6_thigh"]:
+	for ex in ["ex_6_tlow_s", "ex_6_tlow_m", "ex_6_tlow_l"]:
 		var k := EngineKit.make("i6", false, "sohc", "med", "tb")
 		k.exhaust = [ex]
 		var st := EngineKit.stats(k)

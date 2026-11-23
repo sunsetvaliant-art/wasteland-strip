@@ -207,6 +207,18 @@ func _fill() -> void:
 			if not _tuning: _fill())          # 0.2.69: the laptop's panel was built and then wiped by this refill
 		btns.add_child(b)
 	var has := func(id: String, n := 1) -> bool: return free or p.inv.count(id) >= n
+	# 0.2.70: your own parts (side steps, bull bars... painted in Body tools): off and back on with a shifter
+	for op in car.own_parts():
+		var lbl: int = op[0]
+		var nm: String = op[1]
+		if op[2]:
+			add.call("SHIFTER: take off the %s" % nm, spanner, func():
+				car.take_off_part(lbl)
+				msg = "The %s is off, beside the car." % nm)
+		else:
+			var near: bool = car.loose_part_near(lbl) != null
+			add.call("SHIFTER: bolt on the %s%s" % [nm, "" if near else " (bring it over)"], spanner and near, func():
+				msg = ("The %s is back on." % nm) if car.fit_part(lbl) else "Bring it over to the car first.")
 	var k: Dictionary = car.design.get("kit", {})
 	if not k.is_empty():
 		# 0.2.57: the engine in 3D, every part pickable, parts dragged on from your pack

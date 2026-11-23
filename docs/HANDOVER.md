@@ -260,6 +260,10 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   ToolModels (scripts/inv/tool_models.gd) and Items "size". Prof.totals; tools/_perfprobe.gd (world, via runpt) prints
   draw calls and per-job ms; runpt.sh under a 600 s foreground timeout leaves project.godot patched: run it in the
   background. Tests: tools/_painttest, _straptest, _fittest, _turboshot.
+- 0070: LooseLump has its collision exception with its car from the moment it's unbolted and a mount force under it
+  while it's over the chassis. Car.own_parts()/take_off_part()/fit_part() (design "parts_off", per car; pieces() takes
+  off_extra); loose parts carry metas part_of / part_label. Turbo manifolds ex_N_tlow_s|m|l / ex_N_thigh_s|m|l
+  (EngineKit.TURBO_SIZE, turbo_size()); the size-less 0068 ids are hidden but still load. Test: tools/_t70.tscn.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

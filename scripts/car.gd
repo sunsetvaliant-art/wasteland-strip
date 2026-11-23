@@ -158,12 +158,12 @@ func _build_body() -> void:
 	# 0.2.68: a respray (design "paint_col" over the faces marked paint in Body tools), parts taken off the car
 	var col := Color(0, 0, 0, 0)
 	if str(design.get("paint_col", "")) != "" and cut.has("respray"): col = Color.html(str(design.paint_col))
-	var parts_off := false
+	var parts_off := not (design.get("parts_off", []) as Array).is_empty()
 	for pp in cut.get("parts", []):
 		if bool((pp as Dictionary).get("off", false)): parts_off = true
 	if not bare and (tub_off or has_bonnet or split_tub or col.a > 0.0 or parts_off):
 		# 0.2.55: the body in pieces from its cut lines (Body tools): the cab, maybe the tub, the bonnet on its hinge
-		var pcs := BodyCut.pieces(str(def.glb), tub_off or split_tub, has_bonnet, col)
+		var pcs := BodyCut.pieces(str(def.glb), tub_off or split_tub, has_bonnet, col, design.get("parts_off", []))
 		var keep: Array = pcs.cab.duplicate()
 		for am in keep:
 			var mi := MeshInstance3D.new(); mi.mesh = am
@@ -528,6 +528,52 @@ func bolt_body() -> bool:
 				queue_free()
 		return true
 	return false
+
+# ---------------------------------------------------------------- 0.2.70: your own parts off and on this car
+## [[label, name, on]] for every part painted on this body in Body tools (not the ones taken off every car of it)
+func own_parts() -> Array:
+	var out := []
+	var parts: Array = BodyCut.of(str(def.glb)).get("parts", [])
+	var off: Array = design.get("parts_off", [])
+	for i in parts.size():
+		if bool((parts[i] as Dictionary).get("off", false)): continue
+		out.append([4 + i, str((parts[i] as Dictionary).get("name", "part")), not off.has(4 + i)])
+	return out
+
+## Unbolt one: it comes off as a loose part beside the car
+func take_off_part(label: int) -> RigidBody3D:
+	var off: Array = design.get("parts_off", []).duplicate()
+	if off.has(label): return null
+	var rb := BodyCut.part_body(str(def.glb), "acc", label)
+	if rb == null: return null
+	for pp in own_parts():
+		if int(pp[0]) == label: rb.set_meta("forge_name", str(pp[1]))
+	get_parent().add_child(rb)
+	# where it was on the car, then moved out to the side so it isn't inside the body
+	rb.global_transform = body_xform()
+	var side := global_basis.x * (float(def.ext[2]) * 0.5 + 0.8)
+	rb.global_position += side + Vector3.UP * 0.15
+	off.append(label)
+	design["parts_off"] = off
+	rebuild_body()
+	return rb
+
+## A loose one of this body's parts close by goes back on
+func loose_part_near(label: int) -> RigidBody3D:
+	for n in get_tree().get_nodes_in_group("physgun"):
+		if str(n.get_meta("part_of", "")) == str(def.glb) and int(n.get_meta("part_label", -1)) == label and (n as Node3D).global_position.distance_to(global_position) < 5.0:
+			return n
+	return null
+
+func fit_part(label: int) -> bool:
+	var rb := loose_part_near(label)
+	var off: Array = design.get("parts_off", []).duplicate()
+	if rb == null or not off.has(label): return false
+	rb.queue_free()
+	off.erase(label)
+	design["parts_off"] = off
+	rebuild_body()
+	return true
 
 # ---------------------------------------------------------------- 0.2.68: the engine out as a lump
 ## Can the engine come out the top: bonnet off (or no bonnet panel cut, with the body off), the engine in it
