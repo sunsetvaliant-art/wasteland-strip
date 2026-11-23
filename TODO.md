@@ -2,7 +2,20 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0066 (+ notes), 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0067, 2026-11-23.
+
+## Loose tub shoved up on the Ranger 2026-11-23 (0067)
+User: unbolted the tub on the new Ranger dual cab (lowered on its suspension) and it rose up by itself, as if
+something was pushing it.
+- [x] 0067 Cut pieces (tub, bonnet, cab) measured their size from the whole model, so a loose tub's collision box was
+      as big as the whole car and the cab shoved it up. Each piece is now sized from its own faces
+- [x] 0067 The car's roof collision stops at the back of the cab once the tub's off (it hung out over the rails)
+- [x] 0067 Parked cars chattered: the dampers took every change in tyre squat as a jolt, and on the heavy new utes
+      the load flipped between the axles every physics step, so anything loose on the chassis walked off. Damping
+      now reads the hub's travel alone (the older cars drive the same; the new utes stopped shaking)
+- [x] 0067 The new utes weighed about 4 t (catalog weights were real kg, the game's are scaled): now 1.6-1.8 t real,
+      so they pull like the rest (0-60 in about 7.5 s, the Hilux couldn't make 60 before)
+- [ ] The new utes hop a lot harder than the old cars over a 12 cm kerb (vertical kick about 1.3 m/s vs 0.4)
 
 ## Mud 2026-11-23
 User: MudRunner-style mud for 4x4 rigs at some stage.

@@ -244,6 +244,11 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   rigid (live axles at 2 Hz: a spring stiffer than the tyre chatters), tyre_psi from the catalog (forklift 120).
   Tests: tools/_forktest.tscn (drive, unbolt, forks in, lift, back out, set down), tools/_hoisttest.tscn,
   tools/_unbolttest.tscn, world check tools/_t66.gd via /tmp/runpt.sh.
+- 0067: BodyCut pieces share the whole model's vertex array: use BodyCut.aabb_of(mesh) (custom_aabb from the faces)
+  for a piece's size, never mesh.get_aabb(). Suspension damping uses w.Lg (hub travel, d - r) not w.L (which
+  includes tyre squat): the squat in the damper made heavy cars chatter. Catalog "kg" is the game's scaled weight
+  (mass = kg * 2.3; a real 1.8 t ute is ~780). tools/_drivecheck.tscn (DC_CARS) prints chatter, 0-60, braking,
+  turn and kerb numbers; tools/_tubtest.tscn (TT_CAR, TT_RIDE) watches a loose tub on its chassis.
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

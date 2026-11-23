@@ -110,7 +110,7 @@ func _rb_aabb(rb: RigidBody3D) -> AABB:
 	for mi in rb.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m.mesh == null or not m.visible: continue
-		var a: AABB = (inv * m.global_transform) * m.mesh.get_aabb()
+		var a: AABB = (inv * m.global_transform) * BodyCut.aabb_of(m.mesh)
 		out = a if first else out.merge(a)
 		first = false
 	if first:

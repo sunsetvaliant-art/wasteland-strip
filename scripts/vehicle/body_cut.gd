@@ -260,6 +260,12 @@ static func pieces(glb: String, want_tub: bool, want_bonnet: bool) -> Dictionary
 				var am := ArrayMesh.new()
 				am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a2)
 				am.surface_set_material(0, mat)
+				# 0.2.67: the piece keeps the whole model's vertex list, so its own bounds come from the faces it uses
+				# (a tub's box was the size of the whole car: the cab's collision shoved it up)
+				var lo := Vector3(1e9, 1e9, 1e9); var hi := -lo
+				for vi in idx:
+					lo = lo.min(verts[vi]); hi = hi.max(verts[vi])
+				am.custom_aabb = AABB(lo, hi - lo)
 				return am
 			for pair in [["cab", cabI], ["tub", tubI], ["bonnet", bonI]]:
 				var am = mk.call(pair[1], B)
@@ -282,6 +288,11 @@ static func pieces(glb: String, want_tub: bool, want_bonnet: bool) -> Dictionary
 	if _cache.size() > 24: _cache.clear()
 	_cache[key] = out
 	return out
+
+## A piece's real bounds (pieces carry the whole model's vertices; custom_aabb holds the faces' own box)
+static func aabb_of(m: Mesh) -> AABB:
+	if m is ArrayMesh and (m as ArrayMesh).custom_aabb.size != Vector3.ZERO: return (m as ArrayMesh).custom_aabb
+	return m.get_aabb()
 
 ## The hinge for the bonnet: [pivot (body frame), axis] from the shut line; rear-hinged opens at the front
 static func hinge(bon: Dictionary) -> Array:

@@ -711,7 +711,7 @@
   "name": "Toyota Hilux dual cab",
   "glb": "hilux_dc2001",
   "cls": "car",
-  "kg": 1700.0,
+  "kg": 740,
   "ax_f": 1.429,
   "ax_r": -1.429,
   "min": [
@@ -752,7 +752,7 @@
   "name": "Mazda B-Series dual cab",
   "glb": "mazda_bseries_dc",
   "cls": "car",
-  "kg": 1750.0,
+  "kg": 760,
   "ax_f": 1.482,
   "ax_r": -1.482,
   "min": [
@@ -793,7 +793,7 @@
   "name": "Ford Ranger dual cab",
   "glb": "ranger_dc2003",
   "cls": "car",
-  "kg": 1800.0,
+  "kg": 800,
   "ax_f": 1.559,
   "ax_r": -1.559,
   "min": [
@@ -834,7 +834,7 @@
   "name": "Holden VZ Commodore ute",
   "glb": "holden_vz_ute",
   "cls": "car",
-  "kg": 1650.0,
+  "kg": 700,
   "ax_f": 1.48,
   "ax_r": -1.48,
   "min": [

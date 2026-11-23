@@ -215,9 +215,14 @@ func _build_body() -> void:
 		add_child(cs)
 		var roof := CollisionShape3D.new()
 		var rb := BoxShape3D.new()
-		rb.size = Vector3(ext[2] * 0.82, h * 0.38, ext[0] * 0.5)
+		# 0.2.67: with the tub off the roof box stops at the back of the cab too (it hung out over the rails and shoved
+		# the loose tub up)
+		var rz0 := float(mn[0]) + float(ext[0]) * 0.2 + float(off[2])
+		var rz1 := float(mn[0]) + float(ext[0]) * 0.7 + float(off[2])
+		if tub_front > -1e8: rz0 = maxf(rz0, tub_front + 0.05)
+		rb.size = Vector3(ext[2] * 0.82, h * 0.38, maxf(rz1 - rz0, 0.3))
 		roof.shape = rb
-		roof.position = Vector3(off[0], lo + h * 0.66, float(mn[0]) + float(ext[0]) * 0.45 + float(off[2]))
+		roof.position = Vector3(off[0], lo + h * 0.66, (rz0 + rz1) * 0.5)
 		add_child(roof)
 	# a custom tray where the tub was (0.2.55)
 	if not bare and tub_front > -1e8 and str(design.get("tub", "")) == "tray":
@@ -270,7 +275,7 @@ func _build_wheels() -> void:
 				# 0.2.59: lift (ride height) per axle: the wheel hangs further below the body
 				"mount": Vector3(side * float(a.track), float(design.ride) + L_static - float(a.get("lift", 0.0)), float(a.z)),
 				"T": T, "k": k, "pre": pre_f, "cb": c_crit * float(a.zeta_b), "cr": c_crit * float(a.zeta_r),
-				"r": float(a.tyre_r), "L": T, "L_prev": T, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
+				"r": float(a.tyre_r), "L": T, "L_prev": T, "Lg": T, "Lg_prev": T, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
 				"steer": 0.0, "point": Vector3.ZERO, "normal": Vector3.UP, "slip": 0.0, "slip_a": 0.0, "surf": 1.0,
 				"vx": 0.0, "vy": 0.0, "fx": 0.0, "fy": 0.0, "drive_t": 0.0, "collider": null, "mu": 1.0, "crr": 0.015,
 				"fwd": Vector3.FORWARD, "sidev": Vector3.RIGHT, "slide": 0.75, "kind": "seal", "defl": 0.0, "slipv": 0.0,
@@ -341,7 +346,7 @@ func take_off_bonnet() -> RigidBody3D:
 		var m2 := MeshInstance3D.new(); m2.mesh = (mi as MeshInstance3D).mesh
 		m2.position = (mi as MeshInstance3D).position
 		rb.add_child(m2)
-		var a := (mi as MeshInstance3D).mesh.get_aabb()
+		var a := BodyCut.aabb_of((mi as MeshInstance3D).mesh)
 		a.position += (mi as MeshInstance3D).position
 		aabb = a if first else aabb.merge(a)
 		first = false
@@ -381,10 +386,10 @@ func unbolt_tub() -> RigidBody3D:
 	for am in pcs.tub:
 		var mi := MeshInstance3D.new(); mi.mesh = am
 		rb.add_child(mi)
-		aabb = am.get_aabb() if first else aabb.merge(am.get_aabb())
+		aabb = BodyCut.aabb_of(am) if first else aabb.merge(BodyCut.aabb_of(am))
 		first = false
 	if first: return null
-	_loose_shapes(rb, aabb, float(design.cab_offset[1]))
+	_loose_shapes(rb, aabb, float(design.cab_offset[1]), false)
 	rb.set_meta("forge_name", "Tub")
 	get_parent().add_child(rb)
 	var off: Array = design.cab_offset
@@ -429,7 +434,7 @@ func seated(n: Node3D, tol: float, htol: float) -> bool:
 
 ## Collision for a loose body or tub: a box from just above the rails (it sits on four mount pads, 7 cm up, so forks
 ## can slide in between) to its waist, and four pads over the rails. aabb in body space; y0 = cab offset height
-func _loose_shapes(rb: RigidBody3D, aabb: AABB, y0: float) -> void:
+func _loose_shapes(rb: RigidBody3D, aabb: AABB, y0: float, roofed := true) -> void:
 	var fr: Dictionary = design.frame
 	var rail_top := float(design.ride) + 0.18 - y0
 	var bot := maxf(aabb.position.y, rail_top + 0.12)
@@ -438,7 +443,7 @@ func _loose_shapes(rb: RigidBody3D, aabb: AABB, y0: float) -> void:
 	var bx := BoxShape3D.new(); bx.size = Vector3(maxf(aabb.size.x * 0.95, 0.4), top - bot, maxf(aabb.size.z * 0.97, 0.4))
 	cs.shape = bx; cs.position = Vector3(aabb.get_center().x, (bot + top) * 0.5, aabb.get_center().z)
 	rb.add_child(cs)
-	if aabb.size.y > 0.9:                      # a cab: its roof too
+	if roofed and aabb.size.y > 0.9:           # a cab: its roof too
 		var rs := CollisionShape3D.new()
 		var rbx := BoxShape3D.new(); rbx.size = Vector3(aabb.size.x * 0.8, aabb.end.y - top, aabb.size.z * 0.45)
 		rs.shape = rbx; rs.position = Vector3(aabb.get_center().x, (top + aabb.end.y) * 0.5, aabb.get_center().z)
@@ -476,7 +481,7 @@ func unbolt_body() -> RigidBody3D:
 		m2.transform = xf
 		rb.add_child(m2)
 		if mi.name == "EngineBay": continue
-		var a: AABB = xf * (mi as MeshInstance3D).get_aabb()
+		var a: AABB = xf * BodyCut.aabb_of((mi as MeshInstance3D).mesh)
 		aabb = a if first else aabb.merge(a)
 		first = false
 	if first: return null
@@ -767,10 +772,12 @@ func _physics_process_inner(dt: float) -> void:
 		var q := PhysicsRayQueryParameters3D.create(top + up * 0.15, top - up * reach, 0xFFFFFFFF & ~Ragdoll.layer_bits(), ex)
 		var hit := space.intersect_ray(q)
 		w.L_prev = w.L
+		w.Lg_prev = w.Lg
 		if hit:
 			var d: float = (top + up * 0.15).distance_to(hit.position) - 0.15
 			var r_eff: float = w.r - w.defl                          # the tyre squats under load
 			w.L = clamp(d - r_eff, -0.05, w.T)
+			w.Lg = clamp(d - w.r, -0.15, w.T)
 			w.contact = d - r_eff <= w.T
 			w.point = hit.position
 			w.normal = hit.normal
@@ -781,13 +788,17 @@ func _physics_process_inner(dt: float) -> void:
 			w.contact = false
 		if not w.contact:
 			w.L = w.T
+			w.Lg = w.T
 		arb_c[str(w.axle) + str(w.side)] = w.T - w.L
 	for w in wheels:
 		w.N = 0.0
 		if not w.contact:
 			continue
 		var comp: float = w.T - w.L
-		var vel: float = (w.L_prev - w.L) / dt                  # + = compressing
+		# + = compressing. 0.2.67: from the hub's travel without the tyre's squat; with it in, the damper saw every
+		# change in squat as a jolt and the load flipped between the axles every step (a parked car chattered, and
+		# anything sat loose on one walked off)
+		var vel: float = (w.Lg_prev - w.Lg) / dt
 		var f: float = w.k * comp + w.pre
 		f += (w.cb if vel > 0.0 else w.cr) * vel
 		var stop: float = 0.1 * w.T
