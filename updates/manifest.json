@@ -489,6 +489,13 @@
    "date": "2026-11-22",
    "size": 11869196,
    "notes": "Forklift: drive it up, slide the forks under an unbolted body and lift it off (arrows work the forks, Alt for slow). Unbolt and bolt the body and tub with a shifter, no teleporting. Gantry and chain hoist in the Forge's Tools: hook a body, tub or engine and chain it up."
+  },
+  {
+   "file": "patch_0.2.0_0067.pck",
+   "version": "0.2.67",
+   "date": "2026-11-23",
+   "size": 118924,
+   "notes": "Fixed a loose tub (or bonnet) getting shoved up off the chassis: its collision was the size of the whole car. Parked cars no longer shake on their springs (the new utes were worst, and that walked loose parts off the chassis). The new utes weighed about 4 tonnes by mistake: now about 1.7, so they pull like the other cars."
   }
  ],
  "full": {
