@@ -17,13 +17,16 @@ const ZOMBIE_MODELS := ["zombie_hollow", "zombie_hollow", "zombie_mx", "zombie_m
 	"mh_m_young", "mh_m_mid", "mh_m_old", "mh_m_lean", "mh_m_african", "mh_m_asian", "mh_f_young", "mh_f_mid", "mh_f_african",
 	"mh_f_asian", "mh_f_old"]
 ## Load every body on a worker thread at the start, so the first of each kind doesn't hitch the game when it walks in
+## Loaded up front and held. 0.2.75: these used to be threaded loads, but a plain load() of a model still loading on a
+## thread (the player's own body, the clothes shells) deadlocks under Vulkan: the game froze after Play
+static var _held: Array = []
 static func preload_models() -> void:
 	var seen := {}
 	for k in ZOMBIE_MODELS + SCAV_MODELS:
 		if seen.has(k): continue
 		seen[k] = true
 		var p := Rig.path_of(k)
-		if ResourceLoader.exists(p): ResourceLoader.load_threaded_request(p)
+		if ResourceLoader.exists(p): _held.append(load(p))
 const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
 const SCAV_MODELS := ["scav_hooded", "mh_m_young", "mh_m_mid", "mh_m_lean", "mh_m_african", "mh_m_asian", "mh_f_young", "mh_f_african", "mh_f_asian"]
 const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff", "hunter", "magnum45"]

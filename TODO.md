@@ -2,7 +2,14 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0075, 2026-11-24.
+Newest requests at the top of each section. Last updated: patch 0076, 2026-11-24.
+
+## Game froze after Play 2026-11-24 (0076)
+User: "I hit play now and the game freezes at the change log screen where the play button is"
+- [x] 0076 Fixed: the zombie and scav models were loading on background threads while the game also loaded the same
+      models straight away (your new body, the clothes), which locked up under Vulkan. They load up front now
+- [ ] More clothes from MakeHuman's community packs (Shirts 01-03, Pants 01/03, Shoes 01-03, Hats 01/03): a real
+      flanno, hi-vis, hoodies, caps, beanies (CC-BY ones go in the credits)
 
 ## Clothes you can see, generated people, random outfits, character screen 2026-11-24 (0075)
 User: rigged clothing (equip a flanno and it shows on the player model); random combinations of clothing on

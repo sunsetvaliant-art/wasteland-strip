@@ -304,6 +304,11 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   material). A garment's hide mask is clipped to its own height range (suits whose trousers were dropped still have
   a Delete group down the legs). 11 dressed people: ~200 MB textures, ~8 draw calls each. Under xvfb the whole world
   runs ~2 s a frame and ~4.7 GB: keep runpt tests short (few frames, few NPCs) or the sandbox OOM-kills them.
+- 0076: never load() a path that's also a pending ResourceLoader.load_threaded_request: under Vulkan (Forward+) the
+  main thread and the worker threads deadlock (0.2.75 froze after Play; compat/xvfb tests didn't show it). NPC models
+  are plain loads held in NPC._held. To test Forward+ here: mesa-vulkan-drivers is installed (lavapipe), run with
+  --rendering-driver vulkan (the whole world OOMs at 7 GB; getting past the launcher is the check). gdb -p on a hung
+  Godot shows whether it's all threads in futex waits (deadlock).
   The older single-mesh models (Sketchfab zombies) use the "shell": outfit.gd _shell + shaders/outfit.gdshader (garments
   drawn per pixel from body-position fields). Rig.dress / restyle / set_build; Rig.tint -> shader tint.
   NPC.look_seed (LAN world_state meta) picks the random look; worn clothes go in the body's loot (meta "worn").
