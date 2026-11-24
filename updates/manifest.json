@@ -538,6 +538,13 @@
    "date": "2026-11-23",
    "size": 4262720,
    "notes": "Beaches reshaped along the open coast: the sand bars and lumps that poked up through the surf are under water now, the beach runs up evenly from the water for about 40 m, and it's all sand (half of it had been painted concrete). The mud and sand test strips are raised beds now, ramped on and off, so the ruts can't dig down to the grass."
+  },
+  {
+   "file": "patch_0.2.0_0074.pck",
+   "version": "0.2.74",
+   "date": "2026-11-24",
+   "size": 43540956,
+   "notes": "Beaches: clear turquoise shallows to deep blue, swell lines and lapping waves, wet and dry sand and dunes; coastline checked against NSW aerial photos (Bogangar to Hastings Point fixed). Rivers lie still over muddy beds, muddy banks with thick grass and weeds. Cane paddocks are mud underneath and drive like it; beach sand bogs aired-up tyres. Occlusion culling. House plans: no bedrooms through bathrooms. Zombies: present-day only, new voices, a better walk. Forge: Z toggles, hold X for the spawn menu (click to spawn where you aim), GMod physgun (hold E + mouse). J's gone: straps from the inventory; hold a hammer or spanner from the inventory and right-click for its menu. 4 new guns (Ruger 10/22, Henry .44, Glock 17, SKS). Live axle links. Engines go down into open bays. Deer, feral pigs and rabbits to hunt and butcher for meat. Guide posts, letterboxes and wheelie bins."
   }
  ],
  "full": {
