@@ -1,10 +1,7 @@
-"""0.2.73: clean up the open coast (beaches) from a dump of the Terrain3D regions (run tools/dump_terrain.gd first).
-The surveyed heights leave sand bars and lumps poking up through the sea sheet (it sits at 0.1 m) and a ragged,
-narrow beach; the aerial colours painted half the beach as concrete. This works out, for the open coast only (within
-300 m of water that's 300 m from any land, so rivers and the flood plain are left alone):
-  - the wet zone: ground under 0.7 m joined to the sea there. It's reshaped as a beach: 0.7 m at the foot of the land
-    falling 3.5 % out to sea (dry sand ~17 m wide, then under water), down to -3 m; never raised
-  - sand on all of it, on the dunes behind (25 m, under 3.5 m high) and on anything painted concrete within 100 m
+"""Clean up the open coast (beaches) from a dump of the Terrain3D regions (run tools/dump_terrain.gd first), for the
+open coast only (within 550 m of water that's 300 m from any land, so rivers and the flood plain are left alone).
+0.2.77: one smooth shoreline (the survey's sea and the aerial photo's, blurred), the bed shelving out from it, an even
+beach in from it (wet sand, dry sand, dunes), hollows near the beach filled, and sea_dist.png for the sea shader.
 Writes assets/world/coast_fix.bin: per region [rx, rz, n] then n x (index int32, height float32, control uint32).
 usage: python3 tools/coast_fix.py /tmp/td assets/world/coast_fix.bin [preview.png]"""
 import sys, struct, glob, os
@@ -49,21 +46,14 @@ d_land = edt(ocean)
 open_sea = d_land > 60
 d_open = edt(~open_sea); del d_land
 coast = (d_open < 110) & east_side         # within 550 m of open ocean (open: 300 m from any land)
-# the wet zone: under 0.7 m and joined to the ocean, on the coast
-lab2, n2 = ndimage.label((Hn < 0.7) & coast)
-touch = np.unique(lab2[ocean & coast])
-touch = touch[touch > 0]
-wet = np.isin(lab2, touch)
-print("wet px", wet.sum())
-d_wet_land = edt(wet) * 5.0      # metres from the foot of the land
-prof = np.clip(0.7 - 0.035 * d_wet_land, -3.0, 0.7)
 # 0.2.74: checked against the NSW aerial photos (docs/ref/sat/coast_z16_rgb.png, tools/coast_check.py): along
 # Bogangar, Cabarita and down to Hastings Point the survey has ground standing 150-400 m out where the photos show
-# surf. Where the photo shows sea or breaking surf (joined to the open ocean), the game's ground under 3 m there goes
-# under too, from 10 m in from the photo's waterline.
+# surf. Where the photo shows sea or breaking surf (joined to the open ocean), that's sea.
 SATP = os.path.join(os.path.dirname(__file__), "..", "docs", "ref", "sat", "coast_z16_rgb.png")
+psea_g = np.zeros(Hn.shape, bool)
 if os.path.exists(SATP):
     from PIL import Image
+    Image.MAX_IMAGE_PIXELS = None
     sat = np.asarray(Image.open(SATP).convert("RGB")).astype(np.int16)
     r_, g_, b_ = sat[..., 0], sat[..., 1], sat[..., 2]
     lum_ = (r_ + g_ + b_) / 3
@@ -74,69 +64,135 @@ if os.path.exists(SATP):
     psea = ndimage.binary_erosion(np.isin(labp, ep), iterations=2)
     del sat, r_, g_, b_, lum_, pw, labp
     c_off = int(15000 / 5) - (CX0 + xs[0] * R)          # the photo's first column in this grid (it's 5 m a pixel too)
-    psea_g = np.zeros(Hn.shape, bool)
     nr = min(psea.shape[0], Hn.shape[0])
     psea_g[:nr, c_off:c_off + psea.shape[1]] = psea[:nr]
     psea_g[:int((-16960.0 - zs[0] * R * 5.0) / 5.0), :] = False     # not the north strip (its own data)
-    sink = psea_g & coast & valid & (Hn >= 0.1) & (Hn < 3.0)
-    H0 = Hn.copy()
-    d_in = edt(psea_g) * 5.0
-    Hn = np.where(sink, np.minimum(Hn, 0.05 - 0.02 * d_in), Hn).astype(np.float32)
-    wet = wet | sink
-    print("photo: sunk", sink.sum(), "points the survey had above the sea where the photos show water")
-# only what's above the sea sheet moves in the water (the sea bed's flat at 0 already)
-lift = wet & (Hn >= 0.1)
-newH = np.where(lift, np.minimum(Hn, prof), Hn)
-# the beach itself: from the water's edge up at 4.5 % (about 40 m of sand before it's 2 m up), taking the low ground
-# behind the waterline down to it; fading out between 25 and 45 m so the dunes and the land behind keep their shape
-water = coast & (newH < 0.1)
-d_water = edt(~water) * 5.0
-beach_h = 0.1 + 0.045 * d_water
-wgt = np.clip((45.0 - d_water) / 20.0, 0.0, 1.0)
-land_band = coast & ~water & (d_water < 45.0) & (Hn < 3.5)
-lowered = Hn - np.maximum(Hn - beach_h, 0.0) * wgt
-newH = np.where(land_band, np.minimum(newH, lowered), newH)
-# a little smoothing on the reshaped ground (the land edge is 5 m stair steps)
-moved = lift | land_band
-sm = ndimage.uniform_filter(newH, 3)
-newH = np.where(moved, np.minimum(newH, sm), newH)
-# sand: the beach band, the shallows, the dunes behind, and concrete near the beach
-d_from_wet = edt(~wet) * 5.0
+    psea_g &= coast & valid & (Hn < 3.0)
+    del psea
+H0 = Hn.copy()
+# 0.2.77: the open-coast beach, rebuilt from one smooth shoreline. 0.2.73-74 reshaped whatever the survey and the
+# photo said point by point: the waterline came out ragged (5 m stair steps, the photo's surf and wet sand speckle),
+# low ground behind it held the sea in pools across the beach, and the mud and paddock textures under them showed in
+# patches. Now:
+#   - the sea on the coast = the survey's ocean and the photo's sea, blurred (~12 m) and cut at half: a smooth line.
+#     Sand bars and lumps out in it (under 2.5 ha) go under
+#   - out from that line the bed shelves at 3 % to -3 m (only ever lowered)
+#   - in from it a beach at an even 4 %: wet sand for the first 9 m, dry sand to 40 m (1.7 m up), then it blends into
+#     the dunes and the land behind over 35 m with dune grass coming through. Rocky headlands (over 3.5 m) are kept
+#   - hollows near the beach that would hold the sea sheet (under 0.35 m, all within 600 m, under 1 km2) are filled:
+#     the survey's triangles of low ground behind Cabarita and the like (the creeks and lakes run further in)
+# (the photo's line is blurred more: its surf and wet sand leave 20-50 m scallops; it's only wanted where it's out by
+# a long way from the survey's)
+seaf = (ndimage.gaussian_filter(ocean.astype(np.float32), 2.5) > 0.5) | (ndimage.gaussian_filter(psea_g.astype(np.float32), 8.0) > 0.5)
+sea1 = np.where(coast, seaf, ocean); del seaf
+labs, _ = ndimage.label(sea1)
+es = np.unique(labs[:, -1]); es = es[es > 0]
+sea1 = np.isin(labs, es); del labs
+labl, nl = ndimage.label(~sea1)
+szl = ndimage.sum(np.ones_like(sea1, np.uint8), labl, np.arange(1, nl + 1))
+small = np.zeros(nl + 1, bool); small[1:] = szl < 1000
+isl = small[labl] & coast
+sea1 |= isl
+print("islands put under", int(isl.sum()), "px"); del labl, small, isl
+d_off = edt(sea1) * 5.0              # sea: metres out from the land
+# the bed: an even shelf for the first 200 m (pits and bars both evened out: they showed through the clear water as
+# dark and pale blotches), then anything left standing above the sea floor put under
+prof = np.maximum(-3.0, 0.02 - 0.03 * d_off)
+newH = np.where(sea1 & coast & (d_off < 200.0), prof, Hn)
+newH = np.where(sea1 & coast & (d_off >= 200.0) & (Hn > 0.02), -1.0, newH).astype(np.float32)
+# the land, measured from the open coast's water only (creeks and the river further in keep their banks)
+open2 = d_off > 300.0                 # (measured again now the bars and lumps out there have gone under)
+sea_open = sea1 & (edt(~open2) < 80); del open2
+s = edt(~sea_open) * 5.0             # land: metres in from the open coast's water
+WB, BL = 40.0, 35.0
+land = coast & ~sea1 & valid
 base = (C >> 27) & 0x1F
-sand = (wet & (d_wet_land < 60)) | (coast & ~water & (d_water < 45.0) & (newH < 3.5)) | (~wet & (d_from_wet < 100) & (base == 6) & coast)
+rock = (base == 5) | (Hn >= 3.5)
+# a headland: rock or high ground right at the water; its beach band is left alone
+headland = ndimage.binary_dilation(land & rock & (s < 15.0), iterations=4)
+band = land & (s < WB + BL) & ~headland
+tgt = 0.12 + 0.04 * s
+w = np.clip((s - WB) / BL, 0.0, 1.0)
+newH = np.where(band, tgt * (1.0 - w) + Hn * w, newH).astype(np.float32)
+# hollows behind the beach that would show the sea sheet through
+low = land & (newH < 0.35)
+labh, nh = ndimage.label(low)
+if nh:
+    idx = np.arange(1, nh + 1)
+    far = ndimage.maximum(s, labh, idx)
+    szh = ndimage.sum(low, labh, idx)
+    fill = np.zeros(nh + 1, bool); fill[1:] = (far < 600.0) & (szh < 40000)      # (creeks and lakes run further in)
+    pool = fill[labh]
+    newH = np.where(pool, 0.35 + 0.004 * np.minimum(s, 50.0), newH).astype(np.float32)
+    print("hollows filled", int(pool.sum()), "px")
+else:
+    pool = np.zeros_like(low)
+del labh, low
+moved = (band | pool) & (np.abs(newH - Hn) > 0.005)
+sm = ndimage.uniform_filter(newH, 3)
+newH = np.where(moved & (band | pool), sm, newH).astype(np.float32)
+# the ground textures: the sands in bands from the water's edge, dune grass behind, and on the shallow bed you see
+# through the water; cane and mud left lying near the coast become sandy grass
 newC = C.copy()
 keep = np.uint32(~((0x1F << 27) | (0x1F << 22) | (0xFF << 14)) & 0xFFFFFFFF)
 def ctl(base_id, over_id, blend):
     return (C & keep) | (np.uint32(base_id) << np.uint32(27)) | (np.uint32(over_id) << np.uint32(22)) | (np.clip(np.asarray(blend) * 255, 0, 255).astype(np.uint32) << np.uint32(14))
-newC = np.where(sand, ctl(4, 4, 0.0), C)
-# 0.2.74: the sands in their places. Wet sand (9) where the swash runs up (to ~0.4 m above the sea sheet, about the
-# first 7 m of beach) and on the bottom of the shallows you see through the water; dry soft sand (4) up the beach; the
-# dunes behind (30-75 m back) sand with dune grass coming through, thicker the further back.
-swash = sand & ((newH < 0.42) | (wet & (newH < 0.1)))
-newC = np.where(swash, ctl(9, 9, 0.0), newC)
-dune = coast & ~water & (d_water >= 30.0) & (d_water < 75.0) & (newH < 6.0) & np.isin(base, [0, 1, 2, 3, 4, 6, 8])
-dune_k = np.clip((d_water - 30.0) / 40.0, 0.0, 1.0) * 0.75 + 0.15
-newC = np.where(dune, ctl(4, 8, dune_k), newC)
-# cane ground (2, mud now) left lying on the coast behind the dunes: sandy grassland, not paddock mud
-coast_cane = coast & ~water & ~dune & (base == 2) & (d_water < 250.0)
-newC = np.where(coast_cane, ctl(4, 8, 0.75), newC)
-print("swash", swash.sum(), "dune", dune.sum())
+bedw = sea1 & coast & (d_off < 120.0)
+newC = np.where(bedw, ctl(9, 9, 0.0), newC)
+wet_s = band & (s < 9.0)
+dry_s = band & (s >= 9.0) & (s < WB)
+dune = band & (s >= WB) | (land & ~headland & (s >= WB + BL) & (s < WB + BL + 25) & np.isin(base, [2, 3, 7, 10]))
+dune_k = np.clip((s - WB) / 45.0, 0.0, 1.0) * 0.75 + 0.15
+newC = np.where(dune & ~rock, ctl(4, 8, dune_k), newC)
+newC = np.where(dry_s, ctl(4, 4, 0.0), newC)
+newC = np.where(wet_s, ctl(4, 9, np.clip(0.75 - s / 18.0, 0.25, 0.75)), newC)     # (the wet sand texture alone read as mud)
+newC = np.where(pool & ~band, ctl(4, 8, 0.6), newC)
+coast_mud = land & ~band & ~pool & (np.isin(base, [2, 7, 10]) & (s < 250.0) | (base == 6) & (s < 150.0))   # (concrete: the photo's pale dune scrub)
+newC = np.where(coast_mud, ctl(4, 8, 0.75), newC)
+sand = band | bedw
+print("beach band", int(band.sum()), "wet", int(wet_s.sum()), "dry", int(dry_s.sum()), "dune", int(dune.sum()), "headland", int(headland.sum()))
 # 0.2.74: how far out to sea every point is (for the water's colour: see-through turquoise in the shallows going to
 # deep blue, and the swell lines running in to the beach). assets/world/sea_dist.png: 10 m a pixel from world
-# (SEA_X0, grid z0); value = sqrt(metres from land / 4000) * 255, 0 on land.
+# (SEA_X0, grid z0); value = sqrt(metres from land / 4000), 0 on land.
 from PIL import Image
 lab3, n3 = ndimage.label(newH < 0.1)
 e3 = np.unique(lab3[:, -1]); e3 = e3[e3 > 0]
 sea_w = np.isin(lab3, e3); del lab3
+# anything still standing out in the sea (small, off the coast band): count it, put it under
+labi, ni = ndimage.label(~sea_w)
+if ni:
+    szi = ndimage.sum(np.ones_like(sea_w, np.uint8), labi, np.arange(1, ni + 1))
+    smi = np.zeros(ni + 1, bool); smi[1:] = szi < 1000
+    isl2 = smi[labi] & east_side & valid & coast
+    isl2 &= edt(~(~sea_w & ~smi[labi])) * 5.0 > 150.0          # out at sea, not islands in the creeks and the river
+    print("specks left in the sea", int(isl2.sum()), "px in", int(np.unique(labi[isl2]).size), "bits")
+    if isl2.any():
+        ys_, xs2_ = np.nonzero(isl2)
+        print("  e.g. world x", (xs2_[:5] + CX0 + xs[0] * R) * 5.0, "z", (ys_[:5] + zs[0] * R) * 5.0)
+    newH = np.where(isl2, np.minimum(newH, -1.0), newH).astype(np.float32)
+    sea_w |= isl2
+    del labi
 d_sea = edt(sea_w) * 5.0
 SEA_X0 = 12000.0
 c0 = int((SEA_X0 / 5.0) - (CX0 + xs[0] * R))
 ds = d_sea[::2, c0::2]
-enc = (np.sqrt(np.clip(ds, 0, 4000) / 4000.0) * 255).astype(np.uint8)
-Image.fromarray(enc, "L").save(os.path.join(os.path.dirname(__file__), "..", "assets", "world", "sea_dist.png"))
+# 0.2.77: 16 bits (red = high byte, green = low byte; the shader filters it itself). 8 bits made the distance step
+# 7-15 m at a time a few hundred metres out: the swell lines jumped at every step (the "wrinkles")
+v16 = np.round(np.sqrt(np.clip(ds, 0, 4000) / 4000.0) * 65535.0).astype(np.uint32)
+enc = np.zeros(ds.shape + (3,), np.uint8)
+enc[..., 0] = (v16 >> 8).astype(np.uint8); enc[..., 1] = (v16 & 255).astype(np.uint8)
+Image.fromarray(enc, "RGB").save(os.path.join(os.path.dirname(__file__), "..", "assets", "world", "sea_dist.png"))
 print("sea_dist", enc.shape, "x0", SEA_X0, "z0", zs[0] * R * 5.0, "mpx 10")
 del d_sea, sea_w
-changed_h = valid & (np.abs(newH - (H0 if "H0" in globals() else Hn)) > 0.005)
+if os.environ.get("CF_DEBUG"):
+    # a crop for looking at: CF_DEBUG=x0,z0,x1,z1 (world metres) -> /tmp/cf_debug.npz
+    x0_, z0_, x1_, z1_ = map(float, os.environ["CF_DEBUG"].split(","))
+    gx = lambda x: int(x / 5.0) - (CX0 + xs[0] * R); gz = lambda z: int(z / 5.0) - zs[0] * R
+    sl = slice(gz(z0_), gz(z1_)), slice(gx(x0_), gx(x1_))
+    np.savez_compressed("/tmp/cf_debug.npz", raw=(H0 if "H0" in globals() else Hn)[sl], new=newH[sl], c=newC[sl], c0=C[sl],
+        psea=psea_g[sl], band=band[sl], s=s[sl], headland=headland[sl], pool=pool[sl], wet=sea1[sl], coast=coast[sl], origin=np.array([x0_, z0_]))
+    print("debug crop saved")
+changed_h = valid & (np.abs(newH - H0) > 0.005)
 changed_c = valid & (newC != C)
 ch = changed_h | changed_c
 print("changed heights", changed_h.sum(), "controls", changed_c.sum())

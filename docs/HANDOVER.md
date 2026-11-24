@@ -309,6 +309,15 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   are plain loads held in NPC._held. To test Forward+ here: mesa-vulkan-drivers is installed (lavapipe), run with
   --rendering-driver vulkan (the whole world OOMs at 7 GB; getting past the launcher is the check). gdb -p on a hung
   Godot shows whether it's all threads in futex waits (deadlock).
+- 0077: tools/coast_fix.py rebuilt the open-coast part: one smooth shoreline (survey ocean blurred 2.5 px, the photo's
+  sea blurred 8 px, union; islands < 1000 px under), bed = max(-3, 0.02 - 0.03 * metres out) for the first 200 m,
+  beach 0.12 + 0.04 * metres in for 40 m then blended over 35 m (headlands: rock or > 3.5 m at the water, kept),
+  hollows < 0.35 m within 250 m of the beach filled, textures in bands (wet 9 to 9 m, sand 4 to 40 m, dune 4/8).
+  CF_DEBUG=x0,z0,x1,z1 saves a crop to /tmp/cf_debug.npz. sea_dist.png is 16-bit now (R high byte, G low byte of
+  sqrt(m/4000)), filtered by hand in shaders/sea.gdshader (filter_nearest + texelFetch). Sea waves: three trains
+  (shoaling swell on the distance field, two crossing ocean swells, chop), each faded by fwidth so it never aliases.
+  The compat renderer (xvfb shots) shows the shore foam as a wide white sheet (its depth texture reads wrong): judge
+  the sea under Vulkan with tools/_seatest.tscn (a CF_DEBUG crop as a mesh + the real sea; SEA_CAMS), see its header.
   The older single-mesh models (Sketchfab zombies) use the "shell": outfit.gd _shell + shaders/outfit.gdshader (garments
   drawn per pixel from body-position fields). Rig.dress / restyle / set_build; Rig.tint -> shader tint.
   NPC.look_seed (LAN world_state meta) picks the random look; worn clothes go in the body's loot (meta "worn").

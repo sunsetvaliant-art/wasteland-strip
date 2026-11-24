@@ -2,7 +2,21 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0076, 2026-11-24.
+Newest requests at the top of each section. Last updated: patch 0077, 2026-11-24.
+
+## Beach shape and waves 2026-11-24 (0077)
+User (bug report at Kings Reef): "Whats wrong with the coastline? its not a smooth beach. Also the waves are so uniform
+that they look like wrinkles."
+- [x] 0077 The beaches rebuilt from one smooth waterline (the survey's and the aerial photo's, smoothed): an even sand
+      beach up from it (wet sand at the water, dry sand to ~40 m, then dune grass into the dunes), no pools of sea
+      left lying on the beach, no mud or paddock patches on it, sand bars and lumps offshore put under, the sea bed
+      shelving evenly so it doesn't show dark and pale blotches through the water. Rocky headlands kept
+- [x] 0077 Waves: a swell that comes in from deep water and shortens as it reaches the beach, with bent crests, sets
+      and broken lengths, breaking white in the last ~45 m; a cross swell from the east-south-east out deep; a short
+      wind chop; darker and lighter wind patches. The distance-from-land map behind it is 16-bit now (it stepped
+      before, which made the swell lines jump into evenly spaced wrinkles)
+- [ ] Behind the beach south of Cabarita the survey has big triangles of ground at sea level joined to Cudgera Creek;
+      they still show as still water (the photos show bush there)
 
 ## Game froze after Play 2026-11-24 (0076)
 User: "I hit play now and the game freezes at the change log screen where the play button is"
