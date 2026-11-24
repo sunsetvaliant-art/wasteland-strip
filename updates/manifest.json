@@ -545,6 +545,13 @@
    "date": "2026-11-24",
    "size": 43540956,
    "notes": "Beaches: clear turquoise shallows to deep blue, swell lines and lapping waves, wet and dry sand and dunes; coastline checked against NSW aerial photos (Bogangar to Hastings Point fixed). Rivers lie still over muddy beds, muddy banks with thick grass and weeds. Cane paddocks are mud underneath and drive like it; beach sand bogs aired-up tyres. Occlusion culling. House plans: no bedrooms through bathrooms. Zombies: present-day only, new voices, a better walk. Forge: Z toggles, hold X for the spawn menu (click to spawn where you aim), GMod physgun (hold E + mouse). J's gone: straps from the inventory; hold a hammer or spanner from the inventory and right-click for its menu. 4 new guns (Ruger 10/22, Henry .44, Glock 17, SKS). Live axle links. Engines go down into open bays. Deer, feral pigs and rabbits to hunt and butcher for meat. Guide posts, letterboxes and wheelie bins."
+  },
+  {
+   "file": "patch_0.2.0_0075.pck",
+   "version": "0.2.75",
+   "date": "2026-11-24",
+   "size": 67977256,
+   "notes": "Clothes you can see. Eleven new people made with MakeHuman (young, middle-aged and old men and women of different builds and backgrounds) wearing real rigged clothes: tees, flannos, hi-vis work shirts, a denim shirt, a jacket, jeans, shorts, trackies, overalls, boots, runners, thongs, a hat. Your clothes slots are what you wear, on you and over LAN. Zombies and scavs are these people in random outfits (zombies with dead grey skin, filthy and bloody); search a body and its clothes are there to take. New character screen (first run, and Pause > Your survivor): pick your person, height and build. Fewer draw calls per person and per scav."
   }
  ],
  "full": {
