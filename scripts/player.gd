@@ -121,6 +121,14 @@ func strap_end(msg := "") -> void:
 	InteractMenu.hold = false
 	if msg != "": _toast(msg)
 
+## 0.2.74: take a tool in hand from the inventory (puts the gun away). H puts it back in your pocket.
+func hold_tool(id: String) -> void:
+	if inv.count(id) < 1: return
+	melee.hand_tool = id
+	holstered = true
+	var what: String = {"build": "build menu", "car": "work on the car you're facing"}.get(str(Melee.TOOL_MENUS.get(id, "")), "")
+	_toast("%s in hand%s  ·  H puts it away" % [Items.def(id).name, ("  ·  right-click: " + what) if what != "" else ""])
+
 func _strap_key() -> void:
 	if vehicle: return
 	var have2: bool = inv.count("strap_2t") > 0
@@ -204,6 +212,16 @@ func _unhandled_input(e: InputEvent) -> void:
 		_carry_drop(true)
 		get_viewport().set_input_as_handled()
 		return
+	# 0.2.74: a hand tool held and no gun up: right-click opens the tool's own menu (a hammer builds, spanners work on the car)
+	if e.is_action_pressed("aim") and not armed() and melee.hand_tool != "" and strap_kind == "" and vehicle == null and not BaseBuild.busy:
+		match str(Melee.TOOL_MENUS.get(melee.hand_tool, "")):
+			"build":
+				var bb = get_tree().current_scene.get("base")
+				if bb: bb.toggle()
+			"car":
+				_work_on_car()
+		get_viewport().set_input_as_handled()
+		return
 	if e.is_action_pressed("torch") and not vehicle:
 		_torch_key()
 	if e.is_action_pressed("board") and not vehicle:
@@ -212,9 +230,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		_work_on_car()
 	if e.is_action_pressed("reload") and gun():
 		gun().start_reload()
-	# 0.2.68: straps: J (or Use one in the inventory), click the load, click where it ties off; right-click or J again
-	if e.is_action_pressed("strap"):
-		_strap_key()
+	# 0.2.68: straps: Use one in the inventory (0.2.74: no J key), click the load, click where it ties off; right-click
+	# puts it away
 	if strap_kind != "" and e is InputEventMouseButton and e.pressed:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			_strap_click()
@@ -223,7 +240,10 @@ func _unhandled_input(e: InputEvent) -> void:
 			strap_end("Strap put away.")
 			get_viewport().set_input_as_handled()
 	if e.is_action_pressed("holster"):
-		holstered = not holstered
+		if melee.hand_tool != "" and holstered:
+			melee.hand_tool = ""             # 0.2.74: H with a tool in hand pockets it (and the gun comes back next time)
+		else:
+			holstered = not holstered
 	if e.is_action_pressed("weapon_next"): _select(gun_i + 1)
 	if e.is_action_pressed("weapon_prev"): _select(gun_i - 1)
 	for i in 2:
@@ -441,6 +461,7 @@ func _look_target() -> Node:
 			return null
 		if n is RigidBody3D and n.get_meta("carryable", false) and not InventoryUI.is_container(n): return n
 		if n is BasePiece and (n as BasePiece).kind != "crate": return null
+		if n is Animal: return n if (n as Animal).dead and not (n as Animal).butchered else null      # 0.2.74: a carcass
 		if n is BuildLift: return n
 		if n is Boards or n is BuildDoor or n is BuildWindow or n is BuildRoller or InventoryUI.is_container(n) or (n.is_in_group("pickups") and n.has_meta("items")): return n
 		n = n.get_parent()
@@ -464,6 +485,9 @@ func _update_interact() -> void:
 			return
 		if t is BuildLift:
 			interact_hint = (t as BuildLift).hint()
+			return
+		if t is Animal:
+			interact_hint = (t as Animal).hint()
 			return
 		if t is BuildDoor or t is BuildWindow or t is BuildRoller or t is Boards:
 			interact_hint = t.hint()
@@ -497,6 +521,9 @@ func _interact() -> void:
 			return
 		if t is BuildLift:
 			(t as BuildLift).use(self)
+			return
+		if t is Animal:
+			(t as Animal).butcher(self)
 			return
 		if t is Boards:
 			if inv.count("hammer") < 1:

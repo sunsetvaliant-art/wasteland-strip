@@ -11,6 +11,7 @@ var home: Car = null             # the car it came out of: no collision with it 
 var kit: Dictionary = {}
 var _clear := false
 var _home_y := 0.0               # its height in the car's frame as it sat on its mounts
+var _seat_off := 0.0             # that, against where Car says an engine sits (so it sits the same in another car)
 
 func setup(car: Car, kit_d: Dictionary) -> void:
 	home = car
@@ -26,6 +27,7 @@ func setup(car: Car, kit_d: Dictionary) -> void:
 		add_collision_exception_with(home)
 		home.add_collision_exception_with(self)
 		_home_y = home.to_local(global_position).y
+		_seat_off = _home_y - home.engine_home().y
 
 ## Something's pulling: off its mounts
 func wake() -> void:
@@ -33,27 +35,79 @@ func wake() -> void:
 	freeze = false
 	sleeping = false
 
+## 0.2.74: an engine going back in. Coming down from above it caught on the car's body collision (only from under did
+## it get in), so any car with an open, empty bay (bonnet off or no cab, no engine in it) lets it through while it's
+## over that bay, and the mounts catch it at the height an engine sits, ready to bolt in.
+var bay: Car = null              # the car whose bay it's in (or over) right now; no collision with that car
+var _scan := 0
+
+func _bay_open(c: Car) -> bool:
+	if c == home and not _clear: return true
+	if str(c.design.get("kit", {}).get("block", "")) != "": return false
+	return bool(c.design.get("no_cab", false)) or (c.bonnet_pivot != null and bool(c.design.get("bonnet_off", false)))
+
+func _over_bay(c: Car) -> bool:
+	if c.parts == null: return false
+	var l := c.to_local(global_position)
+	var h := c.engine_home()
+	var half := float(c.def.ext[2]) * 0.5
+	var top := float(c.def.min[1]) + float(c.def.ext[1]) + float(c.design.cab_offset[1])
+	if c == home and not _clear:
+		return true
+	return absf(l.x) < half + 0.1 and absf(l.z - h.z) < 1.2 and l.y > h.y - 0.8 and l.y < top + 1.8
+
+func _seat_y(c: Car) -> float:
+	return _home_y if c == home else c.engine_home().y + _seat_off
+
+func _set_bay(c: Car) -> void:
+	if c == bay: return
+	if bay and is_instance_valid(bay):
+		remove_collision_exception_with(bay)
+		bay.remove_collision_exception_with(self)
+	bay = c
+	if bay:
+		add_collision_exception_with(bay)
+		bay.add_collision_exception_with(self)
+
 func _physics_process(_dt: float) -> void:
-	if _clear or home == null: return
-	if not is_instance_valid(home):
+	if home and not is_instance_valid(home):
+		home = null
 		_clear = true
-		return
-	var l := home.to_local(global_position)
-	# clear of the bay: up over the body, or well off to one side or out the front
-	var top := float(home.def.min[1]) + float(home.def.ext[1]) + float(home.design.cab_offset[1])
-	var half := float(home.def.ext[2]) * 0.5
-	var out_front: bool = l.z > float(home.def.min[0]) + float(home.def.ext[0]) + float(home.design.cab_offset[2]) + 0.4
-	if l.y > top - 0.1 or absf(l.x) > half + 0.4 or out_front:
-		remove_collision_exception_with(home)
-		home.remove_collision_exception_with(self)
-		_clear = true
-		return
+	if home and not _clear:
+		var l := home.to_local(global_position)
+		# clear of the bay: up over the body, or well off to one side or out the front
+		var top := float(home.def.min[1]) + float(home.def.ext[1]) + float(home.design.cab_offset[1])
+		var half := float(home.def.ext[2]) * 0.5
+		var out_front: bool = l.z > float(home.def.min[0]) + float(home.def.ext[0]) + float(home.design.cab_offset[2]) + 0.4
+		if l.y > top - 0.1 or absf(l.x) > half + 0.4 or out_front:
+			remove_collision_exception_with(home)
+			home.remove_collision_exception_with(self)
+			_clear = true
+			bay = null
+		else:
+			bay = home
 	if freeze: return
-	# the mounts and crossmember under it: it can't sink below where it sat while it's over the chassis
-	if absf(l.x) < half and l.y < _home_y + 0.02:
-		var up := home.global_basis.y
-		var v_rel := linear_velocity - home.linear_velocity
-		var dy := _home_y - l.y
+	_scan -= 1
+	if _scan <= 0 and (_clear or home == null):
+		_scan = 6
+		var found: Car = null
+		for n in get_tree().get_nodes_in_group("vehicles"):
+			var c := n as Car
+			if c == null or not is_instance_valid(c): continue
+			if c.global_position.distance_squared_to(global_position) > 64.0: continue
+			if _bay_open(c) and _over_bay(c):
+				found = c
+				break
+		_set_bay(found)
+	if bay == null or not is_instance_valid(bay): return
+	# the mounts and crossmember under it: it can't sink below where it sits while it's over the chassis
+	var lb := bay.to_local(global_position)
+	var halfb := float(bay.def.ext[2]) * 0.5
+	var sy := _seat_y(bay)
+	if absf(lb.x) < halfb and lb.y < sy + 0.02:
+		var up := bay.global_basis.y
+		var v_rel := linear_velocity - bay.linear_velocity
+		var dy := sy - lb.y
 		var f := mass * (9.81 + 600.0 * maxf(dy, 0.0)) - mass * 40.0 * v_rel.dot(up)
 		apply_central_force(up * maxf(f, 0.0))
 		# scraping across the mounts: it drags rather than skates

@@ -1,10 +1,12 @@
 class_name Forge
 extends Node3D
-## Forge mode (O): fly as the Oracle and build the world.
+## Forge mode (Z, was O): fly as the Oracle and build the world.
+##   hold X     the spawn menu, GMod's Q menu: up while X is held, click a thing and it spawns where you're aiming
 ##   Tab        palette (vehicles, props, plants, NPCs and spawns)       1 Place   2 Phys gun   3 Delete   4 Terrain
 ##   WASD fly · Space up · Ctrl down · Shift fast · - / = speed           F inspect what you're looking at · P drop the player here
 ##   Place:    LMB place · wheel or R rotate · G toggle snap-to-ground
-##   Phys gun: hold LMB to grab · wheel pull / push · hold E + mouse rotate · RMB freeze where it is · R unfreeze what you aim at
+##   Phys gun: hold LMB to grab (it turns with you, like GMod) · wheel pull / push · hold E + mouse rotate (Shift snaps 45°)
+##             · RMB freeze where it is · R unfreeze what you aim at
 ##   Terrain:  LMB raise · RMB lower · Shift+LMB smooth · Ctrl+LMB flatten · wheel brush size · [ ] strength
 ##   Ctrl+S save layout (and terrain) · Ctrl+Z undo · Esc closes the palette, then the pause menu
 
@@ -19,6 +21,7 @@ const TOOLS := ["Place", "Phys gun", "Delete", "Terrain"]
 var main
 var active := false
 var palette_open := false
+var hold_menu := false        # the palette is up because X is held: clicking spawns, letting go closes it
 var cam: Camera3D
 var yaw := 0.0
 var pitch := 0.0
@@ -35,6 +38,7 @@ var held: Node3D = null
 var held_dist := 5.0
 var held_local := Vector3.ZERO
 var held_rot := false
+var held_rel := Basis()       # 0.2.74: the held thing's turn relative to which way you face (GMod: it turns with you)
 var beam: MeshInstance3D
 var beam_mesh: ImmediateMesh
 # terrain
@@ -117,7 +121,16 @@ func _unhandled_input(e: InputEvent) -> void:
 	if not active or get_tree().paused:
 		return
 	if e.is_action_pressed("forge_menu"):
+		hold_menu = false
 		_set_palette(not palette_open)
+		get_viewport().set_input_as_handled()
+		return
+	# 0.2.74: GMod's Q menu: up while X is held, gone when it's let go (watched in _process, the buttons eat key-ups)
+	if e is InputEventKey and e.pressed and not e.echo and e.is_action("spawn_menu") and not inspector.visible:
+		if not palette_open:
+			hold_menu = true
+			_release()
+			_set_palette(true)
 		get_viewport().set_input_as_handled()
 		return
 	if e.is_action_pressed("menu") and (palette_open or inspector.visible):
@@ -131,12 +144,13 @@ func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var sens: float = 0.0022 * float(Settings.get_v("motion_sensitivity"))
 		if held and held_rot:
-			# rotate the held object around the camera's up and right axes (GMod's E + mouse)
-			var b := held.global_transform.basis
-			b = b.rotated(cam.global_transform.basis.y, e.relative.x * 0.01)
-			b = b.rotated(cam.global_transform.basis.x, e.relative.y * 0.01)
-			held.global_transform.basis = b.orthonormalized()
-			if held is RigidBody3D: (held as RigidBody3D).angular_velocity = Vector3.ZERO
+			# GMod's E + mouse: left / right turns it about straight up, up / down tips it towards / away from you.
+			# It's the target turn that moves; the body's driven to it in _physics_process
+			var yb := Basis(Vector3.UP, yaw)
+			var b := yb * held_rel
+			b = b.rotated(Vector3.UP, e.relative.x * 0.006)
+			b = b.rotated(yb.x, e.relative.y * 0.006)
+			held_rel = (yb.inverse() * b).orthonormalized()
 		else:
 			yaw -= e.relative.x * sens
 			pitch = clamp(pitch - e.relative.y * sens, -1.5, 1.5)
@@ -179,6 +193,9 @@ func _unhandled_input(e: InputEvent) -> void:
 
 # ---------------------------------------------------------------- per frame
 func _process(dt: float) -> void:
+	if hold_menu and active and not Input.is_physical_key_pressed(KEY_X):
+		hold_menu = false
+		if palette_open: _set_palette(false)
 	if palette_open and map_rect and map_rect.is_visible_in_tree(): _map_dot_update()
 	if not active:
 		return
@@ -207,7 +224,7 @@ func _process(dt: float) -> void:
 		0: tool_txt += "  ·  " + (selected.get("name", "pick something with Tab")) + ("  ·  snap" if snap_ground else "")
 		1: tool_txt += ("  ·  holding %s %.0f m" % [_label(held), held_dist]) if held else ""
 		3: tool_txt += "  ·  brush %.0f m  ·  strength %.1f" % [brush, strength]
-	hud.text = "FORGE  ·  %s  ·  fly %d m/s%s\n1 Place  2 Phys gun  3 Delete  4 Terrain  ·  Tab palette  ·  F inspect  ·  P drop player  ·  Ctrl+S save  ·  Ctrl+Z undo  ·  O back to human" % [tool_txt, speed, aim_txt]
+	hud.text = "FORGE  ·  %s  ·  fly %d m/s%s\nhold X spawn menu  ·  1 Place  2 Phys gun  3 Delete  4 Terrain  ·  Tab palette  ·  F inspect  ·  P drop player  ·  Ctrl+S save  ·  Ctrl+Z undo  ·  Z back to human" % [tool_txt, speed, aim_txt]
 
 func _physics_process(_dt: float) -> void:
 	if not active or held == null:
@@ -216,14 +233,27 @@ func _physics_process(_dt: float) -> void:
 		held = null
 		return
 	var target := cam.global_position + -cam.global_transform.basis.z * held_dist
-	var grab_world := held.global_transform * held_local
+	# 0.2.74: the turn it should have: what it had when grabbed (or E + mouse made it), carried round as you turn.
+	# Shift while turning snaps it to 45° steps, like GMod
+	var want := (Basis(Vector3.UP, yaw) * held_rel).orthonormalized()
+	if held_rot and Input.is_key_pressed(KEY_SHIFT):
+		var eu := want.get_euler()
+		var st := PI / 4.0
+		want = Basis.from_euler(Vector3(roundf(eu.x / st) * st, roundf(eu.y / st) * st, roundf(eu.z / st) * st))
 	if held is RigidBody3D:
 		var rb := held as RigidBody3D
+		var cur := rb.global_transform.basis.orthonormalized()
+		var q := Quaternion(want) * Quaternion(cur).inverse()
+		if q.w < 0.0: q = -q
+		var ang := q.get_angle()
+		var axis := q.get_axis() if ang > 0.0001 else Vector3.UP
+		rb.angular_velocity = axis * ang * 12.0
+		# the grab point follows the crosshair (the grab point is where the beam was when it was picked up)
+		var grab_world := rb.global_transform * held_local
 		rb.linear_velocity = (target - grab_world) * 14.0
-		rb.angular_velocity *= 0.85
-		if held_rot: rb.angular_velocity = Vector3.ZERO
 	else:
-		held.global_position += target - grab_world
+		held.global_transform.basis = want
+		held.global_position += target - held.global_transform * held_local
 
 # ---------------------------------------------------------------- aiming
 func _ray(from: Vector3, dir: Vector3, length: float, exclude: Array = []) -> Dictionary:
@@ -526,6 +556,7 @@ func _grab() -> void:
 	held = o
 	held_dist = cam.global_position.distance_to(r.position)
 	held_local = held.global_transform.affine_inverse() * r.position
+	held_rel = (Basis(Vector3.UP, yaw).inverse() * held.global_transform.basis.orthonormalized()).orthonormalized()
 	undo.append({"op": "move", "node": held, "xf": held.global_transform, "frozen": held is RigidBody3D and (held as RigidBody3D).freeze and not held.get_meta("lod_parked", false)})
 	if held is RigidBody3D:
 		(held as RigidBody3D).freeze = false
@@ -786,6 +817,20 @@ func load_layout() -> void:
 		spawn(entry, xf, e.get("frozen", false))
 
 # ---------------------------------------------------------------- ui
+## A palette button. Held open on X: spawn it there and then where the crosshair is (GMod), stay open for more.
+## Opened with Tab: pick it up for the Place tool as before.
+func _pick(it: Dictionary) -> void:
+	selected = it
+	place_yaw = 0.0
+	if hold_menu:
+		var n := spawn(it, _place_xform())
+		if n:
+			undo.append({"op": "add", "node": n})
+			_toast("Spawned " + str(it.get("name", "")))
+		return
+	_set_tool(0)
+	_set_palette(false)
+
 func _set_tool(t: int) -> void:
 	tool = t
 	_release()
@@ -1087,11 +1132,7 @@ func _palette_page(tabs: TabContainer, title: String, items: Array) -> void:
 		b.text = it.name
 		b.custom_minimum_size = Vector2(260, 40)
 		b.clip_text = true
-		b.pressed.connect(func():
-			selected = it
-			place_yaw = 0.0
-			_set_tool(0)
-			_set_palette(false))
+		b.pressed.connect(func(): _pick(it))
 		g.add_child(b)
 	tabs.add_child(sc)
 
@@ -1147,11 +1188,7 @@ func _parts_section(vb: VBoxContainer, title: String, items: Array) -> void:
 		b.text = it.name
 		b.custom_minimum_size = Vector2(260, 40)
 		b.clip_text = true
-		b.pressed.connect(func():
-			selected = it
-			place_yaw = 0.0
-			_set_tool(0)
-			_set_palette(false))
+		b.pressed.connect(func(): _pick(it))
 		g.add_child(b)
 
 ## Engines and their parts (0.2.59): every part of the modular kit, in categories that open and close
@@ -1207,11 +1244,7 @@ func _engine_page(tabs: TabContainer) -> void:
 			b.clip_text = true
 			b.set_meta("kit", it.key)
 			b.add_theme_constant_override("icon_max_width", 48)
-			b.pressed.connect(func():
-				selected = it
-				place_yaw = 0.0
-				_set_tool(0)
-				_set_palette(false))
+			b.pressed.connect(func(): _pick(it))
 			g.add_child(b)
 	tabs.add_child(sc)
 

@@ -423,9 +423,13 @@ func _context(s: Dictionary, r: Dictionary) -> void:
 	if d.kind in ["med", "food"] and r.side != "near":
 		if inv.use(s, r.grid): flash("Using %s…" % d.name)
 		return
-	if d.kind == "strap" and r.side != "near":       # 0.2.68: lay out a strap
+	if d.kind == "strap" and r.side != "near":       # 0.2.68: lay out a strap (0.2.74: the only way, J's gone)
 		toggle(null)
 		inv.player.strap_start(str(s.id))
+		return
+	if Melee.TOOL_MENUS.has(str(s.id)) and Melee.WEAPONS.has(str(s.id)) and r.side != "near":   # 0.2.74: take a tool in hand
+		toggle(null)
+		inv.player.hold_tool(str(s.id))
 		return
 	if d.has("slot"):
 		var slot: String = d.slot
@@ -561,7 +565,7 @@ func _draw_item(s: Dictionary, rect: Rect2, alpha: float, ok: bool, fit := false
 		if rr.size.x < C * 1.5 and nm.length() > 7: nm = nm.substr(0, 6) + "…"
 		_text(rr.position + Vector2(3, fs + 1), nm, fs, Color(1, 1, 1, 0.9 * alpha))
 	if d.kind == "ammo":
-		_text(rr.position + Vector2(2, 10), {"ammo_303": ".303", "ammo_762": "7.62", "ammo_357": ".357", "ammo_45": ".45", "ammo_12g": "12g"}.get(s.id, ""), 10, Color(1, 1, 1, 0.95 * alpha))
+		_text(rr.position + Vector2(2, 10), {"ammo_303": ".303", "ammo_762": "7.62", "ammo_357": ".357", "ammo_45": ".45", "ammo_12g": "12g", "ammo_22": ".22", "ammo_9mm": "9mm", "ammo_44": ".44", "ammo_762x39": "x39"}.get(s.id, ""), 10, Color(1, 1, 1, 0.95 * alpha))
 	if s.n > 1:
 		_text(rr.end - Vector2(4, 4), "%d" % s.n, 13, Color(1, 0.92, 0.6, alpha), true)
 	if d.kind == "gun" and not d.has("tool"):

@@ -6,7 +6,7 @@ extends RefCounted
 static func emit(tree: SceneTree, pos: Vector3, radius: float, kind: String, source: Node = null) -> void:
 	if tree == null or radius <= 0.0:
 		return
-	for n in tree.get_nodes_in_group("npcs"):
+	for n in tree.get_nodes_in_group("npcs") + tree.get_nodes_in_group("animals"):     # 0.2.74: the wildlife hears it too
 		if n == source or not is_instance_valid(n):
 			continue
 		var d: float = (n as Node3D).global_position.distance_to(pos)

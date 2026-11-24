@@ -16,6 +16,7 @@ uniform float foam_max = 0.35;       // foam where the water's shallower than th
 uniform sampler2D ripple_tex : hint_normal, filter_linear_mipmap, repeat_enable;
 uniform sampler2D foam_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform float ripple_strength = 0.55;
+uniform float flow = 1.0;            // 0.2.74: how fast the ripples drift (rivers lie still: small)
 vec2 rot(vec2 p, float a) { float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
 vec3 ripple(vec2 q, float t) {
 	q = mod(q, 4096.0);                      // keep the numbers small: the texture tiles anyway
@@ -37,7 +38,7 @@ void fragment() {
 		vec4 b = dry[k];
 		if (wpos.x > b.x && wpos.x < b.z && wpos.z > b.y && wpos.z < b.w) discard;
 	}
-	float t = TIME;
+	float t = TIME * flow;
 	vec2 q = wpos.xz;
 	vec3 n = ripple(q, t);
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);

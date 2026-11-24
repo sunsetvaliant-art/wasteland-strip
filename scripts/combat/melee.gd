@@ -16,7 +16,17 @@ const WEAPONS := {
 	"machete": {"name": "Machete", "dmg": 72.0, "reach": 1.9, "time": 0.55, "stam": 10.0, "force": 4.0, "blunt": false, "wide": 2},
 	"hatchet": {"name": "Axe", "dmg": 80.0, "reach": 1.9, "time": 0.8, "stam": 15.0, "force": 7.0, "blunt": false, "wide": 1},
 	"sledge": {"name": "Sledgehammer", "dmg": 130.0, "reach": 2.2, "time": 1.25, "stam": 26.0, "force": 16.0, "blunt": true, "wide": 2},
+	# 0.2.74: hand tools you take in hand from the inventory (right-click > Hold). They swing like anything else, and
+	# right-click opens the tool's own menu (TOOL_MENUS). Never picked on their own: only when you're holding one.
+	"hammer": {"name": "Hammer", "dmg": 30.0, "reach": 1.6, "time": 0.5, "stam": 8.0, "force": 4.0, "blunt": true, "wide": 1, "tool": true},
+	"wrench": {"name": "Shifter", "dmg": 22.0, "reach": 1.5, "time": 0.5, "stam": 7.0, "force": 3.0, "blunt": true, "wide": 1, "tool": true},
+	"spanner": {"name": "Ring spanner", "dmg": 18.0, "reach": 1.5, "time": 0.45, "stam": 6.0, "force": 3.0, "blunt": true, "wide": 1, "tool": true},
+	"ratchet": {"name": "Socket ratchet", "dmg": 18.0, "reach": 1.5, "time": 0.45, "stam": 6.0, "force": 3.0, "blunt": true, "wide": 1, "tool": true},
 }
+## What right-click does with a hand tool held: "build" = the building menu (M), "car" = work on the car you face (K)
+const TOOL_MENUS := {"hammer": "build", "wrench": "car", "spanner": "car", "ratchet": "car", "pipe_wrench": "car", "tyre_iron": "car"}
+## the tool in your hand (set from the inventory); "" = whatever's best to hit with
+var hand_tool := ""
 # The body's part in it: Mixamo clips (assets/characters/mx_clips.res). [clip, when in the clip the blow lands (s),
 # how much of the wind-up before that is played (s of clip)]; the clip's speed is set so the blow lands when the
 # weapon's own timing says it does (38% through its swing time), then it follows through and blends back out.
@@ -27,6 +37,7 @@ const SWINGS := {
 	"two": [["mx_two_power", 0.75, 0.5], ["mx_two_down", 0.7, 0.45]],
 }
 const SWING_CLASS := {"fists": "fists", "knife": "knife", "tyre_iron": "one", "pipe_wrench": "one", "crowbar": "one", "machete": "one",
+	"hammer": "one", "wrench": "one", "spanner": "one", "ratchet": "one",
 	"hatchet": "two", "bat": "two", "sledge": "two"}
 const KICK_CLIP := ["mx_kick", 1.0, 0.36]             # the boot's furthest out a second in
 const FLYKICK_CLIP := ["mx_flying_kick", 0.5, 0.3]
@@ -106,9 +117,12 @@ func can_sprint() -> bool:
 
 ## The best thing to hit with that you're carrying
 func _pick() -> String:
+	if hand_tool != "":
+		if player.inv.count(hand_tool) > 0 and WEAPONS.has(hand_tool): return hand_tool
+		hand_tool = ""
 	var best := "fists"
 	for id in WEAPONS:
-		if id != "fists" and player.inv.count(id) > 0 and float(WEAPONS[id].dmg) > float(WEAPONS[best].dmg):
+		if id != "fists" and not WEAPONS[id].get("tool", false) and player.inv.count(id) > 0 and float(WEAPONS[id].dmg) > float(WEAPONS[best].dmg):
 			best = id
 	return best
 
@@ -190,7 +204,7 @@ func _targets(reach: float, cone: float) -> Array:
 	var eye: Vector3 = player.global_position + Vector3(0, 1.4, 0)
 	var dir := _aim()
 	var flat := Vector3(dir.x, 0, dir.z).normalized()
-	for n in get_tree().get_nodes_in_group("npcs"):
+	for n in get_tree().get_nodes_in_group("npcs") + get_tree().get_nodes_in_group("animals"):
 		if not is_instance_valid(n) or n.dead: continue
 		var to: Vector3 = n.global_position - player.global_position
 		var d := Vector3(to.x, 0, to.z).length()
@@ -429,7 +443,7 @@ func grabbed(by) -> void:
 const MODELS := {"machete": "res://assets/ph/weapons/machete/machete.gltf", "crowbar": "res://assets/ph/weapons/crowbar_01/crowbar_01.gltf",
 	"sledge": "res://assets/ph/weapons/sledgehammer_01/sledgehammer_01.gltf", "hatchet": "res://assets/ph/weapons/wooden_axe/wooden_axe.gltf",
 	"pipe_wrench": "res://assets/ph/tools/pipe_wrench/pipe_wrench.gltf"}
-const LEN := {"knife": 0.3, "tyre_iron": 0.5, "pipe_wrench": 0.45, "bat": 0.85, "crowbar": 0.7, "machete": 0.6, "hatchet": 0.7, "sledge": 0.95}
+const LEN := {"hammer": 0.33, "wrench": 0.26, "spanner": 0.22, "ratchet": 0.26, "knife": 0.3, "tyre_iron": 0.5, "pipe_wrench": 0.45, "bat": 0.85, "crowbar": 0.7, "machete": 0.6, "hatchet": 0.7, "sledge": 0.95}
 
 func _show_weapon() -> void:
 	var want: String = weapon if (not player.armed() and player.carried == null and player.vehicle == null and not player.dead and weapon != "fists") else ""
@@ -475,8 +489,9 @@ func _show_weapon() -> void:
 static func _model(id: String) -> Node3D:
 	var root := Node3D.new()
 	var L: float = LEN.get(id, 0.5)
-	if MODELS.has(id) and ResourceLoader.exists(MODELS[id]):
-		var raw: Node3D = (load(MODELS[id]) as PackedScene).instantiate()
+	var mp: String = MODELS.get(id, str(Items.def(id).get("model", "")))
+	if mp != "" and ResourceLoader.exists(mp):
+		var raw: Node3D = (load(mp) as PackedScene).instantiate()
 		var bb := WorldItem._aabb(raw)
 		var longest := maxf(bb.size.x, maxf(bb.size.y, bb.size.z))
 		var k := L / maxf(longest, 0.01)

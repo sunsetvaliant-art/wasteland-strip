@@ -403,6 +403,12 @@ func _axle_page(ai: int) -> void:
 	_slider("Position (m from centre, + = forward)", -6.0, 4.0, 0.01, a.z, func(v): a.z = v; _changed())
 	_choice("Suspension", ["Independent (wishbones)", "Live axle"], 0 if a.type == "ifs" else 1, func(i): a.type = "ifs" if i == 0 else "live"; _changed())
 	_choice("Springs", ["Coils", "Leaf packs"], 0 if a.spring == "coil" else 1, func(i): a.spring = "coil" if i == 0 else "leaf"; _changed())
+	# 0.2.74: what locates a coil-sprung live axle (leaf packs do it themselves)
+	if a.type == "live" and a.spring == "coil":
+		var lk := ["4link", "3link", "radius"]
+		var cur := lk.find(str(a.get("links", "")))
+		if cur < 0: cur = 2 if a.get("steer", false) else 0
+		_choice("Links", ["Triangulated 4-link", "3-link + panhard", "Radius arms + panhard"], cur, func(i): a["links"] = lk[i]; _changed())
 	_slider("Spring rate (ride frequency, Hz)", 0.8, 2.6, 0.01, a.freq, func(v): _ax(a, "freq", v))
 	_slider("Wheel travel (m)", 0.08, 0.5, 0.01, a.travel, func(v): _ax(a, "travel", v))
 	_slider("Ride height (lift, m: + raises the body)", -0.15, 0.35, 0.01, float(a.get("lift", 0.0)), func(v): _ax(a, "lift", v))

@@ -217,6 +217,25 @@ func depth_at(p: Vector3) -> float:
 	if c.x < 0 or c.y < 0 or c.x >= nx or c.y >= nz: return 0.0
 	return maxf(depth[c.y * nx + c.x], 0.0)
 
+## 0.2.74: the same give on plain terrain (cane ground, river mud, beach sand), with no ruts kept: where a tyre settles
+## (from its pressure and load), deeper while it spins on the spot, climbing back out over half a metre of rolling.
+## `now` is how deep it sits; returns the new depth.
+static func settle(k: String, now: float, N: float, psi: float, slip: float, roll: float, dt: float) -> float:
+	var t: Dictionary = TYPES[k]
+	var p_kpa := psi * 6.895 + 30.0
+	var load := pow(clampf(N / 3000.0, 0.2, 4.0), 0.3)
+	var eq := minf((float(t.base) + float(t.eq) * maxf(p_kpa - float(t.p0), 0.0)) * load, float(t.max))
+	var d := maxf(now, eq)
+	d += float(t.dig) * absf(slip) * dt * clampf(N / 3000.0, 0.3, 2.0)
+	d -= (d - eq) * minf(1.0, absf(roll) * dt / 0.5)
+	return clampf(d, 0.0, float(t.max) + 0.05)
+
+static func surface_of(k: String, tread: float, sink: float, r: float) -> Array:
+	var t: Dictionary = TYPES[k]
+	var mu := lerpf(float(t.mu[0]), float(t.mu[1]), clampf(tread, 0.0, 1.0))
+	var crr := float(t.crr) + float(t.bull) * sink / maxf(r, 0.2)
+	return [mu, float(t.slide), crr, "mud" if k == "mud" else "sand"]
+
 ## The grip, slide and rolling drag this ground gives a tyre ([mu, slide, crr, kind])
 func surface(tread: float, sink: float, r: float) -> Array:
 	var t: Dictionary = TYPES[kind]

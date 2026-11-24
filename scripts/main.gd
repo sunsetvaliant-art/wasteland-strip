@@ -3,13 +3,16 @@ extends Node3D
 ## Riverview pub with a VJ wagon parked out front.
 
 const PUB := Vector3(4.4, 0, 3.3)
-const GROUND := ["pasture", "forest_floor", "cane_trash", "farm_soil", "sand", "mossy_rock", "concrete", "river_mud", "rough_grass"]
+## 0.2.74: slot 2 is still the ground under the cane, but now it's mud with the trash lying on it (cane_mud); 9 is the
+## wet sand the swash reaches, 10 wet mud (river beds and wallows). Car reads 2, 7 and 10 as mud, 4 as soft sand and
+## 9 as firm wet sand (SoftGround's kinds, without the ruts).
+const GROUND := ["pasture", "forest_floor", "cane_mud", "farm_soil", "sand", "mossy_rock", "concrete", "river_mud", "rough_grass", "wet_sand", "wet_mud"]
 # Poly Haven PBR scans (CC0) and the BlendKit "Grass 01" lawn (slot 0), tinted only a touch towards the Tweed's colours
 # (2026-11-13: the open country read as dry gold; this is the wet subtropics, so the rough grass and the litter under
 # the trees are pulled green and the lawn lifted)
-const TINT := [Color(0.95, 1.0, 0.9), Color(0.5, 0.6, 0.42), Color(0.95, 1.0, 0.9), Color(1, 1, 1), Color(1.05, 1.02, 0.95), Color(0.9, 1.0, 0.9), Color(1, 1, 1), Color(0.95, 0.95, 0.9), Color(0.66, 0.84, 0.5)]
+const TINT := [Color(0.95, 1.0, 0.9), Color(0.5, 0.6, 0.42), Color(1.1, 1.05, 1.0), Color(1, 1, 1), Color(1.05, 1.02, 0.95), Color(0.9, 1.0, 0.9), Color(1, 1, 1), Color(0.95, 0.95, 0.9), Color(0.66, 0.84, 0.5), Color(1, 1, 1), Color(1.15, 1.1, 1.05)]
 # texture repeats per metre = 1 / the scan's real size (sizes: lawn 1 m, 2 m, 2 m, 3 m, 1.5 m, 3 m, 3 m, 1.3 m, 2.5 m)
-const UV_SCALE := [0.55, 0.5, 0.5, 0.333, 0.667, 0.333, 0.333, 0.77, 0.4]
+const UV_SCALE := [0.55, 0.5, 0.5, 0.333, 0.667, 0.333, 0.333, 0.77, 0.4, 0.667, 0.333]
 
 var terrain: Terrain3D
 var player: Player
@@ -19,6 +22,8 @@ var water_mat: ShaderMaterial
 var sea_mat: ShaderMaterial
 var hud: Label
 var veg: Vegetation
+var animals: AnimalDirector
+var roadside: Roadside
 var roads: Roads
 var show_debug := false
 var env: Environment
@@ -194,6 +199,14 @@ func _ready() -> void:
 	zombies.name = "ZombieDirector"
 	add_child(zombies)
 	zombies.setup(self)
+	animals = AnimalDirector.new()          # 0.2.74: wildlife to hunt
+	animals.name = "AnimalDirector"
+	add_child(animals)
+	animals.setup(self)
+	roadside = Roadside.new()               # 0.2.74: guide posts, letterboxes, wheelie bins
+	roadside.name = "Roadside"
+	add_child(roadside)
+	roadside.setup(self)
 	saves = SaveGame.new()
 	saves.name = "SaveGame"
 	add_child(saves)
@@ -516,6 +529,14 @@ func _build_water() -> void:
 	ft.seamless = true
 	ft.noise = fn2
 	water_mat.set_shader_parameter("foam_tex", ft)
+	# 0.2.74: the rivers and creeks lie still: the ripples barely drift and are faint, the water's the brown-green of a
+	# muddy bed under a metre of it
+	water_mat.set_shader_parameter("flow", 0.12)
+	water_mat.set_shader_parameter("ripple_strength", 0.22)
+	water_mat.set_shader_parameter("shallow", Color(0.36, 0.33, 0.22))
+	water_mat.set_shader_parameter("deep", Color(0.05, 0.08, 0.06))
+	water_mat.set_shader_parameter("clarity", 1.1)
+	water_mat.set_shader_parameter("foam_max", 0.12)
 	for f in DirAccess.get_files_at("res://assets/water"):
 		var fn := f.trim_suffix(".import").trim_suffix(".remap")
 		if not fn.ends_with(".glb") or (f != fn and FileAccess.file_exists("res://assets/water/" + fn)):
@@ -535,10 +556,16 @@ func _build_water() -> void:
 	pm.subdivide_width = 64
 	pm.subdivide_depth = 64
 	sea.mesh = pm
-	# the height map has the sea bed dead flat at 0 m: the sheet sits just over it and is shaded as deep water
-	sea_mat = water_mat.duplicate()
-	sea_mat.set_shader_parameter("base_depth", 5.0)
-	sea_mat.set_shader_parameter("foam_max", 0.07)
+	# 0.2.74: its own shader: clear turquoise shallows to deep blue by how far out it is (assets/world/sea_dist.png),
+	# swell lines running in, the waterline lapping up and back the beach, foam at the edge
+	sea_mat = ShaderMaterial.new()
+	sea_mat.shader = load("res://shaders/sea.gdshader")
+	sea_mat.set_shader_parameter("ripple_tex", rt)
+	sea_mat.set_shader_parameter("foam_tex", ft)
+	if ResourceLoader.exists("res://assets/world/sea_dist.png"):
+		var sd: Texture2D = load("res://assets/world/sea_dist.png")
+		sea_mat.set_shader_parameter("dist_tex", sd)
+		sea_mat.set_shader_parameter("dist_rect", Vector4(12000.0, -20480.0, sd.get_width() * 10.0, sd.get_height() * 10.0))
 	sea.material_override = sea_mat
 	sea.position = Vector3(7040, 0.1, -960)
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -562,7 +589,7 @@ func _build_hud() -> void:
 	cl.add_child(combat_hud)
 	combat_hud.setup(self)
 	var hint := Label.new()
-	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · O Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · wheel switch · H gun away / out   Hand to hand (gun away): LMB swing · Q kick · X throw · Alt dodge\nI inventory · N make · M build · K under the bonnet · F pick up / open · B bandage · MMB carry · F9 bug report\nDriving: W gas (Shift+W floors it) · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
+	hint.text = "WASD move · mouse look · Shift sprint · Ctrl crouch · Space jump · V camera · F get in/out · Z Forge · Esc menu\nGuns: LMB fire · RMB aim · R reload · wheel switch · H gun away / out   Hand to hand (gun away): LMB swing · Q kick · X throw · Alt dodge\nI inventory (right-click a hammer or spanner: Hold it, then RMB opens its menu) · N make · M build · K under the bonnet · F pick up / open · B bandage · MMB carry · F9 bug report\nDriving: W gas (Shift+W floors it) · S brake · Space handbrake · Q / E gears · L lights · V cab view · [ ] seat height · F3 debug"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.position = Vector2(14, -90)

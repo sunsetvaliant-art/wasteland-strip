@@ -634,6 +634,7 @@ func _process_inner(dt: float) -> void:
 		_t = 0.5
 		_update_sets(me)
 		_update_boxes(me)
+		_update_occluders(_cam_pos(me))
 	# one piece of work a frame: the nearest full build that's wanted, else a cell's LOD
 	# 0.2.61: not while driving fast (a full build is 40-90 ms: one a frame was 4 fps down a main street at 120 km/h),
 	# and spaced out by what the last one cost, unless it's right next to you
@@ -755,6 +756,65 @@ func _update_sets(me: Vector3) -> void:
 			if lod[c]: (lod[c] as Node).queue_free()
 			lod.erase(c)
 			_dirty.erase(c)
+
+# ------------------------------------------------------------------ occlusion culling (0.2.74)
+## Each closed building within OCC_R gets a box occluder a little inside its walls (from the floor to under the eaves),
+## so the renderer skips what's behind it: the houses down a street, the town past the first row. Switched off when
+## the camera's close (inside it, or near enough to see in through a door or window).
+const OCC_R := 420.0
+const OCC_NEAR := 26.0
+const OCC_KINDS := {"qlder": [2.4, 2.2], "cottage": [0.6, 2.2], "brick": [0.35, 2.3], "two_storey": [0.35, 5.0], "warehouse": [0.15, 4.5],
+	"church": [0.4, 3.5], "hall": [0.4, 3.0], "flats": [0.35, 5.0]}
+var _occ := {}              # lot -> OccluderInstance3D
+
+func _cam_pos(me: Vector3) -> Vector3:
+	var c := get_viewport().get_camera_3d() if is_inside_tree() else null
+	return c.global_position if c else me
+
+func _update_occluders(cam: Vector3) -> void:
+	if not get_viewport().use_occlusion_culling:
+		for i in _occ.keys():
+			(_occ[i] as Node).queue_free()
+		_occ.clear()
+		return
+	var mc := Vector2i(floori(cam.x / CELL), floori(cam.z / CELL))
+	var cr := int(ceil(OCC_R / CELL)) + 1
+	for gx in range(mc.x - cr, mc.x + cr + 1):
+		for gz in range(mc.y - cr, mc.y + cr + 1):
+			for i in cells.get(Vector2i(gx, gz), []):
+				if _occ.has(i) or not OCC_KINDS.has(str(lots[i][0])): continue
+				if _lot_dist(i, cam) < OCC_R: _occ[i] = _make_occ(i)
+	for i in _occ.keys():
+		var d := _lot_dist(i, cam)
+		var oi: OccluderInstance3D = _occ[i]
+		if d > OCC_R + 60.0:
+			oi.queue_free()
+			_occ.erase(i)
+			continue
+		# up close (or in it) it's off: the camera inside a box hides the whole world
+		oi.visible = d > OCC_NEAR and not (fast and d < 60.0)
+
+func _make_occ(i: int) -> OccluderInstance3D:
+	var l: Array = lots[i]
+	var k: Array = OCC_KINDS[str(l[0])]
+	var w := float(l[4]); var d := float(l[5])
+	var x := float(l[1]); var z := float(l[2])
+	var basis := Basis(Vector3.UP, float(l[3]))
+	# the floor: off the highest corner, as the house sits (a raised one: the walls start up on its stumps)
+	var top := -INF
+	for c in [Vector2(-0.5, -0.5), Vector2(0.5, -0.5), Vector2(-0.5, 0.5), Vector2(0.5, 0.5)]:
+		var wp := basis * Vector3(c.x * w, 0, c.y * d)
+		top = maxf(top, float(main.height_at(x + wp.x, z + wp.z)))
+	var fy: float = float(_floor[i]) if _floor.has(i) else top + float(k[0])
+	var h := float(k[1])
+	var bo := BoxOccluder3D.new()
+	bo.size = Vector3(maxf(w * 0.82 - 0.6, 1.0), h, maxf(d * 0.82 - 0.6, 1.0))     # well inside: verandahs and eaves aren't walls
+	var oi := OccluderInstance3D.new()
+	oi.occluder = bo
+	oi.name = "Occ%d" % i
+	add_child(oi)
+	oi.global_transform = Transform3D(basis, Vector3(x, fy + 0.15 + h * 0.5, z))
+	return oi
 
 ## Build everything within r of a point right now (loading a save inside a house)
 func build_near_now(pos: Vector3, r: float) -> void:

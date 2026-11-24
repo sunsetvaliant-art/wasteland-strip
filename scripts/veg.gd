@@ -167,6 +167,14 @@ func _load_scans() -> void:
 			for si in out.get_surface_count(): near_mats.append(out.surface_get_material(si))
 		root.free()
 
+## 0.2.74: how much this is a river bank: 1 on the grassy band 5-15 m from the water, 0.5 on the bare mud right at the
+## edge (weeds and the odd tussock), 0 elsewhere. Read off the ground textures river_fix laid down (river mud, 7).
+func _riverside(x: float, z: float) -> float:
+	if terrain == null or terrain.data == null: return 0.0
+	var t: Vector3 = terrain.data.get_texture_id(Vector3(x, 0.0, z))
+	if is_nan(t.x) or int(t.x) != 7: return 0.0
+	return 1.0 if int(t.y) == 8 else 0.5
+
 func sample(x: float, z: float) -> Color:
 	if z < Z0 and mask_n != null:
 		return _north(mask_n, x, z)
@@ -272,6 +280,10 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 					# the cane paddocks: stools in rows a pace and a half apart, standing three metres
 					if m2.g < 0.4: continue
 					x = x0 + (i + 0.5) * step + rng.randf_range(-0.12, 0.12)
+					# 0.2.74: never on the beach (the mask's 10 m pixels ran the paddocks over the dunes)
+					if terrain and terrain.data:
+						var tid: Vector3 = terrain.data.get_texture_id(Vector3(x, 0.0, z))
+						if not is_nan(tid.x) and int(tid.x) in [4, 9]: continue
 					kind = "_cane"
 					sc = rng.randf_range(0.82, 1.2)
 				"tree":
@@ -301,11 +313,16 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 				"grass":
 					# cards: pictures of the grass_medium_01 clumps, dense and cheap
 					var pg := (1.0 - m.r * 0.6) * (1.0 - m.g) * (1.0 - m.b) * 0.9
+					# 0.2.74: by the water (the river banks' mud, tools/river_fix.py) it grows thick and rank
+					var rs := _riverside(x, z)
+					if rs > 0.0: pg = maxf(pg, 0.55 + 0.45 * rs)
 					if rng.randf() > pg * density: continue
 					kind = "_card"
-					sc = rng.randf_range(0.7, 1.25) * (1.0 + m2.g * 0.7 + (1.0 - m2.r) * 0.35)
+					sc = rng.randf_range(0.7, 1.25) * (1.0 + m2.g * 0.7 + (1.0 - m2.r) * 0.35) * (1.0 + 0.8 * rs)
 				"scan":
 					var pg := (1.0 - m.r * 0.5) * (1.0 - m.g) * (1.0 - m.b * 0.8) * 0.9
+					var rs2 := _riverside(x, z)
+					if rs2 > 0.0: pg = maxf(pg, 0.6 + 0.4 * rs2)
 					if rng.randf() > pg * density: continue
 					var tot := 0.0
 					for e in scan_meshes: tot += e.w
@@ -318,10 +335,17 @@ func _build(layer: String, key: Vector2i, cs: float) -> Node3D:
 							break
 					kind = "_scan%d" % pick
 					# scale each clump to a real height: 25-70 cm, longer in the rank paddocks
+					if rs2 > 0.3 and rng.randf() < 0.45:
+						# riverside weeds: the weed plants, more of them and bigger
+						for si in scan_meshes.size():
+							if scan_meshes[si].weed and rng.randf() < 0.6:
+								pick = si
+								kind = "_scan%d" % pick
+								break
 					if scan_meshes[pick].weed:
-						sc = rng.randf_range(0.8, 1.3)
+						sc = rng.randf_range(0.8, 1.3) * (1.0 + 0.5 * rs2)
 					else:
-						var want := rng.randf_range(0.25, 0.5) * (1.0 + m2.g * 0.8 + (1.0 - m2.r) * 0.4)
+						var want := rng.randf_range(0.25, 0.5) * (1.0 + m2.g * 0.8 + (1.0 - m2.r) * 0.4) * (1.0 + 0.9 * rs2)
 						sc = want / max(float(scan_meshes[pick].h), 0.05)
 			if kind == "":
 				continue

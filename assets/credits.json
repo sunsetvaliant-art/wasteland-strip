@@ -292,5 +292,47 @@
   "author": "Mathieu.Godard",
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/forklift-gameready-31c9702da6a04f4eb534fe83cf135c13"
+ },
+ "animal_pig": {
+  "title": "Wild Boar",
+  "author": "emptypen2477",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/wild-boar-0a4b91157dac470a9551755bcad9b5b3"
+ },
+ "animal_deer": {
+  "title": "Deer",
+  "author": "chemchamroeun1988",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/deer-144b33ab9e3345cb92b41bf297a38b7d"
+ },
+ "animal_rabbit": {
+  "title": "Rabbit Rigged",
+  "author": "FourthGreen",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/rabbit-rigged-e7213589744d436b9d96e2dbb31198a5"
+ },
+ "ruger1022": {
+  "title": "Ruger 10/22 Carbine",
+  "author": "haoliu95",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/ruger-1022-carbine-d0ae8773fd9644dd9f30cfb565b7bf75"
+ },
+ "lever": {
+  "title": "Henry Lever-Action Rifle",
+  "author": "Zverev",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/henry-lever-action-rifle-98000c9642354a65b3203f76403128db"
+ },
+ "glock": {
+  "title": "Glock-17",
+  "author": "5Nikitos5",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/glock-17-aeb171380b2b490c80aa04b4ee1a9366"
+ },
+ "sks": {
+  "title": "SKS",
+  "author": "jeandiz",
+  "license": "CC Attribution",
+  "url": "https://sketchfab.com/3d-models/sks-ea48b79acd354e4d8aa5ac901218ae5e"
  }
 }

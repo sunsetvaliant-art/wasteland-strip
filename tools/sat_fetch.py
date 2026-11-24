@@ -9,15 +9,17 @@ from PIL import Image
 from scipy.ndimage import map_coordinates
 sys.path.insert(0, os.path.dirname(__file__))
 import geo
-Z = 20
-RES = 0.125
+Z = int(os.environ.get("SAT_Z", "20"))          # 0.2.74: SAT_Z / SAT_RES for a coarse look at a big area
+RES = float(os.environ.get("SAT_RES", "0.125"))
 URL = "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/%d/%d/%d"
 x0, z0, x1, z1 = map(float, sys.argv[1:5]); name = sys.argv[5]
 OUT = os.path.join(os.path.dirname(__file__), "..", "docs", "ref", "sat")
 CACHE = "/tmp/sat_tiles"; os.makedirs(CACHE, exist_ok=True)
 def inv(x, z):
-    """game (x, z) -> lon, lat (inverse of geo.fix on geo.ll; main map only)"""
-    return geo.LON0 + x / (geo.KX0 * geo.SX), geo.LAT0 - z / (geo.KZ0 * geo.SZ)
+    """game (x, z) -> lon, lat (inverse of geo.fix on geo.ll; the north strip has no fit scale)"""
+    north = np.asarray(z) < geo.NORTH_Z
+    sx = np.where(north, 1.0, geo.SX); sz = np.where(north, 1.0, geo.SZ)
+    return geo.LON0 + x / (geo.KX0 * sx), geo.LAT0 - z / (geo.KZ0 * sz)
 def merc(lon, lat):
     n = 2 ** Z
     return (lon + 180) / 360 * n * 256, (1 - np.log(np.tan(np.radians(lat)) + 1 / np.cos(np.radians(lat))) / math.pi) / 2 * n * 256

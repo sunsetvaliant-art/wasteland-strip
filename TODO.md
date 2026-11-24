@@ -2,7 +2,74 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0073, 2026-11-23.
+Newest requests at the top of each section. Last updated: patch 0074, 2026-11-24.
+
+## Coast, water, mud, Forge menu, links, animals, guns 2026-11-24 (0074)
+User (all in one go): occlusion culling; gentle lapping waves on the beaches with the right sands in the right
+places; clear light-blue shallows fading to deep blue; check the beach outlines against real satellite photos;
+still water in the creeks and rivers with muddy beds and banks; thick grass and weeds on the riversides; mud under
+the cane; house floor plans that make sense (no bedroom through a bathroom); only present-day zombies (drop the
+unrealistic and WWII ones), better zombie sounds, a better zombie walk (the old-man walk looks funny); Forge like
+GMod's Q menu on X (held open, click to spawn where you aim), a GMod physgun (hold E + mouse to turn what you hold),
+O too far away, no J key (straps from the inventory), right-click with a tool in hand opens its build menu; more
+free Sketchfab guns; proper links on live axles (arms on fixed pivots that articulate); engines going down into
+bays; wild animals to hunt for meat; more street props, placed sensibly, that don't cost frame rate.
+- [x] 0074 Occlusion culling: every closed building within ~420 m (houses, sheds, churches, halls, flats) gets a box
+      occluder inside its walls, so the renderer skips what's behind the first row of a town. Off within ~26 m (so
+      you can see in through doors and windows) and when driving fast past it. Setting: Occlusion culling
+- [x] 0074 The sea has its own shader: see-through turquoise over the sand in the shallows, going to deep blue a few
+      hundred metres out (from how far out each point is, assets/world/sea_dist.png); swell lines running in to the
+      beach that break white in the last 40 m; the whole sheet rises and falls a few cm every ~8 s so the waterline
+      laps up and back over the wet sand; foam at the edge. Pools behind the dunes are still, brown water
+- [x] 0074 The sands in their places: wet sand (new texture, darker, glossy) where the swash runs and under the
+      shallows; dry soft sand up the beach; dune grass coming through the sand 30-75 m back; cane ground left on
+      the coast turned to sandy grass. Cane no longer grows on the beach
+- [x] 0074 Coastline checked against the NSW aerial photos (Spatial Services, tools/sat_fetch.py at 5 m,
+      tools/coast_check.py): it was right to within ~10 m (median) except Bogangar-Cabarita-Hastings Point, where the
+      survey had ground standing 150-400 m out into the surf. That ground's now under water (144k points). The
+      overlay: docs/ref/sat/coast_check.jpg (red = the game's waterline, yellow = the photo's)
+- [ ] Coast: a few short stretches still differ by 100-250 m (south of Cabarita, Fingal); the north extension's
+      coast isn't in the fix; adding land where the photo has it and the survey doesn't
+- [x] 0074 Rivers and creeks lie still (the ripples barely drift), brown-green over a muddy bed; the beds under the
+      water are wet mud, the banks bare river mud for 5 m then mud through rough grass to 15 m (tools/river_fix.py,
+      301k points), with thick, tall grass and weeds growing on the banks
+- [x] 0074 Mud under the cane: the cane paddocks' ground is wet mud with the trash lying on it, and it drives like
+      the test strip's mud (sinks to the pan, tread and tyre height count). Beach sand drives soft above the swash
+      (aired-up tyres dig in), wet sand firm, river banks muddy: the terrain gives like SoftGround's kinds, without
+      keeping ruts
+- [x] 0074 House plans: a bathroom (or toilet) is a dead end: no room is reached through one unless there's no other
+      way in at all. Pass-through bathrooms went from 25-50 % of cottages and brick houses to none
+- [x] 0074 Zombies: present-day people only (the WWII soldier, the stylised runner, the white walker and the hazmat
+      suit are out); the lurcher walks with a dragging zombie walk instead of the elderly shaky one; new voices:
+      a real throat model (glottal pulses dropping into vocal fry, wet gurgle, formants, breath): 8 groans, 3
+      attack screams, a death rattle and ragged breathing (tools/zombie_voice.py)
+- [x] 0074 Forge: Z toggles it (was O); hold X for the spawn menu (GMod's Q menu): up while X is held, gone when you
+      let go, click a thing and it spawns where your crosshair is (and again, as many as you like); Tab still opens
+      it to stay. Phys gun like GMod's: what you hold turns with you, hold E and move the mouse to turn it, Shift
+      while turning snaps to 45 degrees
+- [x] 0074 J's gone: straps are used from the inventory (right-click > use). Hand tools: right-click a hammer, shifter,
+      spanner or ratchet in the inventory to hold it; with it in hand right-click opens its menu (hammer: build,
+      spanners: work on the car you're facing); it swings as a weapon too; H puts it away
+- [x] 0074 Four more Sketchfab guns (CC BY): Ruger 10/22 (.22, farm sheds and sports stores), Henry lever action
+      (.44), Glock 17 (9 mm, security and bedside drawers), SKS (7.62x39, military); new ammo (.22, 9 mm, .44,
+      7.62x39) with loot and reloading
+- [ ] More guns: the M1911 and Mossberg 590 downloads were dropped (junk baked into the M1911's mesh, the Mossberg
+      came in on the wrong axis): find better ones
+- [x] 0074 Live axle links: coil axles get a triangulated 4-link (rear), a 3-link with a panhard, or radius arms with
+      a panhard (front), on fixed chassis pivots, swinging as the axle moves (Garage: Links); leaf axles get their
+      hangers and swinging shackles
+- [x] 0074 Engines go down into an open bay (bonnet off, or no cab): coming over a car whose bay is empty, a loose
+      engine stops catching on its body and settles on the mounts at the height an engine sits, ready to bolt in
+      (it used to only get in from underneath)
+- [x] 0074 Wild animals: fallow deer on the paddocks and at the bush edge, feral pigs in the scrub and the wet,
+      rabbits on the grass (Sketchfab, CC BY), 130-320 m round you. They graze and wander, look up at a
+      noise, bolt when you come close (crouch and go slow to get nearer) and clear off at a shot; a hit pig may
+      charge. Shot, it drops; F with a knife, machete or axe butchers it for raw meat to cook at a fire
+- [x] 0074 Roadside: white guide posts with red reflectors both sides of the country roads every ~50 m; a letterbox
+      (brick pier or post box) at the front boundary of every house; red- and yellow-lid wheelie bins out on the
+      verge in front of about a third. Multimeshes per 128 m tile, no collision, drawn only up close
+- [ ] Kangaroos: the only free animated roo on Sketchfab is broken (its body skins wrong); need a decent one
+- [ ] Animals over LAN (not shared yet: none spawn while online); death animations; a skin or hide off the carcass
 
 ## Beaches reshaped, raised test beds 2026-11-23 (0073)
 User: soft ground around the map is a wicked idea, but how is mud decided? The beaches are out of shape: bits of
@@ -40,7 +107,8 @@ height so the axle stays clear); realistic mud and sand rooster tails; make the 
       hard as the tyre's spinning
 - [x] 0072 Volumetric diesel soot: puffs of real fog that billow, drift up and thin out (Forward+; the world's
       volumetric fog switches itself on while there's soot about, with no fog of its own if it's off in the settings)
-- [ ] Soft ground across the map (beaches, creek flats, wet paddocks after rain), and saving the ruts
+- [ ] Soft ground across the map (beaches, creek flats, wet paddocks after rain), and saving the ruts (0074: beach sand,
+      river banks and the cane paddocks now give, without ruts; still to come: wet paddocks after rain, saved ruts)
 - [ ] Winching out, recovery tracks, snatch straps (stretchy) for a bogged car
 
 ## Hide a part in Body tools 2026-11-23 (0071)

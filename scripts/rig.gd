@@ -24,9 +24,9 @@ const SETS := {
 	# shambler: an unsteady drag when it's wandering, a lurching walk when it's after you
 	"zombie_b": {"idle": "hollow__Mummy_Stagger", "walk": "hollow__Unsteady_Walk", "run": "hollow__Walking", "attack": "zombie_runner__FEMALE_ZOMBIE_ATTACK",
 		"spot": "hollow__Zombie_Scream", "walk_speed": 0.45, "run_speed": 1.4, "wander_speed": 0.4, "chase_speed": 1.15},
-	# lurcher: a shaky old walk, then a head-down charge
-	"zombie_c": {"idle": "zombie_runner__FEMALE_ZOMBIE_IDLE", "walk": "hollow__Elderly_Shaky_Walk_inplace", "run": "hollow__Male_Head_Down_Charge",
-		"attack": "zombie_soldier__zombie_02_Attack", "spot": "hollow__Zombie_Scream", "walk_speed": 0.3, "run_speed": 4.8, "wander_speed": 0.3,
+	# lurcher: a dragging zombie walk (0.2.74: was the elderly shaky walk), then a head-down charge
+	"zombie_c": {"idle": "zombie_runner__FEMALE_ZOMBIE_IDLE", "walk": "zombie_mx__walk", "run": "hollow__Male_Head_Down_Charge",
+		"attack": "zombie_soldier__zombie_02_Attack", "spot": "hollow__Zombie_Scream", "walk_speed": 0.34, "run_speed": 4.8, "wander_speed": 0.3,
 		"chase_speed": 3.2},
 }
 ## Mixamo names (what the rest of the code asks for) -> Godot humanoid profile names (what the bones are now called)

@@ -32,6 +32,19 @@ const DEFS := {
 	"rem870": {"grip_y": -0.035, "fore_y": -0.04, "sight": 0.035, "name": "Remington 870 pump (12 gauge)", "len": 1.0, "flip": false, "action": "pump", "dmg": 14.0, "pellets": 8, "spread": 0.045,
 		"interval": 0.85, "mag": 5, "reload": 0.55, "recoil": 0.12, "vel": 400.0, "range": 80.0, "loud": 280.0, "sound": "shot_12g",
 		"grip": 0.27, "fore": 0.63, "drop_y": -0.025, "kick": 0.1, "force": 4.0},
+	# 0.2.74: more off Sketchfab (CC BY): a farm .22, a lever gun, a police pistol and an SKS
+	"ruger1022": {"hide": ["Object_5", "Object_7"], "grip_y": -0.04, "fore_y": -0.03, "sight": 0.045, "name": "Ruger 10/22 (.22 LR)", "len": 0.94, "flip": false, "action": "semi", "dmg": 34.0, "pellets": 1,
+		"spread": 0.0018, "interval": 0.14, "mag": 10, "reload": 2.2, "recoil": 0.018, "vel": 370.0, "range": 300.0, "loud": 120.0, "sound": "shot_357",
+		"grip": 0.3, "fore": 0.6, "drop_y": -0.03, "kick": 0.02, "force": 2.0},
+	"lever": {"grip_y": -0.04, "fore_y": -0.035, "sight": 0.04, "name": "Henry lever action (.44 Magnum)", "len": 0.98, "flip": true, "action": "bolt", "dmg": 78.0, "pellets": 1,
+		"spread": 0.0016, "interval": 0.55, "mag": 10, "reload": 3.6, "recoil": 0.07, "vel": 480.0, "range": 400.0, "loud": 260.0, "sound": "shot_303",
+		"grip": 0.3, "fore": 0.6, "drop_y": -0.03, "kick": 0.07, "force": 6.5},
+	"glock": {"grip_y": -0.06, "fore_y": -0.06, "sight": 0.045, "name": "Glock 17 (9 mm)", "len": 0.2, "flip": false, "action": "semi", "dmg": 34.0, "pellets": 1, "spread": 0.004,
+		"interval": 0.11, "mag": 17, "reload": 1.8, "recoil": 0.05, "vel": 360.0, "range": 160.0, "loud": 200.0, "sound": "shot_357",
+		"grip": 0.12, "fore": 0.12, "drop_y": -0.06, "kick": 0.035, "force": 3.0, "pistol": true},
+	"sks": {"grip_y": -0.05, "fore_y": -0.035, "sight": 0.06, "name": "SKS (7.62x39)", "len": 1.02, "flip": false, "action": "semi", "dmg": 70.0, "pellets": 1, "spread": 0.002,
+		"interval": 0.15, "mag": 10, "reload": 3.0, "recoil": 0.055, "vel": 720.0, "range": 500.0, "loud": 300.0, "sound": "shot_slr",
+		"grip": 0.3, "fore": 0.58, "drop_y": -0.03, "kick": 0.06, "force": 7.0},
 	# not guns: things you hold up the same way
 	"binoculars": {"tool": "binoculars", "model": "res://assets/ph/survival/vintage_binocular/vintage_binocular.gltf", "scope": 7.0, "model_scope": true,
 		"grip_y": -0.02, "fore_y": -0.02, "sight": 0.0, "name": "Binoculars", "len": 0.2, "flip": false, "action": "none", "dmg": 0.0, "pellets": 0, "spread": 0.0,
@@ -42,7 +55,7 @@ const DEFS := {
 		"recoil": 0.0, "vel": 1.0, "range": 1.0, "loud": 0.0, "sound": "", "grip": 0.35, "fore": 0.35, "drop_y": 0.0, "kick": 0.0, "force": 0.0, "pistol": true},
 }
 const TOOLS := ["binoculars", "torch"]
-const ORDER := ["python", "magnum45", "sawnoff", "dbshotgun", "rem870", "slr", "enfield", "hunter"]
+const ORDER := ["glock", "python", "magnum45", "sawnoff", "dbshotgun", "rem870", "ruger1022", "lever", "sks", "slr", "enfield", "hunter"]
 const BODY_MULT := {"head": 3.6, "chest": 1.0, "pelvis": 0.9, "l_upperarm": 0.55, "r_upperarm": 0.55, "l_forearm": 0.45, "r_forearm": 0.45,
 	"l_thigh": 0.65, "r_thigh": 0.65, "l_shin": 0.5, "r_shin": 0.5}
 const MASK := 1 | (1 << 2) | (1 << 3)       # world, actors, ragdolls
@@ -107,6 +120,12 @@ func setup(k: String, who: Node) -> void:
 	model = holder
 	for mi in raw.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if def.has("tint"):          # an untextured download: blued steel and black furniture
+			var tm := StandardMaterial3D.new()
+			tm.albedo_color = def.tint
+			tm.metallic = 0.6
+			tm.roughness = 0.45
+			(mi as MeshInstance3D).material_override = tm
 		(mi as MeshInstance3D).layers = 2          # guns on their own layer: the scope camera looks past them
 	var half: float = float(def.len) * 0.5
 	muzzle = _marker(Vector3(0, 0.02, -half))

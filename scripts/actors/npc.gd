@@ -10,8 +10,9 @@ extends CharacterBody3D
 
 ## 0.2.61: every zombie body back in (their stray collision is stripped on load and from the gore copy since 0021), plus
 ## three new ones; the hollow walker turns up most. Weighted by repeats.
-const ZOMBIE_MODELS := ["zombie_hollow", "zombie_hollow", "zombie_walker2", "zombie_ww", "zombie_soldier", "zombie_mx",
-	"zombie_hazmat", "zombie_fuse", "zombie_female", "zombie_runner"]
+## 0.2.74: present-day people only. The WWII soldier, the stylised ones, the white walker and the hazmat suit are out
+## (their clips still feed the animation pool).
+const ZOMBIE_MODELS := ["zombie_hollow", "zombie_hollow", "zombie_mx", "zombie_mx", "zombie_fuse", "zombie_female", "zombie_female"]
 ## Load every body on a worker thread at the start, so the first of each kind doesn't hitch the game when it walks in
 static func preload_models() -> void:
 	var seen := {}
@@ -313,12 +314,12 @@ func _think_zombie(dt: float) -> void:
 	groan_t -= dt
 	if groan_t <= 0.0:
 		groan_t = randf_range(7.0, 16.0) if state != "chase" else randf_range(3.5, 7.0)
-		_say("zgroan_%d" % (randi() % 4))
+		_say("zgroan_%d" % (randi() % 8) if randf() < 0.8 else "zbreath_%d" % (randi() % 2))
 	if vis > 0.12 and player and not player.dead:
 		if state != "chase" and randf() < 0.6:
 			rig.act(Rig.SETS[anim_set].get("spot", ""), 1.2)
 			stagger = 1.2
-			_say("zattack")
+			_say("zattack_%d" % (randi() % 3))
 			# the scream brings the others
 			for n in get_tree().get_nodes_in_group("zombies"):
 				if n != self and is_instance_valid(n) and not n.dead and n.state != "chase" and n.global_position.distance_to(global_position) < 28.0:
@@ -364,7 +365,7 @@ func _think_zombie(dt: float) -> void:
 					swing_len = rig.act(clip, 1.3)
 					attack_t = max(swing_len, 1.2) + 0.3
 					swing_t = 0.0
-					_say("zattack")
+					_say("zattack_%d" % (randi() % 3))
 			else:
 				var zs: Dictionary = Rig.SETS[anim_set]
 				move_speed = float(zs.get("chase_speed", 1.25)) * gait
@@ -714,7 +715,7 @@ func _animate(dt: float) -> void:
 	WeaponHold.hands(rig, gun, global_transform.basis)
 
 func _say(n: String) -> void:
-	if voice.playing and n.begins_with("zgroan"):
+	if voice.playing and (n.begins_with("zgroan") or n.begins_with("zbreath")):
 		return
 	voice.stream = Gun.sfx(n)
 	voice.pitch_scale = randf_range(0.85, 1.12)
@@ -818,7 +819,7 @@ func knock_down(vel: Vector3, secs: float) -> void:
 	ragdoll.build(rig, vel)
 	rig.mods.ragdoll = ragdoll
 	ragdoll.push("chest" if ragdoll.bodies.has("chest") else "pelvis", vel * 14.0, global_position + Vector3(0, 1.2, 0))
-	_say("zattack")
+	_say("zattack_%d" % (randi() % 3))
 
 func _down_tick(dt: float) -> void:
 	down_t -= dt

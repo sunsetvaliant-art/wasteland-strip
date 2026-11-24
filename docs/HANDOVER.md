@@ -274,6 +274,22 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   assets/world/coast_fix.bin (COAST_OFF=1 skips). Rebuild it: godot --headless -s res://tools/dump_terrain.gd (needs
   ~400 MB in /tmp/td), then python3 tools/coast_fix.py /tmp/td assets/world/coast_fix.bin [preview.png]. Control map
   bits: base id << 27, overlay << 22, blend << 14. SoftGround beds: cap[] per column, ramps over 6 m. Test: _t73.gd.
+- 0074: ground textures 9 wet_sand, 10 wet_mud, slot 2 is cane_mud now (tools/make_ground_tex.py makes them from the
+  scans). Car.TERRAIN_SOFT maps texture ids to SoftGround kinds; SoftGround.settle()/surface_of() give the sink and
+  grip without a rut grid (w.tsoft / w.tsink). tools/coast_fix.py now also: sinks ground the NSW photos show as sea
+  (needs docs/ref/sat/coast_z16_rgb.png: SAT_Z=16 SAT_RES=5 python3 tools/sat_fetch.py 15000 -20480 19500 15360
+  coast_z16), lays wet/dry/dune sands and writes assets/world/sea_dist.png (10 m/px from x 12000, z -20480; sqrt of
+  metres from land / 4000) for shaders/sea.gdshader. tools/coast_check.py compares the two waterlines.
+  tools/river_fix.py -> assets/world/river_fix.bin ("RFX1": control only), applied by CoastFix before the coast
+  (RIVER_OFF=1 skips). Veg._riverside() reads those textures for the thick bank grass. Occluders: Buildings
+  _update_occluders (OCC_KINDS, OCC_R, OCC_NEAR), Viewport.use_occlusion_culling from Settings "occlusion"
+  (OCC_OFF=1 env). Animals: scripts/actors/animal.gd (SPECIES), scripts/world/animal_director.gd (ANIMALS_OFF=1),
+  assets/animals/*.glb (gltfpack'd Sketchfab, credits.json); look at a glb's clips with tools/_animshot.tscn
+  (ANIM_FILES=path:clip,...). Roadside props: scripts/world/roadside.gd (ROADSIDE_OFF=1). Zombie voices:
+  tools/zombie_voice.py. Forge: Z toggles, X held = spawn menu (hold_menu, _pick), physgun held_rel. Hand tools:
+  Melee.hand_tool / TOOL_MENUS, Player.hold_tool. LooseLump.bay: any car with an open empty bay. Rig._live_links.
+  BuildGen._connect: bath/toilet are pass-through only in the second round. Tests: _t74 (engine into bay),
+  _linkshot (axle links), tools/_plans.gd (-s: bathrooms with two doors).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

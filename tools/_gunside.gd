@@ -22,7 +22,7 @@ func _init():
 		dot.call(Vector3(0, g.sight_h, g.sight_rear_z), Color.MAGENTA, 0.01)
 		for i in 3: await process_frame
 		await RenderingServer.frame_post_draw
-		root.get_texture().get_image().save_png("/tmp/claude-0/-home-claude/b0119dc3-e5bf-538e-a527-b04b73bbc85a/scratchpad/side_%s.png" % k)
+		root.get_texture().get_image().save_png("/tmp/shots/side_%s.png" % k)
 		print("GUN ", k, " sight_h ", g.sight_h, " rear ", g.sight_rear_z)
 		g.queue_free(); await process_frame
 	quit()

@@ -22,7 +22,8 @@ var v := {
 	"invert_y": false,
 	"master_volume": 0.8,
 	"show_fps": false,
-	"game_mode": "creative",   # creative: Forge (O) and god mode allowed; survival: the real thing
+	"occlusion": true,         # 0.2.74: buildings hide what's behind them from the renderer
+	"game_mode": "creative",   # creative: Forge (Z) and god mode allowed; survival: the real thing
 	"god_mode": false,
 	"drift_assist": true,      # 0.2.59: the front wheels follow the slide, like BeamNG's steering assist
 	"traction_foot": true,     # 0.2.59: W feathers the throttle short of wheelspin; Shift+W floors it
@@ -70,6 +71,7 @@ func apply(main: Node) -> void:
 		2: DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if v.vsync else DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = int(v.fps_cap)
+	vp.use_occlusion_culling = bool(v.get("occlusion", true)) and OS.get_environment("OCC_OFF") == ""
 	vp.scaling_3d_scale = float(v.render_scale)
 	vp.scaling_3d_mode = [Viewport.SCALING_3D_MODE_BILINEAR, Viewport.SCALING_3D_MODE_FSR, Viewport.SCALING_3D_MODE_FSR2][clampi(int(v.upscaler), 0, 2)] if float(v.render_scale) < 0.999 or int(v.upscaler) == 2 else Viewport.SCALING_3D_MODE_BILINEAR
 	# 0 off, 1 FXAA, 2 TAA, 3 TAA + FXAA

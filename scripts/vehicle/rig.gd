@@ -451,6 +451,95 @@ func _build_live_axle(ai: int, a: Dictionary) -> void:
 		_shock(sh_top, sh_bot)
 	if a.steer:
 		_beam(cyl_mesh, m_steel, 0.024, 0.024, func(): return [_wheel_centre(wl) + Vector3(0.08, -0.05, -0.17), _wheel_centre(wr) + Vector3(-0.08, -0.05, -0.17)], true)
+	_live_links(a, wl, wr, front)
+
+## 0.2.74: what actually holds a live axle under the car (it used to hang off its springs and shocks). Each link's
+## chassis end is a fixed pivot on the frame; the axle end rides on the housing, so the links swing and tilt as the axle
+## moves and articulates.
+##   coil rear: a triangulated 4-link (two lower trailing arms out by the wheels, two uppers angled in to the diff)
+##   coil front: radius arms (a wide arm off the housing to one pivot each side, a long way back) and a panhard rod
+##   leaf: the packs locate it; a fixed hanger at the leading end and a swinging shackle at the trailing end
+func _live_links(a: Dictionary, wl: Dictionary, wr: Dictionary, front: bool) -> void:
+	var zc := float(a.z)
+	var zmid := 0.0
+	for ax in car.design.axles: zmid += float(ax.z)
+	zmid /= maxf(1.0, float(car.design.axles.size()))
+	var dir := signf(zmid - zc) if absf(zmid - zc) > 0.1 else (-1.0 if front else 1.0)    # towards the middle of the car
+	# a point on the housing: k from this wheel's hub (0) to the other's (1), plus an offset
+	var on_axle := func(w: Dictionary, o: Dictionary, k: float, off: Vector3) -> Vector3:
+		return _wheel_centre(w).lerp(_wheel_centre(o), k) + off
+	var m_link := m_frame
+	if str(a.get("spring", "leaf")) == "leaf":
+		for pr in [[wl, wr], [wr, wl]]:
+			var w: Dictionary = pr[0]
+			var s: float = w.side
+			for end in [1.0, -1.0]:
+				var zh: float = zc + float(end) * 0.62
+				var hang := func() -> Vector3: return Vector3(rail_hw(zh) * s, rail_y(zh) - RAIL_H * 0.5, zh)
+				var eye := func() -> Vector3: return Vector3(rail_hw(zh) * s, rail_y(zh) - RAIL_H * 0.5 - 0.06, zh)
+				if end * dir > 0.0:
+					# fixed hanger bracket: a short stiff plate down off the rail
+					_beam(box_mesh, m_link, 0.05, 0.06, func(): return [hang.call() + Vector3(0, 0.02, 0), eye.call()])
+				else:
+					# shackle: a pair of short side plates that swing as the leaf's eye moves fore and aft under load
+					var gap0 := {"g": -99.0}       # the leaf's arch at rest, taken the first frame
+					for sx in [-0.035, 0.035]:
+						_beam(box_mesh, m_link, 0.012, 0.035, func():
+							var top: Vector3 = hang.call() + Vector3(sx, 0.02, -dir * 0.05)
+							var g: float = (eye.call() as Vector3).y - _wheel_centre(w).y
+							if gap0.g < -50.0: gap0.g = g
+							# loaded, the leaf flattens and grows: its eye pushes the shackle's foot out
+							var ext: float = clampf((float(gap0.g) - g) * 0.45, -0.06, 0.06)
+							var bot: Vector3 = eye.call() + Vector3(sx, -0.04, -dir * (0.05 + ext))
+							return [top, bot])
+		return
+	var links: String = str(a.get("links", ""))
+	if links == "": links = "radius" if front else "4link"
+	if links == "3link":
+		# 3-link: two lower arms, one upper off to the side over the diff, and a panhard rod to stop it going sideways
+		for pr in [[wl, wr], [wr, wl]]:
+			var w: Dictionary = pr[0]
+			var o: Dictionary = pr[1]
+			var s: float = w.side
+			var zl := zc + dir * 0.8
+			_beam(box_mesh, m_link, 0.055, 0.05, func(): return [Vector3((rail_hw(zl) - 0.05) * s, rail_y(zl) - RAIL_H * 0.5 - 0.1, zl),
+				on_axle.call(w, o, 0.12, Vector3(0, -0.1, dir * 0.03))])
+		var zu3 := zc + dir * 0.7
+		_beam(cyl_mesh, m_link, 0.045, 0.045, func(): return [Vector3(0.25, rail_y(zu3) - RAIL_H * 0.5 - 0.05, zu3),
+			on_axle.call(wl, wr, 0.5, Vector3(0, 0.16, dir * 0.06)) + Vector3(0.18, 0, 0)], true)
+		_panhard(wl, wr, zc, dir, on_axle, m_link)
+		return
+	if links == "4link":
+		# triangulated 4-link
+		for pr in [[wl, wr], [wr, wl]]:
+			var w: Dictionary = pr[0]
+			var o: Dictionary = pr[1]
+			var s: float = w.side
+			var zl := zc + dir * 0.78
+			var zu := zc + dir * 0.62
+			_beam(box_mesh, m_link, 0.055, 0.05, func(): return [Vector3((rail_hw(zl) - 0.03) * s, rail_y(zl) - RAIL_H * 0.5 - 0.1, zl),
+				on_axle.call(w, o, 0.1, Vector3(0, -0.1, dir * 0.03))])
+			_beam(cyl_mesh, m_link, 0.04, 0.04, func(): return [Vector3((rail_hw(zu) - 0.12) * s, rail_y(zu) - RAIL_H * 0.5 - 0.02, zu),
+				on_axle.call(w, o, 0.5, Vector3(0, 0.15, dir * 0.06)) + Vector3(s * 0.11, 0, 0)], true)
+		return
+	# front coils: radius arms and a panhard rod
+	for pr in [[wl, wr], [wr, wl]]:
+		var w: Dictionary = pr[0]
+		var o: Dictionary = pr[1]
+		var s: float = w.side
+		var zp := zc + dir * 1.05
+		var piv := func() -> Vector3: return Vector3((rail_hw(zp) - 0.04) * s, rail_y(zp) - RAIL_H * 0.5 - 0.12, zp)
+		_beam(box_mesh, m_link, 0.06, 0.05, func(): return [piv.call(), on_axle.call(w, o, 0.14, Vector3(0, -0.09, dir * 0.03))])
+		_beam(box_mesh, m_link, 0.045, 0.04, func(): return [piv.call() + Vector3(0, 0.02, -dir * 0.25), on_axle.call(w, o, 0.14, Vector3(0, 0.1, dir * 0.04))])
+	_panhard(wl, wr, zc, dir, on_axle, m_link)
+
+## panhard rod: from a bracket on the left rail, across to the housing by the right wheel
+func _panhard(wl: Dictionary, wr: Dictionary, zc: float, dir: float, on_axle: Callable, m_link: Material) -> void:
+	var lw: Dictionary = wl if float(wl.side) < 0.0 else wr
+	var rw: Dictionary = wr if lw == wl else wl
+	_beam(cyl_mesh, m_link, 0.035, 0.035, func():
+		var zpn := zc + dir * 0.12
+		return [Vector3(rail_hw(zpn) * float(lw.side), rail_y(zpn) - RAIL_H * 0.5 - 0.08, zpn), on_axle.call(rw, lw, 0.12, Vector3(0, 0.07, dir * 0.12))], true)
 
 # ---------------------------------------------------------------- independent front: wishbones, upright, coil-over, sway bar, tie rods
 func _build_ifs(ai: int, a: Dictionary) -> void:

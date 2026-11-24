@@ -288,7 +288,7 @@ func _build_wheels() -> void:
 				# 0.2.59: lift (ride height) per axle: the wheel hangs further below the body
 				"mount": Vector3(side * float(a.track), float(design.ride) + L_static - float(a.get("lift", 0.0)), float(a.z)),
 				"T": T, "k": k, "pre": pre_f, "cb": c_crit * float(a.zeta_b), "cr": c_crit * float(a.zeta_r),
-				"r": float(a.tyre_r), "L": T, "L_prev": T, "Lg": T, "Lg_prev": T, "soft": null, "sink": 0.0, "belly": 0.0, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
+				"r": float(a.tyre_r), "L": T, "L_prev": T, "Lg": T, "Lg_prev": T, "soft": null, "sink": 0.0, "belly": 0.0, "tsoft": "", "tsink": 0.0, "contact": false, "N": 0.0, "omega": 0.0, "spin": 0.0,
 				"steer": 0.0, "point": Vector3.ZERO, "normal": Vector3.UP, "slip": 0.0, "slip_a": 0.0, "surf": 1.0,
 				"vx": 0.0, "vy": 0.0, "fx": 0.0, "fy": 0.0, "drive_t": 0.0, "collider": null, "mu": 1.0, "crr": 0.015,
 				"fwd": Vector3.FORWARD, "sidev": Vector3.RIGHT, "slide": 0.75, "kind": "seal", "defl": 0.0, "slipv": 0.0,
@@ -906,6 +906,8 @@ func _physics_process_inner(dt: float) -> void:
 			if hc and hc.has_meta("soft_ground"):
 				w.soft = hc.get_meta("soft_ground")
 				d += (w.soft as SoftGround).depth_at(hit.position)
+			elif str(w.tsoft) != "":
+				d += float(w.tsink)                                   # 0.2.74: sat down in the terrain's mud or sand
 			var r_eff: float = w.r - w.defl                          # the tyre squats under load
 			w.L = clamp(d - r_eff, -0.05, w.T)
 			w.Lg = clamp(d - w.r, -0.15, w.T)
@@ -946,9 +948,17 @@ func _physics_process_inner(dt: float) -> void:
 			w.sink = (w.soft as SoftGround).press(w.point, w.N, float(design.get("tyre_psi", 32.0)), w.r, float(w.r) * 0.72, slip_v, dt)
 			var clear: float = float(w.r) - (0.13 if str(w.a.get("type", "")) == "live" else 0.07)
 			w.belly = clampf((w.sink - clear) / 0.06, 0.0, 1.0)
+		elif str(w.tsoft) != "":
+			# 0.2.74: plain terrain that gives (cane mud, river mud, beach sand)
+			var slip_t: float = float(w.omega) * float(w.r) - float(w.get("vx", 0.0))
+			w.tsink = SoftGround.settle(str(w.tsoft), float(w.tsink), w.N, float(design.get("tyre_psi", 32.0)), slip_t, float(w.get("vx", 0.0)), dt)
+			w.sink = w.tsink
+			var clear_t: float = float(w.r) - (0.13 if str(w.a.get("type", "")) == "live" else 0.07)
+			w.belly = clampf((w.sink - clear_t) / 0.06, 0.0, 1.0)
 		else:
 			w.sink = 0.0
 			w.belly = 0.0
+			w.tsink = 0.0
 	# sidewall deflection for next step: N over the tyre's vertical stiffness (about 200 kN/m at 32 psi)
 	var psi: float = float(design.get("tyre_psi", 32.0))
 	for w in wheels:
@@ -1153,12 +1163,19 @@ const TERRAIN_SURF := [
 	[0.88, 0.76, 0.013, "seal"],   # concrete
 	[0.45, 0.68, 0.14, "mud"],     # river mud
 	[0.78, 0.8, 0.08, "grass"],    # rough grass
+	[0.75, 0.75, 0.02, "sand"],    # wet sand
+	[0.45, 0.68, 0.14, "mud"],     # wet mud
 ]
+## 0.2.74: terrain textures that give like SoftGround's kinds (without its ruts): the tyre sinks as far as its pressure
+## and load say, and gets the kind's grip and drag. Cane ground and river mud are mud; beach sand is soft above the
+## swash and firm in it.
+const TERRAIN_SOFT := {2: "mud", 4: "soft_sand", 7: "mud", 9: "wet_sand", 10: "mud"}
 var _terrain: Terrain3D
 
 func _surface(w: Dictionary) -> void:
 	var c = w.collider
 	var surf: Array = [0.85, 0.75, 0.02, "seal"]      # props, other cars, buildings: hard
+	w.tsoft = ""
 	if c and c.has_meta("soft_ground"):
 		surf = (c.get_meta("soft_ground") as SoftGround).surface(tread_k(), float(w.sink), float(w.r))
 		surf[2] = float(surf[2]) + 0.6 * float(w.belly)            # bellied out: dragging the diff through it
@@ -1174,10 +1191,15 @@ func _surface(w: Dictionary) -> void:
 			if not is_nan(t.x):
 				id = int(t.y) if t.z > 0.5 else int(t.x)
 		surf = TERRAIN_SURF[clampi(id, 0, TERRAIN_SURF.size() - 1)]
+		w.tsoft = str(TERRAIN_SOFT.get(id, ""))
+		if w.tsoft != "":
+			surf = SoftGround.surface_of(w.tsoft, tread_k(), float(w.tsink), float(w.r))
+			surf[2] = float(surf[2]) + 0.6 * float(w.belly)
 		# the road skin has no collision: on the seal if the road mask says so
 		var m2 = get_tree().current_scene
 		if m2 and m2.get("roads") and m2.roads.has_method("on_road") and m2.roads.on_road(w.point.x, w.point.z):
 			surf = [0.95, 0.76, 0.013, "seal"]
+			w.tsoft = ""
 	elif c and (c.is_in_group("corpses") or c is PhysicalBone3D or (c is RigidBody3D and (c as RigidBody3D).mass < 120.0)):
 		surf = [0.35, 0.6, 0.02, "flesh"]
 	# tyre pressure: soft tyres bag out and grip loose ground better, roll heavier; hard ones skate on it

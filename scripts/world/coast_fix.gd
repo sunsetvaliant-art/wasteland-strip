@@ -5,9 +5,13 @@ class_name CoastFix
 ## been painted concrete from the aerial colours). Works on Forge-edited terrain too (only those spots change).
 
 const PATH := "res://assets/world/coast_fix.bin"
+## 0.2.74: muddy river beds and banks (tools/river_fix.py): textures only, laid down before the coast's
+const RIVERS := "res://assets/world/river_fix.bin"
 
 static func apply(terrain: Terrain3D) -> void:
-	if terrain == null or terrain.data == null or not FileAccess.file_exists(PATH): return
+	if terrain == null or terrain.data == null: return
+	_rivers(terrain)
+	if not FileAccess.file_exists(PATH): return
 	var t0 := Time.get_ticks_msec()
 	var f := FileAccess.open(PATH, FileAccess.READ)
 	if f.get_buffer(4).get_string_from_ascii() != "CFX1": return
@@ -41,3 +45,28 @@ static func apply(terrain: Terrain3D) -> void:
 	terrain.data.update_maps(Terrain3DRegion.TYPE_MAX, true, false)
 	terrain.data.calc_height_range(true)
 	print("COAST fix: %d points in %d ms" % [n_all, Time.get_ticks_msec() - t0])
+
+static func _rivers(terrain: Terrain3D) -> void:
+	if not FileAccess.file_exists(RIVERS) or OS.get_environment("RIVER_OFF") != "": return
+	var t0 := Time.get_ticks_msec()
+	var f := FileAccess.open(RIVERS, FileAccess.READ)
+	if f.get_buffer(4).get_string_from_ascii() != "RFX1": return
+	var n_all := 0
+	while f.get_position() < f.get_length():
+		var rx := f.get_32(); var rz := f.get_32(); var n := f.get_32()
+		if rx >= 0x80000000: rx -= 0x100000000
+		if rz >= 0x80000000: rz -= 0x100000000
+		var idx := f.get_buffer(n * 4).to_int32_array()
+		var cc := f.get_buffer(n * 4).to_int32_array()
+		var reg: Terrain3DRegion = terrain.data.get_region(Vector2i(rx, rz))
+		if reg == null: continue
+		var cm: Image = reg.get_control_map()
+		if cm == null: continue
+		var cd := cm.get_data().to_int32_array()
+		for i in n:
+			var k: int = idx[i]
+			if k < cd.size(): cd[k] = cc[i]
+		cm.set_data(cm.get_width(), cm.get_height(), false, cm.get_format(), cd.to_byte_array())
+		reg.set_control_map(cm)
+		n_all += n
+	print("RIVER fix: %d points in %d ms" % [n_all, Time.get_ticks_msec() - t0])

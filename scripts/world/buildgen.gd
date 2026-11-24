@@ -492,7 +492,7 @@ static func _rule(a: String, b: String) -> String:
 	return "door"
 
 const PREF := {
-	"bath": {"hall": 6, "laundry": 4, "bed": 3, "kitchen": 2},
+	"bath": {"hall": 6, "laundry": 4, "lounge": 3, "dining": 3, "kitchen": 2, "bed": 1},
 	"bed": {"hall": 6, "lounge": 4, "dining": 3, "bed": 1},
 	"laundry": {"kitchen": 6, "hall": 5, "bath": 3, "dining": 2},
 	"kitchen": {"lounge": 6, "dining": 6, "hall": 5},
@@ -561,7 +561,10 @@ static func _connect(p: Dictionary, fl: int, rng: RandomNumberGenerator) -> void
 	for r in rooms:
 		if r.get("hub", false) or (not hub.get("hub", false) and (r.x1 - r.x0) * (r.z1 - r.z0) > (hub.x1 - hub.x0) * (hub.z1 - hub.z0)):
 			hub = r
-	for _pass in rooms.size() + 2:
+	# 0.2.74: a bathroom or toilet is a dead end: nobody gets to their bedroom through one. Rooms only go through them
+	# when there's no other way in at all (the second round), so an ensuite stays an ensuite.
+	var dead_end_ok := false
+	for _pass in rooms.size() * 2 + 4:
 		var changed := false
 		for r in rooms:
 			if r.type in ["void", "stair"] or find.call(r.id) == find.call(hub.id):
@@ -573,6 +576,7 @@ static func _connect(p: Dictionary, fl: int, rng: RandomNumberGenerator) -> void
 				if not me_a and pr.b != r: continue
 				var o: Dictionary = pr.b if me_a else pr.a
 				if o.type in ["void", "stair"] or find.call(o.id) != find.call(hub.id): continue
+				if not dead_end_ok and o.type in ["bath", "toilet"]: continue
 				if pr.hi - pr.lo < DOOR_W + 0.4: continue
 				var sc: float = PREF.get(r.type, {}).get(o.type, 1) + rng.randf() * 0.5
 				if sc > bs:
@@ -594,7 +598,8 @@ static func _connect(p: Dictionary, fl: int, rng: RandomNumberGenerator) -> void
 				comp[find.call(r.id)] = find.call(hub.id)
 				changed = true
 		if not changed:
-			break
+			if dead_end_ok: break
+			dead_end_ok = true
 
 ## Doors to the outside: front into the hall or lounge (or the roller doors of a shed), back out of the kitchen/laundry
 static func _ext_doors(p: Dictionary, rng: RandomNumberGenerator) -> void:

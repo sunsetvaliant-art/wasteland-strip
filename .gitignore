@@ -15,3 +15,6 @@
 
 # Overture downloads for tools/make_streets.py (re-download with the command in its header)
 /docs/ref/streets/
+
+# NSW aerial photo mosaics (re-fetch with tools/sat_fetch.py; the commands are in docs/HANDOVER.md)
+/docs/ref/sat/*_rgb.png

@@ -48,7 +48,7 @@ func setup(m) -> void:
 	_btn(home, "Resume", close)
 	_btn(home, "Settings", func(): settings_panel.visible = not settings_panel.visible)
 	mode_btn = _btn(home, "", _toggle_mode)
-	forge_btn = _btn(home, "Forge mode  (O)", func(): close(); main.forge.toggle())
+	forge_btn = _btn(home, "Forge mode  (Z)", func(): close(); main.forge.toggle())
 	garage_btn = _btn(home, "Garage: build a vehicle", func():
 		close()
 		if main.forge.active: main.forge.toggle()
@@ -149,13 +149,14 @@ func _build_settings() -> void:
 	_option(d, "fps_cap", "Frame-rate cap", ["Unlimited", "30", "60", "120", "144"], [0, 30, 60, 120, 144])
 	_slider(d, "fov", "Field of view", 55, 100, 1, "%d°")
 	_check(d, "show_fps", "Show FPS and position")
+	_check(d, "occlusion", "Occlusion culling (houses hide what's behind them: fewer draw calls in town)")
 	var c := _page(tabs, "Controls")
 	_slider(c, "motion_sensitivity", "Mouse sensitivity", 0.2, 3.0, 0.05, "%.2f", 1.0, true)
 	_check(c, "invert_y", "Invert mouse Y")
 	_check(c, "traction_foot", "Feather the throttle (W won't spin the tyres; Shift+W floors it)")
 	_check(c, "drift_assist", "Drift assist (the front wheels follow a slide)")
 	var keys := Label.new()
-	keys.text = "On foot: WASD · Shift sprint · Ctrl/C crouch · Space jump · V shoulder / first person · F get in or out\nDriving: W gas (Shift+W floors it) · S brake (Shift+S stomps) · Space handbrake · Q / E gears (P R N D) · L lights · V cab view · [ ] seat height\nForge: O toggle · Tab palette · 1 place · 2 phys gun · 3 delete · 4 terrain · Ctrl+S save · Ctrl+Z undo"
+	keys.text = "On foot: WASD · Shift sprint · Ctrl/C crouch · Space jump · V shoulder / first person · F get in or out\nDriving: W gas (Shift+W floors it) · S brake (Shift+S stomps) · Space handbrake · Q / E gears (P R N D) · L lights · V cab view · [ ] seat height\nForge: Z toggle · hold X spawn menu (click to spawn where you aim) · Tab palette stays open · 1 place · 2 phys gun (hold E + mouse turns it, Shift snaps) · 3 delete · 4 terrain · Ctrl+S save · Ctrl+Z undo"
 	keys.autowrap_mode = TextServer.AUTOWRAP_WORD
 	keys.modulate = Color(1, 1, 1, 0.75)
 	c.add_child(keys)
@@ -327,7 +328,7 @@ func _build_credits() -> void:
 	t.fit_content = false
 	t.scroll_active = true
 	t.custom_minimum_size = Vector2(740, 480)
-	var s := "[b]Credits[/b]\n\nGuns, zombies and animations from Sketchfab (CC BY 4.0):\n"
+	var s := "[b]Credits[/b]\n\nGuns, zombies, animals and animations from Sketchfab (CC BY 4.0):\n"
 	var c = JSON.parse_string(FileAccess.get_file_as_string("res://assets/credits.json"))
 	if c is Dictionary:
 		for k in c:

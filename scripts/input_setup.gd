@@ -11,11 +11,11 @@ static func ensure() -> void:
 		"interact": [KEY_F], "camera": [KEY_V], "lights": [KEY_L],
 		"gear_up": [KEY_Q], "gear_down": [KEY_E], "brake": [KEY_SPACE], "menu": [KEY_ESCAPE],
 		"debug": [KEY_F3], "seat_up": [KEY_BRACKETRIGHT], "seat_down": [KEY_BRACKETLEFT],
-		"forge": [KEY_O], "forge_menu": [KEY_TAB], "fly_up": [KEY_SPACE], "fly_down": [KEY_CTRL],
-		"rotate": [KEY_E], "delete": [KEY_X], "undo": [KEY_Z],
+		"forge": [KEY_Z], "forge_menu": [KEY_TAB], "fly_up": [KEY_SPACE], "fly_down": [KEY_CTRL],
+		"rotate": [KEY_E], "spawn_menu": [KEY_X],
 		"reload": [KEY_R], "holster": [KEY_H], "slot_1": [KEY_1], "slot_2": [KEY_2], "slot_3": [KEY_3],
 		"slot_4": [KEY_4], "slot_5": [KEY_5], "slot_6": [KEY_6], "bug_report": [KEY_F9],
-		"inventory": [KEY_I], "heal": [KEY_B], "torch": [KEY_T], "board": [KEY_G], "work_on_car": [KEY_K], "strap": [KEY_J],
+		"inventory": [KEY_I], "heal": [KEY_B], "torch": [KEY_T], "board": [KEY_G], "work_on_car": [KEY_K],
 	}
 	for a in keys:
 		if not InputMap.has_action(a):
@@ -25,6 +25,12 @@ static func ensure() -> void:
 			ev.physical_keycode = k
 			if not InputMap.action_has_event(a, ev):
 				InputMap.action_add_event(a, ev)
+	# 0.2.74: keys that moved: the Forge went from O to Z, the straps' J is gone (Use them from the inventory)
+	for gone in [["forge", KEY_O], ["strap", KEY_J], ["undo", KEY_Z]]:
+		if InputMap.has_action(gone[0]):
+			for ev in InputMap.action_get_events(gone[0]):
+				if ev is InputEventKey and (ev as InputEventKey).physical_keycode == gone[1]:
+					InputMap.action_erase_event(gone[0], ev)
 	var mouse := {"fire": MOUSE_BUTTON_LEFT, "aim": MOUSE_BUTTON_RIGHT, "weapon_next": MOUSE_BUTTON_WHEEL_DOWN, "weapon_prev": MOUSE_BUTTON_WHEEL_UP, "carry": MOUSE_BUTTON_MIDDLE}
 	for a in mouse:
 		if not InputMap.has_action(a):

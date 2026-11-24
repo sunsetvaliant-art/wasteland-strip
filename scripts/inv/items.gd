@@ -14,12 +14,20 @@ const DEFS := {
 	"gun_hunter": {"name": "Scoped .308 rifle", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "hunter", "slot": "primary"},
 	"gun_magnum45": {"name": ".45 Magnum", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "magnum45", "slot": "secondary"},
 	"gun_python": {"name": "Colt Python .357", "w": 2, "h": 1, "stack": 1, "kind": "gun", "gun": "python", "slot": "secondary"},
+	"gun_ruger1022": {"name": "Ruger 10/22 .22", "w": 3, "h": 1, "stack": 1, "kind": "gun", "gun": "ruger1022", "slot": "primary"},
+	"gun_lever": {"name": "Henry .44 lever action", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "lever", "slot": "primary"},
+	"gun_glock": {"name": "Glock 17", "w": 1, "h": 1, "stack": 1, "kind": "gun", "gun": "glock", "slot": "secondary"},
+	"gun_sks": {"name": "SKS", "w": 4, "h": 1, "stack": 1, "kind": "gun", "gun": "sks", "slot": "primary"},
 	# rounds, loose: one cell holds a box's worth
 	"ammo_303": {"name": ".303 rounds", "w": 1, "h": 1, "stack": 30, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_762": {"name": "7.62 NATO rounds", "w": 1, "h": 1, "stack": 40, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_357": {"name": ".357 Magnum rounds", "w": 1, "h": 1, "stack": 36, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_45": {"name": ".45 rounds", "w": 1, "h": 1, "stack": 36, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	"ammo_12g": {"name": "12 gauge shells", "w": 1, "h": 1, "stack": 20, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
+	"ammo_22": {"name": ".22 LR rounds", "w": 1, "h": 1, "stack": 100, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
+	"ammo_9mm": {"name": "9 mm rounds", "w": 1, "h": 1, "stack": 50, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
+	"ammo_44": {"name": ".44 Magnum rounds", "w": 1, "h": 1, "stack": 30, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
+	"ammo_762x39": {"name": "7.62x39 rounds", "w": 1, "h": 1, "stack": 40, "kind": "ammo", "model": "res://assets/ph/weapons/ammo_box/ammo_box.gltf"},
 	# medical and food
 	"bandage": {"name": "Bandage", "w": 1, "h": 1, "stack": 10, "kind": "med", "heal": 15.0, "use_time": 2.5},
 	"medkit": {"name": "First aid kit", "w": 2, "h": 2, "stack": 1, "kind": "med", "size": 0.35, "heal": 60.0, "use_time": 6.0, "model": "res://assets/ph/survival/medical_box/medical_box.gltf"},
@@ -129,21 +137,26 @@ const RECIPES := {
 	"ammo_762": {"out": "ammo_762", "n": 8, "needs": {"gunpowder": 1, "brass": 3}},
 	"ammo_357": {"out": "ammo_357", "n": 8, "needs": {"gunpowder": 1, "brass": 2}},
 	"ammo_45": {"out": "ammo_45", "n": 8, "needs": {"gunpowder": 1, "brass": 2}},
+	"ammo_9mm": {"out": "ammo_9mm", "n": 10, "needs": {"gunpowder": 1, "brass": 2}},
+	"ammo_44": {"out": "ammo_44", "n": 8, "needs": {"gunpowder": 1, "brass": 2}},
+	"ammo_762x39": {"out": "ammo_762x39", "n": 8, "needs": {"gunpowder": 1, "brass": 3}},
 }
-const GUN_AMMO := {"enfield": "ammo_303", "slr": "ammo_762", "python": "ammo_357", "sawnoff": "ammo_12g", "dbshotgun": "ammo_12g", "rem870": "ammo_12g", "hunter": "ammo_762", "magnum45": "ammo_45"}
+const GUN_AMMO := {"enfield": "ammo_303", "slr": "ammo_762", "python": "ammo_357", "sawnoff": "ammo_12g", "dbshotgun": "ammo_12g", "rem870": "ammo_12g", "hunter": "ammo_762", "magnum45": "ammo_45",
+	"ruger1022": "ammo_22", "lever": "ammo_44", "glock": "ammo_9mm", "sks": "ammo_762x39"}
 const KIND_COL := {"strap": Color(0.9, 0.45, 0.1), "gun": Color(0.32, 0.3, 0.26), "ammo": Color(0.55, 0.45, 0.18), "med": Color(0.6, 0.18, 0.16), "food": Color(0.35, 0.45, 0.2),
 	"clothing": Color(0.22, 0.32, 0.45), "pack": Color(0.3, 0.36, 0.22), "misc": Color(0.36, 0.33, 0.3)}
 
 # what's in each kind of container prop (keys are Forge prop keys); [item, chance, min, max]
 const LOOT := {
-	"ammo": [["ammo_303", 0.6, 10, 30], ["ammo_762", 0.5, 10, 40], ["ammo_357", 0.5, 6, 36], ["ammo_45", 0.4, 6, 30], ["ammo_12g", 0.6, 6, 20], ["ammo_12g", 0.3, 4, 12]],
+	"ammo": [["ammo_303", 0.6, 10, 30], ["ammo_762", 0.5, 10, 40], ["ammo_357", 0.5, 6, 36], ["ammo_45", 0.4, 6, 30], ["ammo_12g", 0.6, 6, 20], ["ammo_12g", 0.3, 4, 12],
+		["ammo_22", 0.6, 25, 100], ["ammo_9mm", 0.4, 10, 50], ["ammo_44", 0.3, 6, 24], ["ammo_762x39", 0.25, 10, 30]],
 	"medical": [["bandage", 0.95, 2, 8], ["bandage", 0.4, 1, 5], ["medkit", 0.35, 1, 1]],
 	"food": [["water_bottle", 0.5, 1, 2], ["food_can", 0.8, 1, 4], ["long_life", 0.5, 1, 2], ["thermos", 0.25, 1, 1]],
 	"tools": [["car_battery", 0.1, 1, 1], ["tyre_iron", 0.3, 1, 1], ["pipe_wrench", 0.25, 1, 1], ["crowbar", 0.2, 1, 1], ["scrap", 0.5, 1, 3], ["wire", 0.3, 1, 2], ["tape", 0.3, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.3, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.5, 1, 2], ["torch", 0.3, 1, 1], ["radio", 0.15, 1, 1]],
 	"crate": [["water_bottle", 0.4, 1, 2], ["machete", 0.05, 1, 1], ["scrap", 0.3, 1, 3], ["cloth", 0.3, 1, 3], ["food_can", 0.5, 1, 4], ["bandage", 0.4, 1, 4], ["ammo_12g", 0.3, 4, 12], ["ammo_303", 0.25, 5, 20], ["ammo_45", 0.15, 4, 12], ["gun_magnum45", 0.03, 1, 1], ["shirt_flanno", 0.2, 1, 1],
 		["pants_cargo", 0.15, 1, 1], ["jacket_army", 0.08, 1, 1], ["pack_small", 0.1, 1, 1], ["binoculars", 0.08, 1, 1], ["torch", 0.15, 1, 1]],
 	"military": [["machete", 0.25, 1, 1], ["water_bottle", 0.5, 1, 3], ["gunpowder", 0.5, 1, 3], ["brass", 0.5, 4, 10], ["ammo_762", 0.7, 15, 40], ["ammo_303", 0.5, 10, 30], ["gun_slr", 0.12, 1, 1], ["gun_enfield", 0.12, 1, 1], ["gun_hunter", 0.08, 1, 1], ["jacket_army", 0.3, 1, 1],
-		["pack_large", 0.12, 1, 1], ["medkit", 0.25, 1, 1], ["long_life", 0.5, 1, 2], ["gas_mask", 0.2, 1, 1]],
+		["pack_large", 0.12, 1, 1], ["medkit", 0.25, 1, 1], ["long_life", 0.5, 1, 2], ["gas_mask", 0.2, 1, 1], ["gun_sks", 0.08, 1, 1], ["ammo_762x39", 0.4, 10, 30]],
 	"fuel": [["jerry_fuel", 0.9, 1, 1]],
 	"planks": [["tin_sheet", 0.4, 1, 3], ["brick", 0.3, 4, 12], ["plank", 1.0, 2, 6], ["nails", 0.25, 1, 1]],
 	"none": [],
@@ -170,16 +183,16 @@ const LOOT := {
 	"wardrobe": [["bat", 0.08, 1, 1], ["cloth", 0.6, 1, 4], ["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.5, 1, 1], ["shirt_work", 0.3, 1, 1], ["pants_cargo", 0.22, 1, 1], ["jacket_army", 0.08, 1, 1],
 		["boots_rubber", 0.2, 1, 1], ["pack_small", 0.1, 1, 1], ["gun_dbshotgun", 0.02, 1, 1]],
 	"drawers": [["lighter", 0.15, 1, 1], ["car_key", 0.15, 1, 1], ["cloth", 0.4, 1, 3], ["tape", 0.12, 1, 1], ["shirt_flanno", 0.3, 1, 1], ["pants_jeans", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["binoculars", 0.05, 1, 1], ["ammo_357", 0.1, 6, 18], ["radio", 0.05, 1, 1], ["bandage", 0.15, 1, 2]],
-	"nightstand": [["car_key", 0.15, 1, 1], ["torch", 0.3, 1, 1], ["bandage", 0.3, 1, 2], ["ammo_357", 0.12, 6, 12], ["ammo_45", 0.1, 6, 12], ["gun_python", 0.03, 1, 1], ["gun_magnum45", 0.02, 1, 1]],
+	"nightstand": [["car_key", 0.15, 1, 1], ["torch", 0.3, 1, 1], ["bandage", 0.3, 1, 2], ["ammo_357", 0.12, 6, 12], ["ammo_45", 0.1, 6, 12], ["gun_python", 0.03, 1, 1], ["gun_magnum45", 0.02, 1, 1], ["gun_glock", 0.02, 1, 1], ["ammo_9mm", 0.08, 6, 17]],
 	"bookshelf": [["binoculars", 0.1, 1, 1], ["radio", 0.08, 1, 1], ["torch", 0.1, 1, 1], ["bandage", 0.1, 1, 1]],
 	"office": [["laptop", 0.15, 1, 1], ["car_key", 0.2, 1, 1], ["radio", 0.3, 1, 1], ["torch", 0.3, 1, 1], ["binoculars", 0.1, 1, 1], ["thermos", 0.2, 1, 1], ["ammo_45", 0.05, 4, 12]],
-	"shed_shelf": [["strap_250", 0.3, 1, 2], ["strap_2t", 0.15, 1, 1], ["spanner", 0.15, 1, 1], ["pliers", 0.15, 1, 1], ["screwdriver", 0.2, 1, 1], ["hacksaw", 0.12, 1, 1], ["hatchet", 0.2, 1, 1], ["flint", 0.08, 1, 1], ["lighter", 0.12, 1, 1], ["seeds", 0.15, 1, 4], ["machete", 0.12, 1, 1], ["crowbar", 0.15, 1, 1], ["sledge", 0.06, 1, 1], ["bottle", 0.3, 1, 3], ["scrap", 0.5, 1, 4], ["wire", 0.3, 1, 2], ["brick", 0.2, 2, 8], ["tin_sheet", 0.2, 1, 2], ["gunpowder", 0.12, 1, 2], ["tape", 0.3, 1, 1], ["hammer", 0.15, 1, 1], ["nails", 0.3, 1, 2], ["plank", 0.2, 1, 3], ["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1]],
+	"shed_shelf": [["strap_250", 0.3, 1, 2], ["strap_2t", 0.15, 1, 1], ["spanner", 0.15, 1, 1], ["pliers", 0.15, 1, 1], ["screwdriver", 0.2, 1, 1], ["hacksaw", 0.12, 1, 1], ["hatchet", 0.2, 1, 1], ["flint", 0.08, 1, 1], ["lighter", 0.12, 1, 1], ["seeds", 0.15, 1, 4], ["machete", 0.12, 1, 1], ["crowbar", 0.15, 1, 1], ["sledge", 0.06, 1, 1], ["bottle", 0.3, 1, 3], ["scrap", 0.5, 1, 4], ["wire", 0.3, 1, 2], ["brick", 0.2, 2, 8], ["tin_sheet", 0.2, 1, 2], ["gunpowder", 0.12, 1, 2], ["tape", 0.3, 1, 1], ["hammer", 0.15, 1, 1], ["nails", 0.3, 1, 2], ["plank", 0.2, 1, 3], ["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1], ["gun_ruger1022", 0.03, 1, 1], ["ammo_22", 0.15, 20, 50]],
 	"workbench": [["strap_250", 0.25, 1, 2], ["strap_2t", 0.15, 1, 1], ["ratchet", 0.3, 1, 1], ["spanner", 0.3, 1, 1], ["multigrips", 0.2, 1, 1], ["car_battery", 0.25, 1, 1], ["car_key", 0.15, 1, 1], ["wire", 0.4, 1, 3], ["tyre_iron", 0.3, 1, 1], ["pipe_wrench", 0.25, 1, 1], ["scrap", 0.6, 1, 4], ["wire", 0.3, 1, 2], ["brass", 0.25, 2, 8], ["gunpowder", 0.2, 1, 2], ["tape", 0.35, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.35, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
 	"laundry": [["cloth", 0.7, 2, 5], ["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
 	"servo_shelf": [["lighter", 0.6, 1, 2], ["car_battery", 0.3, 1, 1], ["oil_can", 0.6, 1, 2], ["wire", 0.3, 1, 2], ["soft_drink", 0.8, 1, 5], ["water_bottle", 0.7, 1, 3], ["tyre_iron", 0.2, 1, 1], ["tape", 0.2, 1, 1], ["torch", 0.1, 1, 1], ["food_can", 0.6, 1, 4], ["long_life", 0.35, 1, 2], ["oil_can", 0.5, 1, 2], ["torch", 0.15, 1, 1], ["bandage", 0.25, 1, 3], ["jerry_fuel", 0.1, 1, 1], ["thermos", 0.1, 1, 1]],
 	# the mall
 	"super": [["water_bottle", 0.7, 1, 3], ["soft_drink", 0.7, 2, 6], ["food_can", 0.85, 1, 4], ["long_life", 0.55, 1, 3], ["food_can", 0.5, 1, 3], ["bandage", 0.15, 1, 3], ["tape", 0.1, 1, 1], ["thermos", 0.08, 1, 1]],
-	"security": [["car_key", 0.3, 1, 1], ["bat", 0.3, 1, 1], ["water_bottle", 0.4, 1, 2], ["torch", 0.6, 1, 1], ["radio", 0.5, 1, 1], ["ammo_45", 0.35, 6, 18], ["gun_magnum45", 0.12, 1, 1], ["bandage", 0.4, 1, 4], ["binoculars", 0.1, 1, 1]],
+	"security": [["car_key", 0.3, 1, 1], ["bat", 0.3, 1, 1], ["water_bottle", 0.4, 1, 2], ["torch", 0.6, 1, 1], ["radio", 0.5, 1, 1], ["ammo_45", 0.35, 6, 18], ["gun_magnum45", 0.12, 1, 1], ["bandage", 0.4, 1, 4], ["binoculars", 0.1, 1, 1], ["gun_glock", 0.12, 1, 1], ["ammo_9mm", 0.35, 10, 34]],
 	# main-street shops
 	"chemist": [["bandage", 0.9, 2, 8], ["bandage", 0.5, 1, 5], ["medkit", 0.3, 1, 1], ["thermos", 0.05, 1, 1]],
 	"hardware": [["strap_250", 0.6, 1, 4], ["strap_2t", 0.35, 1, 2], ["ratchet", 0.3, 1, 1], ["spanner", 0.3, 1, 1], ["pliers", 0.3, 1, 1], ["multigrips", 0.25, 1, 1], ["screwdriver", 0.35, 1, 1], ["hacksaw", 0.25, 1, 1], ["bolt_cutters", 0.12, 1, 1], ["tape_measure", 0.3, 1, 1], ["gas_torch", 0.15, 1, 1], ["hand_drill", 0.1, 1, 1], ["car_battery", 0.3, 1, 1], ["seeds", 0.4, 2, 6], ["lighter", 0.3, 1, 2], ["hatchet", 0.35, 1, 1], ["crowbar", 0.35, 1, 1], ["sledge", 0.15, 1, 1], ["machete", 0.2, 1, 1], ["pipe_wrench", 0.3, 1, 1], ["scrap", 0.6, 2, 6], ["wire", 0.5, 1, 3], ["tin_sheet", 0.4, 1, 3], ["brick", 0.4, 4, 12], ["rope", 0.3, 1, 2], ["tape", 0.5, 1, 2], ["hammer", 0.35, 1, 1], ["nails", 0.55, 1, 3], ["plank", 0.35, 1, 4], ["wrench", 0.35, 1, 1], ["torch", 0.3, 1, 1], ["oil_can", 0.3, 1, 2], ["jerry_fuel", 0.08, 1, 1]],
@@ -188,11 +201,11 @@ const LOOT := {
 	"clothes": [["cloth", 0.7, 2, 6], ["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.45, 1, 1], ["shirt_work", 0.35, 1, 1], ["pants_cargo", 0.3, 1, 1], ["jacket_army", 0.12, 1, 1],
 		["boots_rubber", 0.25, 1, 1], ["pack_small", 0.15, 1, 1], ["gas_mask", 0.03, 1, 1]],
 	"sports": [["bat", 0.6, 1, 1], ["knife", 0.4, 1, 1], ["machete", 0.15, 1, 1], ["water_bottle", 0.4, 1, 2], ["gunpowder", 0.5, 1, 3], ["brass", 0.5, 3, 10], ["ammo_12g", 0.55, 6, 20], ["ammo_303", 0.3, 5, 20], ["ammo_762", 0.15, 5, 20], ["binoculars", 0.25, 1, 1], ["pack_small", 0.3, 1, 1], ["pack_large", 0.06, 1, 1],
-		["torch", 0.3, 1, 1], ["boots_rubber", 0.2, 1, 1], ["gun_rem870", 0.04, 1, 1], ["gun_hunter", 0.03, 1, 1]],
+		["torch", 0.3, 1, 1], ["boots_rubber", 0.2, 1, 1], ["gun_rem870", 0.04, 1, 1], ["gun_hunter", 0.03, 1, 1], ["gun_ruger1022", 0.05, 1, 1], ["gun_lever", 0.03, 1, 1], ["ammo_22", 0.3, 25, 100], ["ammo_44", 0.15, 6, 20]],
 	"general": [["water_bottle", 0.5, 1, 2], ["lighter", 0.3, 1, 1], ["soft_drink", 0.5, 1, 4], ["bat", 0.1, 1, 1], ["cloth", 0.4, 1, 3], ["wire", 0.2, 1, 2], ["food_can", 0.6, 1, 3], ["tape", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["bandage", 0.3, 1, 3], ["oil_can", 0.2, 1, 1], ["long_life", 0.25, 1, 1], ["nails", 0.1, 1, 1]],
 	"pub": [["bottle", 0.9, 2, 3], ["soft_drink", 0.6, 1, 4], ["water_bottle", 0.4, 1, 2], ["food_can", 0.4, 1, 2], ["thermos", 0.2, 1, 1], ["long_life", 0.2, 1, 1], ["ammo_12g", 0.08, 4, 10]],
 	"till": [["car_key", 0.1, 1, 1], ["bandage", 0.2, 1, 2], ["torch", 0.2, 1, 1], ["tape", 0.15, 1, 1], ["radio", 0.06, 1, 1], ["ammo_45", 0.04, 4, 10]],
-	"bank": [["ammo_45", 0.4, 6, 24], ["ammo_357", 0.35, 6, 24], ["gun_python", 0.12, 1, 1], ["gun_magnum45", 0.1, 1, 1], ["radio", 0.2, 1, 1], ["torch", 0.2, 1, 1]],
+	"bank": [["ammo_45", 0.4, 6, 24], ["ammo_357", 0.35, 6, 24], ["gun_python", 0.12, 1, 1], ["gun_magnum45", 0.1, 1, 1], ["radio", 0.2, 1, 1], ["torch", 0.2, 1, 1], ["ammo_9mm", 0.3, 10, 34]],
 	"rack": [["scrap", 0.4, 1, 4], ["food_can", 0.4, 1, 4], ["long_life", 0.3, 1, 2], ["ammo_762", 0.08, 10, 30], ["jerry_fuel", 0.12, 1, 1], ["pack_small", 0.06, 1, 1], ["oil_can", 0.3, 1, 2]],
 }
 # which Forge props are containers, the loot table, and the grid size inside
