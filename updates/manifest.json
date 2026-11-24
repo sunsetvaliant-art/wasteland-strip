@@ -559,6 +559,13 @@
    "date": "2026-11-24",
    "size": 85016,
    "notes": "Fixes 0.2.75 freezing after you hit Play: the zombie and scav models were loading in the background while the game loaded the same ones straight away (your new body, the clothes), and the two locked each other up. They load up front now, so the loading screen may take a moment longer."
+  },
+  {
+   "file": "patch_0.2.0_0077.pck",
+   "version": "0.2.77",
+   "date": "2026-11-24",
+   "size": 9505556,
+   "notes": "Beaches and waves. The coast is rebuilt from one smooth waterline: an even sand beach up from the water (wet sand at the edge, dry sand, then dune grass into the dunes), no pools of sea lying on the beach, no mud or paddock patches on it, sand bars offshore gone, and the sea bed shelving evenly so it doesn't show blotches through the water. The waves are new: a swell that comes in from deep water and shortens as it reaches the beach, with bent crests, sets and broken lengths, breaking white in the surf zone; crossing swells out deep in patches; a wind chop; lighter and darker wind patches. No more evenly spaced wrinkles."
   }
  ],
  "full": {
