@@ -2,7 +2,34 @@
 
 This is the one list. Every Claude session reads it first and updates it before releasing a patch.
 Tick `[x]` when shipped (with the patch number), never delete a line without the user saying so.
-Newest requests at the top of each section. Last updated: patch 0074, 2026-11-24.
+Newest requests at the top of each section. Last updated: patch 0075, 2026-11-24.
+
+## Clothes you can see, generated people, random outfits, character screen 2026-11-24 (0075)
+User: rigged clothing (equip a flanno and it shows on the player model); random combinations of clothing on
+players, zombies and scavs; generated player bodies that can wear different clothes; a character screen. Then: don't
+reuse the main player model for anyone else; use the Blender add-on (MakeHuman's MPFB2).
+- [x] 0075 Eleven people generated with MakeHuman's own Blender add-on (MPFB2) and its CC0 assets: young, middle-aged
+      and old men and women of different builds and backgrounds, each with their own skin, hair, brows and eyes, on
+      the Mixamo skeleton (so every animation in the game fits). tools/mh/gen_people.py + post_people.py
+- [x] 0075 Real rigged clothes: every garment MakeHuman has (shirts, tees, a check shirt, a denim shirt, a jacket, a
+      crop top, five cuts of jeans, denim shorts, leggings, overalls, boots, runners, leather shoes, a hat) fitted to
+      each person's own body as its own mesh on the same skeleton. Wearing one shows it, and the skin under it drops
+      away (baked per vertex), so nothing pokes through. Underwear when nothing's on
+- [x] 0075 Your clothes slots are what you wear (on you, and on you over LAN). Clothing items map to the garments, in
+      cuts and colours (white tees dyed: hi-vis yellow, orange, black, navy...), with dirt, and blood on the dead
+- [x] 0075 New clothing items: T-shirt, singlet, drill work shirt, hoodie, stubbies, trackies, overalls, work boots,
+      runners, leather shoes, thongs, a hat, in wardrobes, drawers, laundries, clothes shops, hardware and sheds
+- [x] 0075 Zombies and scavs are these people, in random everyday outfits (the zombies grey, filthy and bloody), with
+      their own height and build; nobody else uses your model. Same outfits on every LAN screen. Search a body and
+      its clothes are there to take
+- [x] 0075 Character screen (comes up the first time, and Pause > Your survivor): pick one of the eleven people (or
+      the original survivor), your height and build, with you turning round in your clothes
+- [x] 0075 The older Sketchfab zombies get clothes painted on by a shader instead (they're one painted mesh each)
+- [x] 0075 Draw calls (your 1650 Ti): each person casts one shadow (their bare body) instead of one per hair, eye and
+      garment, and scavs' guns cast none: a dressed person ~10 draw calls, a scav ~17 (was ~39)
+- [ ] Clothes: more garments (MakeHuman's community packs: hoodies, hi-vis, workwear, hats, caps, beanies); a
+      backpack on your back; a gas mask on the face; hair styles to pick; torn clothes from damage
+- [ ] Zombie looks on the MakeHuman people: proper wounds in the skin (0075 has grey-green dead skin, bruising, blood)
 
 ## Coast, water, mud, Forge menu, links, animals, guns 2026-11-24 (0074)
 User (all in one go): occlusion culling; gentle lapping waves on the beaches with the right sands in the right

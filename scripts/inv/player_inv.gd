@@ -76,6 +76,7 @@ func _equip_changed() -> void:
 ## Rebuild the guns in your hands from the two gun slots, keeping each one's loaded rounds with its item
 func sync_guns() -> void:
 	if player == null: return
+	if player.has_method("refresh_outfit"): player.refresh_outfit()      # 0.2.75: (every equip change comes by here) you wear it
 	var want: Array = []
 	for sl in ["primary", "secondary"]:
 		var s = equip.get(sl)
@@ -157,6 +158,7 @@ func loadout(creative: bool) -> void:
 		equip["secondary"] = Items.fresh("gun_python")
 		equip["top"] = Items.fresh("jacket_army")
 		equip["bottom"] = Items.fresh("pants_cargo")
+		equip["feet"] = Items.fresh("boots_work")
 		equip["back"] = Items.fresh("pack_large")
 		for k in ["enfield", "python"]: equip["primary" if k == "enfield" else "secondary"].data.ammo = int(Gun.DEFS[k].mag)
 		for id in ["gun_slr", "gun_rem870", "gun_dbshotgun", "gun_sawnoff", "gun_hunter", "gun_magnum45", "gun_sks", "gun_lever", "gun_ruger1022", "gun_glock"]:
@@ -174,6 +176,7 @@ func loadout(creative: bool) -> void:
 		equip.secondary.data.ammo = 6
 		equip["top"] = Items.fresh("shirt_flanno")
 		equip["bottom"] = Items.fresh("pants_jeans")
+		equip["feet"] = Items.fresh("boots_work")
 		add(Items.fresh("ammo_357", 12))
 		add(Items.fresh("bandage", 3))
 		add(Items.fresh("food_can", 1))

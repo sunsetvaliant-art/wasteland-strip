@@ -41,6 +41,19 @@ const DEFS := {
 	"pants_jeans": {"name": "Jeans", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "bottom", "grid": [3, 2]},
 	"pants_cargo": {"name": "Cargo pants", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "bottom", "grid": [5, 2]},
 	"boots_rubber": {"name": "Rubber boots", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "feet", "model": "res://assets/ph/survival/rubber_boots/rubber_boots.gltf"},
+	# 0.2.75: more everyday clothes (they show on you: Outfit.LOOKS), each found in one of a few colours
+	"shirt_tee": {"name": "T-shirt", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "top"},
+	"shirt_singlet": {"name": "Singlet", "w": 1, "h": 2, "stack": 2, "kind": "clothing", "slot": "top"},
+	"shirt_drill": {"name": "Drill work shirt", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "top", "grid": [4, 2]},
+	"hoodie": {"name": "Hoodie", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "top", "grid": [4, 1]},
+	"shorts_stubbies": {"name": "Stubbies (work shorts)", "w": 2, "h": 1, "stack": 2, "kind": "clothing", "slot": "bottom", "grid": [3, 1]},
+	"pants_trackies": {"name": "Trackies", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "bottom", "grid": [2, 1]},
+	"boots_work": {"name": "Work boots", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "feet"},
+	"shoes_runners": {"name": "Runners", "w": 2, "h": 1, "stack": 2, "kind": "clothing", "slot": "feet"},
+	"overalls": {"name": "Overalls", "w": 2, "h": 3, "stack": 1, "kind": "clothing", "slot": "bottom", "grid": [4, 2]},
+	"shoes_leather": {"name": "Leather shoes", "w": 2, "h": 1, "stack": 2, "kind": "clothing", "slot": "feet"},
+	"hat_fedora": {"name": "Hat", "w": 2, "h": 1, "stack": 1, "kind": "clothing", "slot": "head"},
+	"thongs": {"name": "Thongs", "w": 1, "h": 1, "stack": 2, "kind": "clothing", "slot": "feet"},
 	"gas_mask": {"name": "Gas mask", "w": 2, "h": 2, "stack": 2, "kind": "clothing", "slot": "head", "model": "res://assets/ph/survival/old_gas_mask/old_gas_mask.gltf"},
 	# bags
 	"pack_small": {"name": "Small backpack", "w": 3, "h": 3, "stack": 1, "kind": "pack", "slot": "back", "grid": [5, 10], "model": "res://assets/props/pack.glb"},
@@ -180,25 +193,25 @@ const LOOT := {
 	"fridge": [["meat_raw", 0.2, 1, 2], ["water_bottle", 0.6, 1, 3], ["soft_drink", 0.6, 1, 4], ["food_can", 0.35, 1, 2], ["thermos", 0.12, 1, 1], ["long_life", 0.1, 1, 1]],
 	"pantry": [["water_bottle", 0.4, 1, 2], ["soft_drink", 0.4, 1, 3], ["food_can", 0.8, 1, 4], ["long_life", 0.45, 1, 2], ["oil_can", 0.1, 1, 1], ["torch", 0.06, 1, 1]],
 	"bathroom": [["bandage", 0.75, 1, 4], ["medkit", 0.1, 1, 1], ["bandage", 0.2, 1, 2]],
-	"wardrobe": [["bat", 0.08, 1, 1], ["cloth", 0.6, 1, 4], ["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.5, 1, 1], ["shirt_work", 0.3, 1, 1], ["pants_cargo", 0.22, 1, 1], ["jacket_army", 0.08, 1, 1],
+	"wardrobe": [["shoes_leather", 0.25, 1, 1], ["hat_fedora", 0.1, 1, 1], ["overalls", 0.08, 1, 1], ["bat", 0.08, 1, 1], ["cloth", 0.6, 1, 4], ["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.5, 1, 1], ["shirt_tee", 0.6, 1, 2], ["shirt_singlet", 0.3, 1, 1], ["hoodie", 0.3, 1, 1], ["shorts_stubbies", 0.4, 1, 1], ["pants_trackies", 0.3, 1, 1], ["shirt_drill", 0.2, 1, 1], ["shoes_runners", 0.25, 1, 1], ["thongs", 0.3, 1, 1], ["boots_work", 0.15, 1, 1], ["shirt_work", 0.3, 1, 1], ["pants_cargo", 0.22, 1, 1], ["jacket_army", 0.08, 1, 1],
 		["boots_rubber", 0.2, 1, 1], ["pack_small", 0.1, 1, 1], ["gun_dbshotgun", 0.02, 1, 1]],
-	"drawers": [["lighter", 0.15, 1, 1], ["car_key", 0.15, 1, 1], ["cloth", 0.4, 1, 3], ["tape", 0.12, 1, 1], ["shirt_flanno", 0.3, 1, 1], ["pants_jeans", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["binoculars", 0.05, 1, 1], ["ammo_357", 0.1, 6, 18], ["radio", 0.05, 1, 1], ["bandage", 0.15, 1, 2]],
+	"drawers": [["shirt_tee", 0.4, 1, 2], ["shirt_singlet", 0.2, 1, 1], ["shorts_stubbies", 0.2, 1, 1],["lighter", 0.15, 1, 1], ["car_key", 0.15, 1, 1], ["cloth", 0.4, 1, 3], ["tape", 0.12, 1, 1], ["shirt_flanno", 0.3, 1, 1], ["pants_jeans", 0.25, 1, 1], ["torch", 0.2, 1, 1], ["binoculars", 0.05, 1, 1], ["ammo_357", 0.1, 6, 18], ["radio", 0.05, 1, 1], ["bandage", 0.15, 1, 2]],
 	"nightstand": [["car_key", 0.15, 1, 1], ["torch", 0.3, 1, 1], ["bandage", 0.3, 1, 2], ["ammo_357", 0.12, 6, 12], ["ammo_45", 0.1, 6, 12], ["gun_python", 0.03, 1, 1], ["gun_magnum45", 0.02, 1, 1], ["gun_glock", 0.02, 1, 1], ["ammo_9mm", 0.08, 6, 17]],
 	"bookshelf": [["binoculars", 0.1, 1, 1], ["radio", 0.08, 1, 1], ["torch", 0.1, 1, 1], ["bandage", 0.1, 1, 1]],
 	"office": [["laptop", 0.15, 1, 1], ["car_key", 0.2, 1, 1], ["radio", 0.3, 1, 1], ["torch", 0.3, 1, 1], ["binoculars", 0.1, 1, 1], ["thermos", 0.2, 1, 1], ["ammo_45", 0.05, 4, 12]],
-	"shed_shelf": [["strap_250", 0.3, 1, 2], ["strap_2t", 0.15, 1, 1], ["spanner", 0.15, 1, 1], ["pliers", 0.15, 1, 1], ["screwdriver", 0.2, 1, 1], ["hacksaw", 0.12, 1, 1], ["hatchet", 0.2, 1, 1], ["flint", 0.08, 1, 1], ["lighter", 0.12, 1, 1], ["seeds", 0.15, 1, 4], ["machete", 0.12, 1, 1], ["crowbar", 0.15, 1, 1], ["sledge", 0.06, 1, 1], ["bottle", 0.3, 1, 3], ["scrap", 0.5, 1, 4], ["wire", 0.3, 1, 2], ["brick", 0.2, 2, 8], ["tin_sheet", 0.2, 1, 2], ["gunpowder", 0.12, 1, 2], ["tape", 0.3, 1, 1], ["hammer", 0.15, 1, 1], ["nails", 0.3, 1, 2], ["plank", 0.2, 1, 3], ["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1], ["gun_ruger1022", 0.03, 1, 1], ["ammo_22", 0.15, 20, 50]],
+	"shed_shelf": [["overalls", 0.12, 1, 1], ["boots_work", 0.12, 1, 1], ["shirt_drill", 0.1, 1, 1], ["strap_250", 0.3, 1, 2], ["strap_2t", 0.15, 1, 1], ["spanner", 0.15, 1, 1], ["pliers", 0.15, 1, 1], ["screwdriver", 0.2, 1, 1], ["hacksaw", 0.12, 1, 1], ["hatchet", 0.2, 1, 1], ["flint", 0.08, 1, 1], ["lighter", 0.12, 1, 1], ["seeds", 0.15, 1, 4], ["machete", 0.12, 1, 1], ["crowbar", 0.15, 1, 1], ["sledge", 0.06, 1, 1], ["bottle", 0.3, 1, 3], ["scrap", 0.5, 1, 4], ["wire", 0.3, 1, 2], ["brick", 0.2, 2, 8], ["tin_sheet", 0.2, 1, 2], ["gunpowder", 0.12, 1, 2], ["tape", 0.3, 1, 1], ["hammer", 0.15, 1, 1], ["nails", 0.3, 1, 2], ["plank", 0.2, 1, 3], ["oil_can", 0.5, 1, 2], ["wrench", 0.35, 1, 1], ["jerry_fuel", 0.15, 1, 1], ["torch", 0.15, 1, 1], ["ammo_12g", 0.15, 4, 12], ["ammo_303", 0.08, 5, 15], ["boots_rubber", 0.1, 1, 1], ["gun_ruger1022", 0.03, 1, 1], ["ammo_22", 0.15, 20, 50]],
 	"workbench": [["strap_250", 0.25, 1, 2], ["strap_2t", 0.15, 1, 1], ["ratchet", 0.3, 1, 1], ["spanner", 0.3, 1, 1], ["multigrips", 0.2, 1, 1], ["car_battery", 0.25, 1, 1], ["car_key", 0.15, 1, 1], ["wire", 0.4, 1, 3], ["tyre_iron", 0.3, 1, 1], ["pipe_wrench", 0.25, 1, 1], ["scrap", 0.6, 1, 4], ["wire", 0.3, 1, 2], ["brass", 0.25, 2, 8], ["gunpowder", 0.2, 1, 2], ["tape", 0.35, 1, 1], ["hammer", 0.3, 1, 1], ["nails", 0.35, 1, 2], ["wrench", 0.6, 1, 1], ["oil_can", 0.3, 1, 1], ["torch", 0.2, 1, 1], ["radio", 0.05, 1, 1]],
-	"laundry": [["cloth", 0.7, 2, 5], ["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
+	"laundry": [["cloth", 0.7, 2, 5], ["shirt_tee", 0.4, 1, 2], ["shorts_stubbies", 0.25, 1, 1], ["shirt_singlet", 0.25, 1, 1], ["shirt_drill", 0.2, 1, 1], ["tape", 0.25, 1, 1], ["bandage", 0.2, 1, 2], ["boots_rubber", 0.2, 1, 1], ["gas_mask", 0.05, 1, 1], ["shirt_work", 0.25, 1, 1]],
 	"servo_shelf": [["lighter", 0.6, 1, 2], ["car_battery", 0.3, 1, 1], ["oil_can", 0.6, 1, 2], ["wire", 0.3, 1, 2], ["soft_drink", 0.8, 1, 5], ["water_bottle", 0.7, 1, 3], ["tyre_iron", 0.2, 1, 1], ["tape", 0.2, 1, 1], ["torch", 0.1, 1, 1], ["food_can", 0.6, 1, 4], ["long_life", 0.35, 1, 2], ["oil_can", 0.5, 1, 2], ["torch", 0.15, 1, 1], ["bandage", 0.25, 1, 3], ["jerry_fuel", 0.1, 1, 1], ["thermos", 0.1, 1, 1]],
 	# the mall
 	"super": [["water_bottle", 0.7, 1, 3], ["soft_drink", 0.7, 2, 6], ["food_can", 0.85, 1, 4], ["long_life", 0.55, 1, 3], ["food_can", 0.5, 1, 3], ["bandage", 0.15, 1, 3], ["tape", 0.1, 1, 1], ["thermos", 0.08, 1, 1]],
 	"security": [["car_key", 0.3, 1, 1], ["bat", 0.3, 1, 1], ["water_bottle", 0.4, 1, 2], ["torch", 0.6, 1, 1], ["radio", 0.5, 1, 1], ["ammo_45", 0.35, 6, 18], ["gun_magnum45", 0.12, 1, 1], ["bandage", 0.4, 1, 4], ["binoculars", 0.1, 1, 1], ["gun_glock", 0.12, 1, 1], ["ammo_9mm", 0.35, 10, 34]],
 	# main-street shops
 	"chemist": [["bandage", 0.9, 2, 8], ["bandage", 0.5, 1, 5], ["medkit", 0.3, 1, 1], ["thermos", 0.05, 1, 1]],
-	"hardware": [["strap_250", 0.6, 1, 4], ["strap_2t", 0.35, 1, 2], ["ratchet", 0.3, 1, 1], ["spanner", 0.3, 1, 1], ["pliers", 0.3, 1, 1], ["multigrips", 0.25, 1, 1], ["screwdriver", 0.35, 1, 1], ["hacksaw", 0.25, 1, 1], ["bolt_cutters", 0.12, 1, 1], ["tape_measure", 0.3, 1, 1], ["gas_torch", 0.15, 1, 1], ["hand_drill", 0.1, 1, 1], ["car_battery", 0.3, 1, 1], ["seeds", 0.4, 2, 6], ["lighter", 0.3, 1, 2], ["hatchet", 0.35, 1, 1], ["crowbar", 0.35, 1, 1], ["sledge", 0.15, 1, 1], ["machete", 0.2, 1, 1], ["pipe_wrench", 0.3, 1, 1], ["scrap", 0.6, 2, 6], ["wire", 0.5, 1, 3], ["tin_sheet", 0.4, 1, 3], ["brick", 0.4, 4, 12], ["rope", 0.3, 1, 2], ["tape", 0.5, 1, 2], ["hammer", 0.35, 1, 1], ["nails", 0.55, 1, 3], ["plank", 0.35, 1, 4], ["wrench", 0.35, 1, 1], ["torch", 0.3, 1, 1], ["oil_can", 0.3, 1, 2], ["jerry_fuel", 0.08, 1, 1]],
+	"hardware": [["boots_work", 0.25, 1, 1], ["shirt_work", 0.2, 1, 1], ["boots_rubber", 0.15, 1, 1], ["strap_250", 0.6, 1, 4], ["strap_2t", 0.35, 1, 2], ["ratchet", 0.3, 1, 1], ["spanner", 0.3, 1, 1], ["pliers", 0.3, 1, 1], ["multigrips", 0.25, 1, 1], ["screwdriver", 0.35, 1, 1], ["hacksaw", 0.25, 1, 1], ["bolt_cutters", 0.12, 1, 1], ["tape_measure", 0.3, 1, 1], ["gas_torch", 0.15, 1, 1], ["hand_drill", 0.1, 1, 1], ["car_battery", 0.3, 1, 1], ["seeds", 0.4, 2, 6], ["lighter", 0.3, 1, 2], ["hatchet", 0.35, 1, 1], ["crowbar", 0.35, 1, 1], ["sledge", 0.15, 1, 1], ["machete", 0.2, 1, 1], ["pipe_wrench", 0.3, 1, 1], ["scrap", 0.6, 2, 6], ["wire", 0.5, 1, 3], ["tin_sheet", 0.4, 1, 3], ["brick", 0.4, 4, 12], ["rope", 0.3, 1, 2], ["tape", 0.5, 1, 2], ["hammer", 0.35, 1, 1], ["nails", 0.55, 1, 3], ["plank", 0.35, 1, 4], ["wrench", 0.35, 1, 1], ["torch", 0.3, 1, 1], ["oil_can", 0.3, 1, 2], ["jerry_fuel", 0.08, 1, 1]],
 	"grocer": [["water_bottle", 0.8, 1, 3], ["soft_drink", 0.8, 2, 6], ["food_can", 0.9, 1, 4], ["long_life", 0.5, 1, 2], ["food_can", 0.4, 1, 3], ["thermos", 0.1, 1, 1]],
 	"newsagent": [["radio", 0.2, 1, 1], ["torch", 0.3, 1, 1], ["tape", 0.3, 1, 1], ["binoculars", 0.08, 1, 1], ["thermos", 0.1, 1, 1]],
-	"clothes": [["cloth", 0.7, 2, 6], ["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.45, 1, 1], ["shirt_work", 0.35, 1, 1], ["pants_cargo", 0.3, 1, 1], ["jacket_army", 0.12, 1, 1],
+	"clothes": [["cloth", 0.7, 2, 6], ["shirt_flanno", 0.5, 1, 1], ["pants_jeans", 0.45, 1, 1], ["shirt_tee", 0.6, 1, 3], ["hoodie", 0.4, 1, 1], ["shorts_stubbies", 0.4, 1, 2], ["pants_trackies", 0.35, 1, 1], ["shoes_runners", 0.4, 1, 1], ["thongs", 0.4, 1, 2], ["shirt_singlet", 0.3, 1, 2], ["shirt_work", 0.35, 1, 1], ["pants_cargo", 0.3, 1, 1], ["jacket_army", 0.12, 1, 1],
 		["boots_rubber", 0.25, 1, 1], ["pack_small", 0.15, 1, 1], ["gas_mask", 0.03, 1, 1]],
 	"sports": [["bat", 0.6, 1, 1], ["knife", 0.4, 1, 1], ["machete", 0.15, 1, 1], ["water_bottle", 0.4, 1, 2], ["gunpowder", 0.5, 1, 3], ["brass", 0.5, 3, 10], ["ammo_12g", 0.55, 6, 20], ["ammo_303", 0.3, 5, 20], ["ammo_762", 0.15, 5, 20], ["binoculars", 0.25, 1, 1], ["pack_small", 0.3, 1, 1], ["pack_large", 0.06, 1, 1],
 		["torch", 0.3, 1, 1], ["boots_rubber", 0.2, 1, 1], ["gun_rem870", 0.04, 1, 1], ["gun_hunter", 0.03, 1, 1], ["gun_ruger1022", 0.05, 1, 1], ["gun_lever", 0.03, 1, 1], ["ammo_22", 0.3, 25, 100], ["ammo_44", 0.15, 6, 20]],
@@ -226,7 +239,7 @@ const CONTAINERS := {
 	"chemist": ["chemist", [7, 4]], "hardware": ["hardware", [8, 4]], "grocer": ["grocer", [7, 4]], "newsagent": ["newsagent", [6, 4]],
 	"clothes": ["clothes", [7, 5]], "sports": ["sports", [8, 4]], "general": ["general", [7, 4]], "pub": ["pub", [6, 3]], "till": ["till", [4, 2]],
 	"bank": ["bank", [5, 4]], "super": ["super", [8, 4]], "security": ["security", [6, 4]],
-	"zombie": ["zombie", [4, 3]], "scav": ["scav", [5, 3]],
+	"zombie": ["zombie", [7, 4]], "scav": ["scav", [7, 4]],
 	"carparts": ["carparts", [7, 4]], "wreck": ["wreck", [6, 4]], "caravan": ["caravan", [7, 5]],
 	"car_boot": ["none", [7, 4]], "car_wagon": ["none", [8, 5]], "car_tray": ["none", [10, 5]],
 }
@@ -257,6 +270,7 @@ static func fresh(id: String, n := 1) -> Dictionary:
 	if d.has("grid"):
 		s.data["grid"] = new_grid(d.grid[0], d.grid[1])
 	if id == "car_key": s.data["cut"] = randi() % 3          # one key in three fits any one car
+	if Outfit.LOOKS.has(id) or Outfit.MH_ITEMS.has(id): s.data["v"] = randi() % 7     # which colour / cut it is
 	if id == "car_battery": s.data["charge"] = randf_range(40.0, 100.0)
 	return s
 

@@ -166,6 +166,8 @@ static func make_gib(rig, root_bone: int, bodies: Dictionary, parent: Node) -> N
 	model.transform = rig.model.transform
 	for ap in model.find_children("*", "AnimationPlayer", true, false):
 		ap.queue_free()
+	if not rig.look.is_empty():
+		Outfit.dress(model, rig.model_path, rig.model_key, rig.look)       # 0.2.75: the arm keeps its sleeve
 	var sk: Skeleton3D = model.find_children("*", "Skeleton3D", true, false)[0]
 	var mods := BodyMods.new()
 	mods.rig = rig

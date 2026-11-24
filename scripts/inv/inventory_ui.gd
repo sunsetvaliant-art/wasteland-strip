@@ -103,6 +103,9 @@ static func box_grid(box: Node) -> Dictionary:
 			var extra := Items.roll_loot("military", rng)
 			if not extra.is_empty():
 				Inventory.add(g, extra[rng.randi() % extra.size()])
+	# 0.2.75: what a body had on
+	for w in box.get_meta("worn", []):
+		Inventory.add(g, w)
 	box.set_meta("inv", g)
 	return g
 

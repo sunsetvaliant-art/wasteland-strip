@@ -13,7 +13,7 @@ extends Node
 const PORT := 24680
 const BEACON_PORT := 24681
 const MAX_PLAYERS := 8
-const BODIES := ["player", "survivor_female", "scav_2", "warboy", "scav_hooded", "warbringer", "warboy_enforcer", "player"]
+const BODIES := ["mh_m_young", "mh_f_young", "mh_m_mid", "mh_m_african", "mh_f_asian", "mh_m_lean", "mh_f_african", "mh_m_asian"]
 
 var main
 var peer: ENetMultiplayerPeer
@@ -25,6 +25,7 @@ var npcs := {}               # host: net id -> NPC     client: net id -> NPC pup
 var _npc_ids := {}           # host: NPC -> net id
 var _next_id := 1
 var _send_t := 0.0
+var _look_t := 2.0
 var _world_t := 0.0
 var _beacon_t := 0.0
 var _udp: PacketPeerUDP
@@ -152,6 +153,10 @@ func _process(dt: float) -> void:
 	if _send_t <= 0.0:
 		_send_t = 0.05
 		_send_me()
+	_look_t -= dt
+	if _look_t <= 0.0 and main and main.player and main.player.rig and not main.player.rig.look.is_empty():
+		_look_t = 8.0
+		send_look(main.player.rig.look)
 	if hosting:
 		_world_t -= dt
 		if _world_t <= 0.0:
@@ -248,6 +253,19 @@ func player_state(pos: Vector3, body_yaw: float, yaw: float, pitch: float, crouc
 	var rp := _ensure_player(id)
 	rp.apply_state(pos, body_yaw, yaw, pitch, crouch, is_dead, vel, gun_key, ads, car_info, hp)
 
+## 0.2.75: your clothes and body, to everyone (when they change, and now and then for anyone who's joined since)
+func send_look(lk: Dictionary) -> void:
+	if online():
+		rpc("look_state", lk)
+
+@rpc("any_peer", "reliable")
+func look_state(lk: Dictionary) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if not names.has(id):
+		return
+	var rp := _ensure_player(id)
+	if rp.rig: rp.set_look(lk)
+
 ## A shot went off: the others hear it and see the flash
 func shot(origin: Vector3, dir: Vector3, gun_key: String) -> void:
 	if online():
@@ -305,7 +323,7 @@ func _send_world() -> void:
 		var v: Vector3 = n.velocity
 		data.append_array([n.global_position.x, n.global_position.y, n.global_position.z, atan2(n.face_dir.x, n.face_dir.z), v.x, v.z,
 			1.0 if n.rig.action != "" else 0.0])
-		meta.append([n.kind, n.model_key, n.anim_set, n.rig.action, n.gun.key if n.gun else ""])
+		meta.append([n.kind, n.model_key, n.anim_set, n.rig.action, n.gun.key if n.gun else "", n.look_seed])
 	# forget the ones that are gone
 	for id in npcs.keys():
 		if not is_instance_valid(npcs[id]):
@@ -333,6 +351,7 @@ func world_state(ids: PackedInt32Array, data: PackedFloat32Array, meta: Array) -
 			n.puppet = true
 			n.net_id = id
 			n.puppet_gun = meta[i][4]
+			if (meta[i] as Array).size() > 5: n.look_seed = int(meta[i][5])
 			main.add_child(n)
 			n.global_position = Vector3(data[i * 7], data[i * 7 + 1], data[i * 7 + 2])
 			n.anim_set = meta[i][2]

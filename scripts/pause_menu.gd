@@ -47,6 +47,7 @@ func setup(m) -> void:
 	home.add_child(_spacer(24))
 	_btn(home, "Resume", close)
 	_btn(home, "Settings", func(): settings_panel.visible = not settings_panel.visible)
+	_btn(home, "Your survivor (body and looks)", func(): main.char_screen.show_screen())
 	mode_btn = _btn(home, "", _toggle_mode)
 	forge_btn = _btn(home, "Forge mode  (Z)", func(): close(); main.forge.toggle())
 	garage_btn = _btn(home, "Garage: build a vehicle", func():

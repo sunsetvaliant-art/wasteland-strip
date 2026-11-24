@@ -36,6 +36,8 @@ const PROFILE := {"Spine1": "Chest", "Spine2": "UpperChest", "LeftArm": "LeftUpp
 static var clip_pool := {}       # clip name -> Animation
 
 static func path_of(key: String) -> String:
+	if key.begins_with("mh_"):          # 0.2.75: the MakeHuman people (tools/mh/gen_people.py)
+		return "res://assets/characters/mh/people/%s.gltf" % key
 	if ResourceLoader.exists("res://assets/characters/%s.glb" % key):
 		return "res://assets/characters/%s.glb" % key
 	return "res://assets/characters/%s/%s.gltf" % [key, key]
@@ -50,6 +52,31 @@ var model_path := ""
 var mods: BodyMods
 var frozen := false                  # dead: the ragdoll has the bones now
 var tint_mat_cache := {}             # original material -> tinted copy (zombies), shared with gibs
+var look := {}                       # 0.2.75: what they're wearing and their build (Outfit); {} = as the model was painted
+var model_key := ""
+
+## 0.2.75: put clothes on (and set the build: height and width)
+func dress(lk: Dictionary) -> void:
+	look = lk
+	Outfit.dress(model, model_path, model_key, lk)
+	set_build(float(lk.get("height", 1.0)), float(lk.get("width", 1.0)))
+
+## just the clothes changed (the player swapping a shirt): the values, nothing rebuilt
+func restyle(lk: Dictionary) -> void:
+	look = lk
+	if Outfit.is_mh(model_key):
+		Outfit.dress_mh(model, model_key, lk)
+		return
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh and m.mesh.get_meta("outfit_shell", false):
+			Outfit.apply(m, lk, model_path)
+
+var _base_scale := 1.0
+var _base_y := 0.0
+func set_build(h: float, w: float) -> void:
+	model.scale = Vector3(_base_scale * w, _base_scale * h, _base_scale * w)
+	model.position.y = _base_y * h
 var _bone_cache := {}
 
 static func _pool() -> Dictionary:
@@ -91,6 +118,7 @@ static func _strip_root_motion(a: Animation) -> void:
 			a.loop_mode = Animation.LOOP_LINEAR
 
 func load_model(key: String) -> void:
+	model_key = key
 	model_path = path_of(key)
 	var ps: PackedScene = load(model_path)
 	model = ps.instantiate()
@@ -134,6 +162,8 @@ func load_model(key: String) -> void:
 		model.scale = Vector3.ONE * s
 		model.position.y = -aabb.position.y * s
 	model.rotation.y = PI
+	_base_scale = model.scale.x
+	_base_y = model.position.y
 	head_bone = skel.find_bone("Head")
 	for mi in model.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -238,10 +268,14 @@ func sever(part: String) -> bool:
 	Gore.stump(self, b, skel.get_bone_parent(b))
 	return true
 
-## Zombie skin: every material tinted grey-green and dirtied (copies, shared with this body's gibs)
+## Zombie skin: every material tinted grey-green and dirtied (copies, shared with this body's gibs). A dressed body
+## (Outfit) takes it as a value.
 func tint(c: Color, rough := 0.9) -> void:
+	look["tint"] = c
+	Outfit.set_tint(model, c)
 	for mi in model.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
+		if m.get_meta("mh_mat", false): continue      # the MakeHuman cloth shader takes the tint as an instance colour
 		for s in m.mesh.get_surface_count():
 			var src: Material = m.mesh.surface_get_material(s)
 			if not (src is BaseMaterial3D):

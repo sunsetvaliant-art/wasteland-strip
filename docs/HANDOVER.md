@@ -290,6 +290,26 @@ and test), `/home/claude/wasteland-strip` (git clone used only to publish).
   Melee.hand_tool / TOOL_MENUS, Player.hold_tool. LooseLump.bay: any car with an open empty bay. Rig._live_links.
   BuildGen._connect: bath/toilet are pass-through only in the second round. Tests: _t74 (engine into bay),
   _linkshot (axle links), tools/_plans.gd (-s: bathrooms with two doors).
+- 0075: people and clothes. The MakeHuman people: tools/mh/gen_people.py runs in Blender's Python module (pip install
+  bpy; MPFB2 from github.com/makehumancommunity/mpfb2 installed as an extension; the CC0 system asset pack from
+  files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip unzipped into the
+  extension's user data dir). It makes PEOPLE (macro sliders, skin, hair, brows, eyes, Mixamo rig) with every garment
+  fitted as its own mesh, bakes per body vertex which garments hide it (and bit 23: underwear) into a FLOAT vertex
+  colour, and writes glTF + one shared texture folder. tools/mh/post_people.py shrinks the textures, installs into
+  assets/characters/mh and writes the .imports (Mixamo bone map). After regenerating: delete .godot/imported/mh_* so
+  Godot re-imports (it didn't notice the .bin change). Rig.path_of("mh_...") finds them. Outfit.MH_ITEMS: clothing item
+  -> garment meshes (per sex, picked by item data "v"), dye for white tees; Outfit.dress_mh shows/hides garments and
+  puts body and garments on shaders/mh_cloth.gdshader (instance: worn bits, mul dye, tint, wear, blood, pale = a
+  zombie's dead skin). Rig.tint must leave mh_mat meshes alone (it used to swap their shader for a tinted standard
+  material). A garment's hide mask is clipped to its own height range (suits whose trousers were dropped still have
+  a Delete group down the legs). 11 dressed people: ~200 MB textures, ~8 draw calls each. Under xvfb the whole world
+  runs ~2 s a frame and ~4.7 GB: keep runpt tests short (few frames, few NPCs) or the sandbox OOM-kills them.
+  The older single-mesh models (Sketchfab zombies) use the "shell": outfit.gd _shell + shaders/outfit.gdshader (garments
+  drawn per pixel from body-position fields). Rig.dress / restyle / set_build; Rig.tint -> shader tint.
+  NPC.look_seed (LAN world_state meta) picks the random look; worn clothes go in the body's loot (meta "worn").
+  Player.refresh_outfit (from PlayerInv.sync_guns), Player.set_body; Net.look_state. CharacterScreen (Settings "char").
+  Tests: tools/_mhshot.tscn (MH_KEYS, MH_SEED, MH_ZOMBIE, MH_RAW), tools/_dressshot.tscn (shell), tools/_charshot.tscn,
+  tools/_t75.gd (runpt: crowd, shirt swap, body search, draw calls).
 - Release without the base build (0054, check_export.sh / release.sh need ../build/Wasteland.pck which a fresh sandbox
   doesn't have): do 3b's ref.pck route. Restore the repo's versions of every changed file, `--export-pack Windows
   /home/claude/ref.pck`, put yours back, write version.txt, `--export-patch Windows new.pck --patches /home/claude/ref.pck`.

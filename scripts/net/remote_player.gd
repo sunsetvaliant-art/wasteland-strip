@@ -53,6 +53,20 @@ func _ready() -> void:
 	label.modulate = Color(0.75, 0.95, 1.0)
 	add_child(label)
 
+## 0.2.75: what they've got on (and which body they picked), sent when it changes
+func set_look(lk: Dictionary) -> void:
+	var want := str(lk.get("body", body_key))
+	if want != rig.model_key and ResourceLoader.exists(Rig.path_of(want)):
+		body_key = want
+		rig.queue_free()
+		rig = Rig.new()
+		add_child(rig)
+		rig.load_model(want)
+	if rig.look.is_empty(): rig.dress(lk)
+	else:
+		rig.restyle(lk)
+		rig.set_build(float(lk.get("height", 1.0)), float(lk.get("width", 1.0)))
+
 func apply_state(pos: Vector3, body_yaw: float, y: float, p: float, crouch: bool, is_dead: bool, vel: Vector3,
 		gk: String, ads: float, car_info: Array, h: float) -> void:
 	_target = pos

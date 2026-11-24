@@ -334,5 +334,11 @@
   "author": "jeandiz",
   "license": "CC Attribution",
   "url": "https://sketchfab.com/3d-models/sks-ea48b79acd354e4d8aa5ac901218ae5e"
+ },
+ "makehuman": {
+  "title": "MakeHuman system assets (bodies, skins, hair, eyes, clothes, shoes) via MPFB2",
+  "author": "The MakeHuman Community",
+  "license": "CC0 1.0",
+  "url": "http://www.makehumancommunity.org/"
  }
 }

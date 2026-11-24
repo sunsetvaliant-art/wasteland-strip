@@ -12,7 +12,10 @@ extends CharacterBody3D
 ## three new ones; the hollow walker turns up most. Weighted by repeats.
 ## 0.2.74: present-day people only. The WWII soldier, the stylised ones, the white walker and the hazmat suit are out
 ## (their clips still feed the animation pool).
-const ZOMBIE_MODELS := ["zombie_hollow", "zombie_hollow", "zombie_mx", "zombie_mx", "zombie_fuse", "zombie_female", "zombie_female"]
+const ZOMBIE_MODELS := ["zombie_hollow", "zombie_hollow", "zombie_mx", "zombie_mx", "zombie_fuse", "zombie_female", "zombie_female",
+	# 0.2.75: and the MakeHuman people, turned (Outfit.MH_PEOPLE): every sort of person, in everyday clothes
+	"mh_m_young", "mh_m_mid", "mh_m_old", "mh_m_lean", "mh_m_african", "mh_m_asian", "mh_f_young", "mh_f_mid", "mh_f_african",
+	"mh_f_asian", "mh_f_old"]
 ## Load every body on a worker thread at the start, so the first of each kind doesn't hitch the game when it walks in
 static func preload_models() -> void:
 	var seen := {}
@@ -22,12 +25,13 @@ static func preload_models() -> void:
 		var p := Rig.path_of(k)
 		if ResourceLoader.exists(p): ResourceLoader.load_threaded_request(p)
 const ZOMBIE_SETS := ["zombie_a", "zombie_b", "zombie_c"]
-const SCAV_MODELS := ["scav_hooded", "scav_2"]
+const SCAV_MODELS := ["scav_hooded", "mh_m_young", "mh_m_mid", "mh_m_lean", "mh_m_african", "mh_m_asian", "mh_f_young", "mh_f_african", "mh_f_asian"]
 const SCAV_GUNS := ["slr", "enfield", "rem870", "python", "dbshotgun", "sawnoff", "hunter", "magnum45"]
 const LAYER := 1 << 2
 
 var kind := "zombie"
 var model_key := ""
+var look_seed := 0               # 0.2.75: picks their clothes and build (sent over LAN, so everyone sees the same)
 var rig: Rig
 var shape: CollisionShape3D
 var hp := 160.0
@@ -101,6 +105,12 @@ func _ready() -> void:
 	if model_key == "":
 		model_key = (ZOMBIE_MODELS if kind == "zombie" else SCAV_MODELS).pick_random()
 	rig.load_model(model_key)
+	# 0.2.75: dressed: everyday clothes, filthy and bloody on a zombie; their own height and build
+	if look_seed == 0: look_seed = randi() | 1
+	if Outfit.dresses(model_key):
+		var lr := RandomNumberGenerator.new()
+		lr.seed = look_seed
+		rig.dress(Outfit.random_look(lr, Outfit.is_female(model_key), kind == "zombie"))
 	voice = AudioStreamPlayer3D.new()
 	voice.position.y = 1.6
 	voice.unit_size = 5.0
@@ -123,7 +133,8 @@ func _setup_zombie() -> void:
 	hp = randf_range(150.0, 210.0)
 	anim_set = ZOMBIE_SETS.pick_random()
 	# a little grey-green on the real zombie skins; a lot on a survivor who's turned
-	var strong: bool = not model_key.begins_with("zombie")
+	var strong: bool = not model_key.begins_with("zombie") and not Outfit.is_mh(model_key)
+	# (a MakeHuman person's dead skin is the shader's "pale"; the cast over the lot stays light)
 	rig.tint(Color(0.74, 0.82, 0.68) if strong else Color(0.92, 0.95, 0.9), 0.95)
 	rig.mods.head_tilt = Vector2(randf_range(-0.2, 0.2), randf_range(-0.12, 0.12))
 	gait = randf_range(0.8, 1.15)
@@ -150,6 +161,9 @@ func _setup_scav() -> void:
 	add_child(gun)
 	gun.setup(puppet_gun if puppet_gun != "" else SCAV_GUNS.pick_random(), self)
 	gun.reserve = 9999
+	# (0.2.75: a scav's gun is up to 18 meshes; their shadows were most of a scav's draw calls)
+	for g in gun.find_children("*", "GeometryInstance3D", true, false):
+		(g as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	gun.excludes = [get_rid()]
 	gun.top_level = true
 	label = Label3D.new()
@@ -932,6 +946,11 @@ func _pockets() -> void:
 	set_meta("container", "zombie" if kind == "zombie" else "scav")
 	set_meta("container_name", "body")
 	set_meta("loot_seed", randi())
+	# 0.2.75: and the clothes they had on, for the taking
+	if not rig.look.is_empty():
+		var lr := RandomNumberGenerator.new()
+		lr.seed = look_seed + 17
+		set_meta("worn", Outfit.worn_stacks(rig.look, lr))
 
 func _cut_corpse(part: String, imp: Vector3) -> void:
 	if ragdoll == null or ragdoll.cut.has(part):

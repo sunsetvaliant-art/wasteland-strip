@@ -69,7 +69,10 @@ func _ready() -> void:
 	# your body: the Meshy survivor on the Mixamo skeleton, seen in shoulder view and when you look down in first person
 	rig = Rig.new()
 	add_child(rig)
-	rig.load_model("player")
+	# 0.2.75: the body you picked (the character screen; Settings "char")
+	var ch: Dictionary = Settings.v.get("char", {})
+	var bk := str(ch.get("body", "mh_m_young"))
+	rig.load_model(bk if ResourceLoader.exists(Rig.path_of(bk)) else "player")
 	for mi in rig.model.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).layers = 4      # your own body: the scope camera doesn't see it
 	body_mesh = rig
@@ -128,6 +131,40 @@ func hold_tool(id: String) -> void:
 	holstered = true
 	var what: String = {"build": "build menu", "car": "work on the car you're facing"}.get(str(Melee.TOOL_MENUS.get(id, "")), "")
 	_toast("%s in hand%s  ·  H puts it away" % [Items.def(id).name, ("  ·  right-click: " + what) if what != "" else ""])
+
+## 0.2.75: a different body (the character screen)
+func set_body(key: String) -> void:
+	if rig and rig.model_key == key: return
+	if not ResourceLoader.exists(Rig.path_of(key)): return
+	var old := rig
+	rig = Rig.new()
+	add_child(rig)
+	rig.load_model(key)
+	body_mesh = rig
+	for mi in rig.model.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).layers = 4
+	if old: old.queue_free()
+
+## 0.2.75: what you're wearing, on you. Called when the clothes slots change (and once the inventory's set up).
+func refresh_outfit() -> void:
+	if rig == null or inv == null: return
+	var ch: Dictionary = Settings.v.get("char", {})
+	var base := {"body": rig.model_key, "height": float(ch.get("height", 1.0)), "width": float(ch.get("width", 1.0)),
+		"tone": float(ch.get("tone", 1.0)), "wear": 0.15}
+	var lk := Outfit.look_from_equip(inv.equip, base)
+	lk["skin"] = Outfit.skin_of(rig.model_path) * float(lk.tone) if Outfit.dresses(rig.model_key) else Color.WHITE
+	if rig.look.is_empty():
+		rig.dress(lk)                     # builds the body's shell the first time (that's when its skin tone's known)
+		for mi in rig.model.find_children("*", "MeshInstance3D", true, false):
+			(mi as MeshInstance3D).layers = 4
+		lk["skin"] = Outfit.skin_of(rig.model_path) * float(lk.tone) if Outfit.dresses(rig.model_key) else Color.WHITE
+		rig.restyle(lk)
+	else:
+		rig.restyle(lk)
+		rig.set_build(float(lk.height), float(lk.width))
+	head.position.y = 1.62 * float(lk.height)
+	var m = get_tree().current_scene
+	if m and m.get("net"): m.net.send_look(lk)
 
 func _strap_key() -> void:
 	if vehicle: return

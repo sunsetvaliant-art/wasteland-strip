@@ -28,6 +28,7 @@ var roads: Roads
 var show_debug := false
 var env: Environment
 var pause_menu: PauseMenu
+var char_screen: CharacterScreen
 var forge: Forge
 var combat_hud: CombatHUD
 var garage: Garage
@@ -57,6 +58,11 @@ func _ready() -> void:
 	# 4 fps); under 20 fps the game slows a little instead
 	Engine.max_physics_steps_per_frame = 6
 	NPC.preload_models()
+	var t_w := Time.get_ticks_msec()
+	var wk := {}
+	for k in NPC.ZOMBIE_MODELS + NPC.SCAV_MODELS + ["player", "survivor_female"]: wk[k] = true
+	Outfit.warm(wk.keys())                      # 0.2.75: everyone's clothes shells, built while loading
+	print("OUTFIT shells built in %d ms" % (Time.get_ticks_msec() - t_w))
 	InputSetup.ensure()
 	# keys added in updates: InputSetup may be the copy Boot loaded from the original install (scripts already in memory
 	# aren't replaced when an update's pack is mounted), so register them here too
@@ -138,10 +144,17 @@ func _ready() -> void:
 	body_tools.name = "BodyTools"
 	add_child(body_tools)
 	body_tools.setup(self)
+	char_screen = CharacterScreen.new()      # 0.2.75: your survivor
+	char_screen.name = "CharacterScreen"
+	add_child(char_screen)
+	char_screen.setup(self)
+	if not Settings.v.has("char") and OS.get_environment("WASTELAND_AUTOPLAY") == "" and DisplayServer.get_name() != "headless":
+		get_tree().create_timer(2.5).timeout.connect(func(): if not char_screen.open: char_screen.show_screen())
 	Settings.changed.connect(func(): Settings.apply(self))
 	Settings.apply(self)
 	# what you're carrying: the lot in creative, a revolver and a handful of rounds in survival
 	player.inv.loadout(Settings.creative())
+	player.refresh_outfit()
 	inv_ui = InventoryUI.new()
 	inv_ui.name = "InventoryUI"
 	add_child(inv_ui)
